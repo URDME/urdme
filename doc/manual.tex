@@ -1,0 +1,133 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[latin1]{inputenc}
+\usepackage[swedish,english]{babel}
+\usepackage{amsmath,amsthm}
+\usepackage{amssymb}
+\usepackage{ifpdf}
+\ifpdf
+  \usepackage[pdftex]{graphicx}
+  \usepackage{epstopdf}
+\else
+  \usepackage[dvips]{graphicx}
+\fi
+\usepackage[margin=3.5cm]{geometry}
+\usepackage[pdftitle={URDME manual},
+ pdfauthor={Bauer/Drawert/Engblom/Hellander},
+ pdffitwindow=true,
+ breaklinks=true,
+ colorlinks=true,
+ urlcolor=blue,
+ linkcolor=red,
+ citecolor=red,
+ anchorcolor=red]{hyperref}
+\usepackage[sort&compress,numbers]{natbib}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+%**************************************************************************
+
+\numberwithin{equation}{section}
+\numberwithin{table}{section}
+\numberwithin{figure}{section}
+
+% function- and variable names
+\newcommand{\varrs}{\texttt{urdme}}
+\newcommand{\varrf}{\texttt{rdme2fem}}
+\newcommand{\varfr}{\texttt{fem2rdme}}
+\newcommand{\varrdme}{\texttt{rdme}}
+
+\newcommand{\varNcells}{\texttt{Ncells}}
+\newcommand{\varMspecies}{\texttt{Mspecies}}
+\newcommand{\varMreactions}{\texttt{Mreactions}}
+\newcommand{\varNdofs}{\texttt{Ndofs}}
+\newcommand{\varM}{\texttt{M1}}
+\newcommand{\vardsize}{\texttt{dsize}}
+\newcommand{\varD}{\texttt{D}}
+\newcommand{\varu}{\texttt{u0}}
+\newcommand{\varN}{\texttt{N}}
+\newcommand{\varG}{\texttt{G}}
+\newcommand{\varK}{\texttt{K}}
+\newcommand{\varI}{\texttt{I}}
+\newcommand{\varS}{\texttt{S}}
+\newcommand{\vartspan}{\texttt{tspan}}
+\newcommand{\varprop}{\texttt{prop}}
+\newcommand{\varreport}{\texttt{report}}
+\newcommand{\varvol}{\texttt{vol}}
+\newcommand{\varsd}{\texttt{sd}}
+\newcommand{\vardata}{\texttt{data}}
+
+\newcommand{\varrdmesd}{\texttt{rdme\_sd}}
+\newcommand{\varrdmesdlevel}{\texttt{rdme\_sdlevel}}
+
+\newcommand{\varU}{\texttt{U}}
+\newcommand{\varfem}{\texttt{fem}}
+\newcommand{\varinto}{\texttt{->}}
+
+% variable names used in equations
+\newcommand{\Ncells}{N_{\mbox{\footnotesize{cells}}}}
+\newcommand{\Mspecies}{M_{\mbox{\footnotesize{species}}}}
+\newcommand{\Mreactions}{M_{\mbox{\footnotesize{reactions}}}}
+\newcommand{\Ndofs}{N_{\mbox{\footnotesize{dofs}}}}
+\newcommand{\rand}{\mbox{rand}}
+
+\newcommand{\fatx}{\mathbf{x}}
+\newcommand{\comment}[1]{\textcolor{red}{\textbf{*** #1}}}
+
+%**************************************************************************
+
+\title{URDME \textit{v}. 1.2: User's manual \\}
+
+\author{Pavol Bauer$^{\mbox{{\tiny 1}}}$ \and Brian
+  Drawert$^{\mbox{{\tiny 2}}}$ \and Stefan Engblom$^{\mbox{{\tiny
+        1}}}$ \and Andreas Hellander$^{\mbox{{\tiny 2}}}$}
+
+\date{\today}
+
+%**************************************************************************
+
+\begin{document}
+\selectlanguage{english}
+
+\maketitle
+
+{\footnotesize \em $^{\mbox{\tiny\rm 1}}$ Division of Scientific
+  Computing, Department of Information Technology, Uppsala University,
+  P.~O.~Box 337, SE-75105 Uppsala, Sweden, e-mails:
+  \href{mailto:stefane@it.uu.se}{stefane@it.uu.se},
+  \href{mailto:pavol.bauer@it.uu.se}{pavol.bauer@it.uu.se}.}
+
+{\footnotesize \em $^{\mbox{\tiny\rm 2}}$ Department of Computer
+  Science, University of California-Santa Barbara, Santa Barbara,
+  California 93106, USA, e-mail:
+  \href{mailto:bdrawert@cs.ucsb.edu}{bdrawert@cs.ucsb.edu},
+  \href{mailto:andreash@cs.ucsb.edu}{andreash@cs.ucsb.edu}.}
+
+%**************************************************************************
+
+\medskip
+
+{\footnotesize \textbf{Manager of this release:} Pavol Bauer (to
+  whom correspondence should be addressed).}
+
+\input{intro.tex}
+\input{major_changes.tex} % ***
+\input{install.tex} % xxx check
+\input{overview.tex} % xxx quick check
+\input{details.tex} % xxx check
+\input{sbml.tex} 
+\input{example.tex} % *** 
+\input{integration.tex} % xxx quick check
+\input{acknowledgment.tex} % xxx quick check
+
+\bibliographystyle{plain}
+\newpage
+\bibliography{manual}
+\clearpage
+
+\appendix
+\input{rdme.tex}
+\input{algorithms.tex}
+
+\end{document}
+
+%**************************************************************************

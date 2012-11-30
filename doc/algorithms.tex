@@ -1,0 +1,143 @@
+\section{Algorithms}
+\label{app:algorithms}
+
+One of the most popular algorithms to generate realizations of the
+CTMC in the well-stirred case is Gillespie's direct method (DM)
+\cite{SSA}. Several algorithmic improvements of this method exist,
+one of them being the next reaction method (NRM) due to Gibson and
+Bruck \cite{NRM}.
+
+The underlying algorithm in URDME is the next subvolume method (NSM)
+\cite{BISTAB}. The NSM can be understood as a combination of NRM and
+DM in order to tailor the algorithm to reaction-diffusion processes.
+
+For reference, we first state below both DM and NRM and then outline
+NSM.
+
+\begin{algorithm}[htb!]
+\caption{Gillespie's direct method (DM)}
+\begin{algorithmic}
+  \STATE{\textit{Initialize:} Set the initial state $\fatx$ and
+  compute all propensities $\omega_r(\fatx), r=1, \ldots,
+  \Mreactions$. Also set $t=0$.}
+
+  \WHILE{$t < T$}
+
+  \STATE{Compute the sum $\lambda$ of all the propensities.}
+
+  \STATE{Sample the next reaction time (by inversion), $\tau = -
+  \log(\rand)/\lambda$. Here and in what follows, `$\rand$'
+  conveniently denotes a uniformly distributed random number in
+  $(0,1)$ which is different for each occurrence.}
+  
+  \STATE{Sample the next reaction event (by inversion); find $n$ such
+  that \newline $\sum_{j=1}^{n-1} \omega_j(\fatx) < \lambda \, \rand
+  \le \sum_{j=1}^n \omega_j(\fatx)$}
+
+  \STATE{Update the state vector, $\fatx = \fatx+N_n$ and set
+  $t=t+\tau$.}
+
+  \ENDWHILE
+
+\end{algorithmic}
+\label{alg:SSADM}
+\end{algorithm}
+
+\begin{algorithm}[htb!]
+\caption{Gibson and Bruck's next reaction method (NRM)}
+\begin{algorithmic}
+  \STATE{\textit{Initialize:} Set $t = 0$ and assign the initial
+  number of molecules. Generate the dependency graph $G$. Compute the
+  propensities $\omega_{r}(\fatx)$ and generate the corresponding
+  \emph{absolute} waiting times $\tau_{r}$ for all reactions
+  $r$. Store those values in a heap $H$.}
+
+  \WHILE{$t < T$}
+
+  \STATE{Remove the smallest time $\tau_{n} = H_{0}$ from the top of
+  $H$, execute the $n$th reaction $\fatx := \fatx+N_{n}$ and set $t :=
+  \tau_{n}$.}
+
+  \FORALL{edges $n \to j$ in $G$}
+
+  \IF{$j \not = n$}
+
+  \STATE{Recompute the propensity $\omega_{j}$ and update
+    the corresponding waiting time according to
+\begin{align*}
+  \tau_{j}^{\mathrm{new}} &= t+\left(\tau_{j}^{\mathrm{old}}-t\right)
+  \frac{\omega_{j}^{\mathrm{old}}}{\omega_{j}^{\mathrm{new}}}.
+\end{align*}}
+
+  \ELSE[$j = n$]
+
+  \STATE{Recompute the propensity $\omega_{n}$ and generate a new
+  absolute time $\tau_{n}^{\mathrm{new}}$. Adjust the contents of $H$
+  by replacing the old value of $\tau_{n}$ with the new one.}
+
+  \ENDIF
+
+  \ENDFOR
+
+  \ENDWHILE
+\end{algorithmic}
+\label{alg:NRM}
+\end{algorithm}
+
+\begin{algorithm}[htb!]
+\caption{The next subvolume method (NSM)}
+\label{alg:NSM}
+\begin{algorithmic}
+  \STATE{\textit{Initialize:} Compute the sum $\sigma_i^r$ of all
+  reaction rates $\omega_{ri}$ and the sum $\sigma_i^d$ of all
+  diffusion rates $a_{ij}\fatx_{si}$ in all subvolumes $i=1,\ldots
+  ,\Ncells$. Compute the time until the next event in each subvolume,
+  $\tau_i = -\log(\rand)/(\sigma_i^r+\sigma_i^d)$, and store all times
+  in a heap $H$.}
+
+  \WHILE{$t < T$}
+
+  \STATE{Select the next subvolume $\zeta_n$ where an event takes
+  place by extracting the minimum $\tau_n$ from the top of $H$.}
+  
+  \STATE{Set $t=\tau_n.$} 
+
+  \STATE{Determine if the event in $\zeta_n$ is a reaction or a
+  diffusion event. Let it be a reaction if $(\sigma_n^r+\sigma_n^d) \,
+  \rand < \sigma_n^r$, otherwise it is a diffusion event.}
+
+  \IF{Reaction event}
+  
+  \STATE{Determine the reaction channel that fires. This is done by
+  inversion of the distribution for the next reaction given $\tau_n$
+  in the same manner as in Gillespie's direct method in
+  Algorithm~\ref{alg:SSADM}.}
+
+  \STATE{Update the state matrix using the (sparse) stoichiometric
+    matrix $N$.}
+
+  \STATE{Update $\sigma_n^r$ and $\sigma_n^d$ using the dependency
+  graph $G$ to recalculate only affected reaction- and diffusion
+  rates.}
+
+  \ELSE[Diffusion event]
+
+  \STATE{Determine which species $S_{ln}$ diffuses and subsequently,
+  determine to which neighboring subvolume $\zeta_{n'}$. This is
+  again done by inversion using a linear search in the corresponding
+  column of $D$.}
+
+  \STATE{Update the state: $S_{nl}=S_{nl}-1$, $S_{n'l}=S_{n'l}+1$.}
+  
+  \STATE{Update the reaction- and diffusion rates of subvolumes
+  $\zeta_n$ and $\zeta_{n'}$ using G.}
+  
+  \ENDIF
+  
+  \STATE{Compute a new waiting time $\tau_n$ by drawing a new random
+  number and add it to the heap $H$.}
+  
+  \ENDWHILE 
+\end{algorithmic}
+\end{algorithm}
+

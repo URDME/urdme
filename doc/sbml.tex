@@ -1,0 +1,62 @@
+\section{Using the SBML interface}
+\label{sec:sbml}
+The SBML interface is found in the \texttt{sbml} directory and allows for translation of downloaded SBML files to URDME
+compatible model and propensity definitions.
+
+\subsection{Installation procedure}
+
+\begin{enumerate}
+
+\item Install the Python runtime libraries (Version 2.6 or higher)
+available at \url{http://www.python.org}.
+
+\item Download and install the official SBML library from \url{http://sbml.org/Software/libSBML}.
+Make sure to enable the language interface (API) to Python during the installation.  The detailed guide on
+how to compile \textit{libsbml} with the Python API is available in the online documentation of the library.
+
+\end{enumerate}
+
+\subsection{Testing and quick start guide}
+
+\begin{enumerate}
+
+\item Change into the \texttt{sbml} directory of the URDME installation. 
+
+\item You can now use the \texttt{sbml2urdme} translator to generate a propensity and model function
+of the \textit{mincde} example, described in detail in chapter \ref{sec:ex}.
+Execute the bash-script \texttt{sbml2rdme} in combination with the provided SBML-file \texttt{mincde.xml} as first parameter.
+
+\texttt{./sbml2rdme mincde.xml}
+
+You should obtain the following information:
+
+\texttt{Creating model c-file mincde.c} \\
+\texttt{Creating model m-file mincde.m}
+
+\item The script generated a model (.m) and propensity (.c) file with the same filename as the
+SBML specification file (in this case 'mincde'). You can proceed with execution the generated files
+together with geometries imported from Comsol Multiphysics. \\
+\texttt{umod = mphmodel(fem,'mincde')}
+
+Asuming the geometry definition to be available in the variable \texttt{fem}.
+
+  \smallskip 
+   
+  {\bf \textcolor{red}{!}} The SBML Level 2 specification is not sufficient to describe all properties and dynamics
+  of a full URDME model. Although the generated models are fully operational they can be considered
+  as drafts which can be manually extended with more specific model requirements. See chapter \ref{sec:ex} for extensions
+  of the \textit{mincde}-model.
+
+\end{enumerate}
+
+\subsection{Usage guide}
+The SBML translator can be called as a bash-script where \texttt{model.xml} is the SBML definition file and the 
+output directory is an optional parameter. \\
+
+\texttt{./sbml2rdme <model.xml> [output directory]} \\
+
+Alternatively, the Python script \texttt{sbml2rdme.py} available in  \texttt{sbml/src} directory of the distribution
+can be called with the same parameters within the Python environment.
+
+\subsection{Limitations}
+In the actual version the translator supports exclusively SBML Level 2. Reverse reactions are not supported.

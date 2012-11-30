@@ -1,0 +1,21 @@
+===================================
+= README for sbml2rdme            =
+=                                 =
+= By V.Gerdin                     =
+===================================
+
+== About ==
+sbml2rdme is a translator feature released with urdme 1.2 (www.urdme.org).
+It is intended to allow users to use SBML (Systems Biology Markup Language - www.sbml.org)
+ to model their enivronments and then easilly generate the neccessary urdme model files. 
+
+== How to run ==
+./sbml2rdme <model.xml> [output directory]
+
+An SBML model is required as a first argument.
+An output directory is optional. Default is the present working directory.
+
+== Third party dependencies ==
+sbml2rdme is written in Python 2.6 (www.python.org)
+sbml2rdme requires the SBML standard library for Python libsbml (www.sbml.org) 
+Code documentation is generated using Doxygen (www.doxygen.org)
