@@ -273,20 +273,17 @@ if ~strcmp(opts.mode,'bg')
     data=load(opts.outfile);
     
     % if a test, a manually created mesh or model with sd=1 has been executed,
-    % add U directly to umod, otherwise add solution to comsol file
-
-     if isfield(umod,'test') || length(unique(umod.sd))==1
+    % only add U to umod, otherwise add solution to comsol file as well. 
+    %if isfield(umod,'test') || length(unique(umod.sd))==1
       umod.U = data.U;
-
       if isfield(data,'tspan') 
           umod.tspan = data.tspan;
       else
           umod.tspan = 0:size(data.U,2)-1;
       end
-    else
       umod = urdme2comsol(umod,data.U,opts.verbose);
-    end
   end
+
 
   % clean temporary input/output files.
   if(opts.delete_inputfile)

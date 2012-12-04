@@ -25,7 +25,7 @@ umod2.tspan = [];
 U2 = [umod.U(:,1) U2];
 
 umod2 = rdme2fem(fem2,U2,[tspan(1) tspan(end)]);
-umod2 = urdme2comsol
+%umod2 = urdme2comsol(umod2,U2,[tspan(1) tspan(end)]);
 dofs=xmeshinfo(fem,'out','dofs');
  
 [~,Ncells] = size(fem.mesh.p);
