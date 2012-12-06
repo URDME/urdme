@@ -6,10 +6,13 @@ function fem  = urdme_init_dfsp(fem,varargin)
     dt_set=0;
     M_set=0;
     use_cache=0;
+    if isfield(fem,'comsol')
+        umod = comsol2urdme(fem.comsol);
+    end 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    if ~isfield(fem,'urdme')
-        fem=comsol2urdme(fem);
-    end
+    %if ~isfield(fem,'urdme')
+    %    fem=comsol2urdme(fem);
+    %end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     Error_Tolerance = 1e-02; %default value
     if(size(varargin,1)>0 && iscell(varargin{1}))
@@ -71,13 +74,13 @@ function fem  = urdme_init_dfsp(fem,varargin)
     [DT,err] = urdme_init_DFSP_uniformization(fem,dt,M);
     fprintf('DFSP: finished state-space exploration, error (max/avg/std) = %e/%e/%e\n',max(err),mean(err),std(err));
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    fem.urdme.err = err;
-    fem.urdme.DT  = DT;
-    fem.urdme.Error_Tolerance = Error_Tolerance;
+    fem.err = err;
+    fem.DT  = DT;
+    fem.Error_Tolerance = Error_Tolerance;
     % Solver options. 
     sopts(1)=dt;
     sopts(2)=M;
-    fem.urdme.sopts = sopts;
+    fem.sopts = sopts;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if(use_cache)
         fprintf('writing DFSP lookup table to cache');
@@ -123,27 +126,29 @@ function [DT,err] =  urdme_init_DFSP_uniformization(fem,tau,M)
     
     for i=0:nmax
         
+        
        pp  = poisspdf(i,lambda_max*tau);
        temp = A*temp; 
        pdv = pdv+pp*temp;
        totp=totp-pp;
     
+%        if(floor(i/nmax*100) > last_percent_reported + 4 )
+%            %fprintf('%g%% complete\n',floor(i/Ndofs*100));
+%            last_percent_reported = floor(i/nmax*100);
+%            elapsed_time = toc(sse_timer);
+%            time_remain = floor((1-(i/nmax))/((i/nmax)/elapsed_time));
+%            fprintf('%g%% complete\t\t\telapsed: %g\teta: %is\n',last_percent_reported,elapsed_time,time_remain);
+%        end    11
+       
        if(totp<tolp)
            break;
        end
-       i
     end
     
     % Truncate 
     for i=1:Ndofs
         
-       if(floor(i/Ndofs*100) > last_percent_reported + 4 )
-           %fprintf('%g%% complete\n',floor(i/Ndofs*100));
-           last_percent_reported = floor(i/Ndofs*100);
-           elapsed_time = toc(sse_timer);
-           time_remain = floor((1-(i/Ndofs))/((i/Ndofs)/elapsed_time));
-           fprintf('%g%% complete\t\t\telapsed: %g\teta: %is\n',last_percent_reported,elapsed_time,time_remain);
-       end
+
        
        maxp = max(pdv(:,i)); 
        [tier1,jj,ss] = find(pdv(:,i)/maxp>droptol);  

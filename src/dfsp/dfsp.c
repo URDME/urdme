@@ -53,11 +53,17 @@ int main(int argc, char *argv[])
     /*reopen MAT file*/
     MATFile *input_file;
     mxArray *DT,*sopts;
-
+    
+    input_file = matOpen(infile,"r");
+    if (input_file == NULL){
+        printf("Failed to open mat-file.\n");
+        return(-1);
+    }
+    
     /* Look for seed */
     mxArray *mxseed;
 	mxseed = matGetVariable(input_file, "seed");
-    if(mxseed!=NULL && (!mxIsEmpty((mxseed)))) {
+    if(mxseed!=NULL && (!mxIsEmpty(mxseed))) {
         srand48((long int)mxGetScalar(mxseed));
     } else {
         srand48((long int)time(NULL)+(long int)(1e9*clock()));
@@ -101,10 +107,7 @@ int main(int argc, char *argv[])
     memcpy(parameters,&matfile_parameters[mpar*(param_case-1)],mpar*sizeof(double));
     
     mxArray *mxreport;
-    if (input_file == NULL) {
-        perror("Fatal error. Couldn't load model file.\n");
-        return -2;
-    }
+ 
 	mxreport = matGetVariable(input_file, "report");
 	if (mxreport != NULL)
 		report_level = (int) mxGetScalar(mxreport);
@@ -115,15 +118,9 @@ int main(int argc, char *argv[])
 	model->extra_args[0] = malloc(sizeof(int));
 	*(int *)(model->extra_args[0]) = report_level;
     
-    input_file = matOpen(infile,"r");
-    if (input_file == NULL){
-        printf("Failed to open mat-file.\n");
-        return(-1);   
-    }
-    
     /* Set tau_d */
     sopts = matGetVariable(input_file, "sopts");
-    if(sopts==NULL||isempty(sopts)){
+    if(sopts==NULL||mxIsEmpty(sopts)){
         printf("Step length (tau_d) is missing in the model file\n");
         return(-1);   
     }

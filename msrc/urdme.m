@@ -191,7 +191,7 @@ if exist(s)
     if opts.verbose>=2
       fprintf('executing %s\n',s);
     end
-    fem = eval(strcat(s,'(fem,varargin)'));
+    umod = eval(strcat(s,'(umod,varargin)'));
 elseif ~strcmp(getenv('URDME_SOLVER_PATH'),'')
     rest = getenv('URDME_SOLVER_PATH');
     while(~isempty(rest))
@@ -205,7 +205,7 @@ elseif ~strcmp(getenv('URDME_SOLVER_PATH'),'')
                     if(opts.verbose>=2)
                         fprintf('\texecuting %s in %s\n',s,[tok,'/msrc/']);
                     end
-                    fem = eval(strcat(s,'(fem,varargin)'));
+                    umod = eval(strcat(s,'(umod,varargin)'));
                 else
                     error(sprintf('file %s is found, but exits(%s)==0\n',s,s));
                 end
@@ -249,7 +249,6 @@ if(opts.verbose>1)
     fprintf('Writing temporary input file.\n',inputfile);
 end
 rdme2mat(umod,inputfile);
-
 % solve!
 if opts.verbose ~= 0
   fprintf('Starting simulation...\n');
