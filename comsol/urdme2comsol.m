@@ -1,4 +1,4 @@
-function umod = urdme2comsol(umod,U,verbose)
+function umod = urdme2comsol(umod,U,tspan,verbose)
 %URDME2COMSOL Update comsol model in umod.comsol with result matrix U
 %   UMOD = URDME2COMSOL(UMOD,U,VERBOSE) Inserts solution matrix U into
 %   Umod.comsol
@@ -9,6 +9,7 @@ function umod = urdme2comsol(umod,U,verbose)
 %   U - Solution matrix produced by URDME core. U are in absolute integers
 %       (number of species), not concentration. URDME2COMSOL turns values to 
 %       consentration before saving to the model object. 
+%   tspan - Times span vector that matches the size of U. Defaults to umod.tspan.  
 %   VERBOSE - Silent execution
 %
 %   --OUTPUT--
@@ -22,6 +23,15 @@ function umod = urdme2comsol(umod,U,verbose)
 % J. Cullhed    2008-08-06 (rdme2fem)
 
 is4x = isjava(umod.comsol);
+
+if nargin < 3
+    tspan = umod.tspan;
+end
+
+if nargin < 4
+    verbose = 0;
+end
+  
 
 if is4x
   %extend mesh from model
@@ -57,8 +67,9 @@ if is4x
   vol = umod.vol;
 
   V = repmat(vol(:)'*6.022e23,[Mspecies 1]);
-  tspan = umod.tspan;
-
+  if ~exist(tspan)
+    tspan = umod.tspan;
+  end
   for i = 1:numel(tspan)
       U(:,:,i) = U(:,:,i)./V;
   end
@@ -100,10 +111,6 @@ else
 
   % suboptimal, but should work ok:
   vol = umod.vol;
-  tspan = umod.tspan;
-  %if nargin < 3
-  %    tspan = umod.tspan;
-  %end
   V = repmat(vol(:)'*6.022e23,[Mspecies 1]);
   for i = 1:numel(tspan)
     U(:,:,i) = U(:,:,i)./V;
