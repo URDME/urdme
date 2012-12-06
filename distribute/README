@@ -1,15 +1,13 @@
 ========================================================
-URDME 1.1
-Copyright 2008,2009,2010
+URDME 1.2
+Copyright 2008,2009,2010,2011,2012
 See the file AUTHORS for complete list of authors
 ========================================================
-
-
 
 ========================================================
         Quick Start
 ========================================================
--- from terminal -- 
+-- from a terminal -- 
  sudo ./install.sh
 
 -- from Comsol -- 
@@ -17,7 +15,7 @@ See the file AUTHORS for complete list of authors
  open examples/mincde/coli.mph
  open MATLAB from comsol
       File > Client/Server/MATLAB > Connect to MATLAB
- export mesh to MATALB
+ export mesh to MATLAB
       File > Export > Export FEM Structure as 'fem'
 
 -- from Matlab --
