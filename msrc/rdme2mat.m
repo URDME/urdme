@@ -6,7 +6,7 @@
 function rdme2mat(umod,filename)
 
 urdme_validate(umod); 
-%don't save the fem-model
+% We do not save the comsol datastructure
 if ~isfield(umod,'test')
   umod=rmfield(umod,'comsol');
 end

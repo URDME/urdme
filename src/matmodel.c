@@ -34,8 +34,6 @@ double *parameters = NULL;
    
 */
 
-
-
 urdme_model *read_model(char *file)
 {
 	
@@ -54,15 +52,15 @@ urdme_model *read_model(char *file)
 		printf("Failed to open mat-file.\n");
 		return NULL;	
 	}
-	
+
 	/* Get D-matrix. */
 	D = matGetVariable(input_file, "D");
 	if (D == NULL){
 		printf("The diffusion matrix D is missing in the model file.\n");
 		return NULL;
 	}
-	
-    Ndofs  = mxGetN(D); 
+
+    Ndofs  = mxGetN(D);
     size_t *mxirD;
     size_t *mxjcD;
     double *mxprD;
@@ -78,14 +76,14 @@ urdme_model *read_model(char *file)
     model->prD = (double *)malloc(nnzD*sizeof(double));
     memcpy(model->prD,mxprD,nnzD*sizeof(double));
     mxDestroyArray(D);
-    
+
 	/* Stoichiometry matrix */
 	N = matGetVariable(input_file, "N");
     if (N == NULL){
 		printf("The stoichiometry matrix is missing in the model file.\n");
 		return NULL;
 	}
-  
+
 	/* Typecast to int */
 	double *tempN;
 	tempN = mxGetPr(N);
@@ -107,7 +105,7 @@ urdme_model *read_model(char *file)
 	model->Ncells=Ndofs/model->Mspecies;
     
     mxDestroyArray(N);
-	
+
     /* Volume vector */
 	vol = matGetVariable(input_file,"vol");
 	if (vol == NULL){
@@ -117,7 +115,8 @@ urdme_model *read_model(char *file)
     model->vol = (double *)malloc(model->Ncells*sizeof(double));
     memcpy(model->vol,(double *)mxGetPr(vol),model->Ncells*sizeof(double));
     mxDestroyArray(vol);
-    
+
+
 	/* Dependency graph */
 	G = matGetVariable(input_file, "G");
     if (G == NULL){
@@ -130,7 +129,7 @@ urdme_model *read_model(char *file)
 	model->jcG = (size_t *)malloc((mxGetN(G)+1)*sizeof(size_t));
     memcpy(model->jcG,(size_t *)mxGetJc(G),(mxGetN(G)+1)*sizeof(size_t));
 	mxDestroyArray(G);
-	
+
 	/* initial condition */
 	u0 = matGetVariable(input_file, "u0");
 	if (u0 == NULL){

@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 	model->infile = infile;
 	
 	if (model == NULL) {
-        perror("Fatal error. Couldn't load model file.\n");
+        perror("Fatal error. Failed to load model file.\n");
         return -2;
     }
 	
@@ -76,11 +76,10 @@ int main(int argc, char *argv[])
     
 	mxArray *mxreport;
     if (input_file == NULL) {
-        perror("Fatal error. Couldn't load model file.\n");
+        perror("Fatal error. Failed to load model file.\n");
         return -2;
     }
 	mxreport = matGetVariable(input_file, "report");
-	
 	if (mxreport != NULL) 
 		report_level = (int) mxGetScalar(mxreport);
 	else
@@ -159,11 +158,10 @@ int main(int argc, char *argv[])
 
     matClose(input_file);
 
-    /* free memory allocated with malloc */
     free(parameters);
 	destroy_model(model);
 	
-	return 0;
+	return(0);
 	
 }
 

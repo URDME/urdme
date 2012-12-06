@@ -31,7 +31,6 @@ cp distribute/install.sh $DEST
 cp distribute/set_matlab_path.pl $DEST
 
 # Makefiles
-cp build/Makefile $DEST/urdme/build/
 cp build/Makefile.nsm $DEST/urdme/build/
 cp bin/urdme_init $DEST/urdme/bin/
 
@@ -47,7 +46,6 @@ cp  src/report.c   $DEST/urdme/src
 cp  src/matmodel.c $DEST/urdme/src
 cp  src/read_matfile.c $DEST/urdme/src
 
-
 # Matlab interface
 cp  msrc/urdme.m  $DEST/urdme/msrc
 cp  msrc/urdme_compile.m  $DEST/urdme/msrc
@@ -57,21 +55,6 @@ cp  msrc/urdme_validate.m $DEST/urdme/msrc
 cp  msrc/urdme_addsol.m $DEST/urdme/msrc
 cp  msrc/urdme_savesol.m $DEST/urdme/msrc
 
-# Active transport/FVM source files
-cp  msrc/fvm/assemblefvm.m  $DEST/urdme/fvm
-cp  msrc/fvm/assemblefvm2d.m  $DEST/urdme/fvm
-cp  msrc/fvm/assemblefvm3d.m  $DEST/urdme/fvm
-cp  msrc/fvm/assemblematrices3d.m  $DEST/urdme/fvm
-cp  msrc/fvm/quadarea.m  $DEST/urdme/fvm
-cp  msrc/fvm/readmesh.m  $DEST/urdme/fvm
-
-# URDME_Server
-#cp  msrc/urdme_addhost.m $DEST/urdme/msrc
-#cp  msrc/urdme_fetch.m $DEST/urdme/msrc
-#cp  msrc/urdme_find_resources.m $DEST/urdme/msrc
-#cp  msrc/urdme_get_info.m $DEST/urdme/msrc
-#cp  msrc/urdme_status.m $DEST/urdme/msrc
-
 # headers
 cp  include/matmodel.h     $DEST/urdme/include
 cp  include/report.h       $DEST/urdme/include
@@ -79,19 +62,14 @@ cp  include/propensities.h $DEST/urdme/include
 cp  include/read_matfile.h $DEST/urdme/include
 
 # comsol interface routines
-cp  comsol/fem2rdme.m $DEST/urdme/comsol
-cp  comsol/rdme2fem.m $DEST/urdme/comsol
+cp  comsol/comsol2urdme.m $DEST/urdme/comsol
+cp  comsol/urdme2comsol.m $DEST/urdme/comsol
 
 # mincde example
-cp  examples/mincde/fange.m $DEST/examples/mincde
-cp  examples/mincde/fange.c $DEST/examples/mincde
+cp  examples/mincde/mincde.m $DEST/examples/mincde
+cp  examples/mincde/mincde.c $DEST/examples/mincde
 cp  examples/mincde/coli.mph $DEST/examples/mincde
 cp  examples/mincde/temporal_average.m $DEST/examples/mincde
-
-# bistab example
-cp  examples/bistab/bistab.m  $DEST/examples/bistab
-cp  examples/bistab/bistab.c  $DEST/examples/bistab
-cp  examples/bistab/yeast.mph $DEST/examples/bistab
 
 # documentation
 cp  doc/manual.pdf $DEST/urdme/doc

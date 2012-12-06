@@ -4,11 +4,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include "mat.h"
-#include "mex.h"
 #include "propensities.h"
 #include "dfsp.h"
 #include "matmodel.h"
+
+#ifndef URDME_LIBMAT
+#include "mat.h"
+#include "mex.h"
+#else
+#include "read_matfile.h"
+#endif
 
 
 void *dfsp(void *data);
@@ -20,11 +25,8 @@ int main(int argc, char *argv[])
 	char *infile,*outfile;
 	int i, nt=1, report_level=1;
 	
-	/* TODO. Parsing of input with error checking. 
-	   Input syntax on form: -numtraj=4 etc. ?*/
-	
 	if (argc < 3){
-		printf("To few arguments to nsm.");
+		printf("To few arguments to dfsp.");
 	    exit(-1);	
 	}
 	
@@ -33,63 +35,100 @@ int main(int argc, char *argv[])
 	
 	/* Output file (or directory). */
 	outfile = argv[2]; 
-	
-	/* Number of trajectories (realizations) to generate. This 
-	   feature is disabled in the main Matlab interface 
-	   in this release. */
-	
-	if (argc > 3)
-		nt = atoi(argv[3]);
-	
-	/* Report level (passed to the core solver). 
-	   Defaults to 1 (partial report) for single trajectory runs,
-	   and 0 (no report) for multi-trajectory runs. */
-	if (argc > 4)
-		report_level = atoi(argv[4]);
-	else if (nt > 1)
-		report_level = 0;
-	
-	
+
 	/* Read model specification */
 	urdme_model *model;
 	model = read_model(infile);
 	model->infile = infile;
-	
+
 	if (model == NULL){
 		printf("Fatal error. Couldn't load model file or currupt model file.");
 		return(-1);
 	}
 	
-	/* Initialize RNG(s).  */
-    srand48( time(NULL) * getpid() );
-	
-
     /* Initialize extra args */
 	model->num_extra_args = 5;
 	model->extra_args=malloc(model->num_extra_args*sizeof(void *));
-	
-	/* Set report level */
-	model->extra_args[0] = malloc(sizeof(int));
-	*(int *)(model->extra_args[0]) = report_level;
 
     /*reopen MAT file*/
     MATFile *input_file;
     mxArray *DT,*sopts;
 
+    /* Look for seed */
+    mxArray *mxseed;
+	mxseed = matGetVariable(input_file, "seed");
+    if(mxseed!=NULL && (!mxIsEmpty((mxseed)))) {
+        srand48((long int)mxGetScalar(mxseed));
+    } else {
+        srand48((long int)time(NULL)+(long int)(1e9*clock()));
+    }
+
+	/*
+     If seed is provided as a parameter, it takes precedence.
+     We need to be able to pass the seed as a paramters as well
+     as in the input file in the cases where the solver is run
+     in a distributed environment.
+     */
+	if (argc > 3) {
+		srand48((long int)atoi(argv[3]));
+	}
+
+    /* Look for an optional parameter matrix. */
+	const double *matfile_parameters;
+	int mpar = 0;
+	int npar = 0;
+	int param_case=1;
+    mxArray *mxparameters;
+	mxparameters = matGetVariable(input_file, "parameters");
+    if (mxparameters != NULL) {
+		matfile_parameters = (double *)mxGetPr(mxparameters);
+		mpar = mxGetM(mxparameters);
+		npar = mxGetN(mxparameters);
+	}
+
+    /* Look if a parameter case if supplied as a parameter. */
+	if (argc > 4) {
+	    param_case = (int)atoi(argv[4]);
+	}
+	
+	if (param_case > npar && mxparameters!=NULL) {
+		perror("dfspcore: Fatal error, parameter case is larger than n-dimension in parameter matrix.\n");
+		exit(-2);
+	}
+	
+	/* Create global parameter variable for this parameter case. */
+    parameters = (double *)malloc(mpar*sizeof(double));
+    memcpy(parameters,&matfile_parameters[mpar*(param_case-1)],mpar*sizeof(double));
+    
+    mxArray *mxreport;
+    if (input_file == NULL) {
+        perror("Fatal error. Couldn't load model file.\n");
+        return -2;
+    }
+	mxreport = matGetVariable(input_file, "report");
+	if (mxreport != NULL)
+		report_level = (int) mxGetScalar(mxreport);
+	else
+        report_level=1;
+    
+    /* Set report level */
+	model->extra_args[0] = malloc(sizeof(int));
+	*(int *)(model->extra_args[0]) = report_level;
+    
     input_file = matOpen(infile,"r");
     if (input_file == NULL){
         printf("Failed to open mat-file.\n");
         return(-1);   
     }
+    
     /* Set tau_d */
     sopts = matGetVariable(input_file, "sopts");
-    if(sopts==NULL){
+    if(sopts==NULL||isempty(sopts)){
         printf("Step length (tau_d) is missing in the model file\n");
         return(-1);   
     }
     model->extra_args[1] = malloc(sizeof(double));
     *(double *)(model->extra_args[1]) = *(double *)mxGetPr(sopts);
-    //fprintf(stderr,"here tau_d=%e\n",*(double *)(model->extra_args[1]));
 
     /* Set DT, DFSP transition matrix */
     DT = matGetVariable(input_file, "DT");
@@ -117,15 +156,13 @@ int main(int argc, char *argv[])
 	if (!didprint){
 		printf("Error: Failed to print results to file.\n");
 		exit(-1);
-	}	
+	}
 	
-	//destroy_model(model);
-	
+    free(parameters);
+	destroy_model(model);
 	return(0);
 	
 }
-
-
 
 
 void *dfsp(void *data){
@@ -142,7 +179,6 @@ void *dfsp(void *data){
         tau_d = model->tspan[1];
     }
 
-	
 	/* Uses a report function with optional report level. This is
 	 passed as the first extra argument. */ 
 	int report_level = *(int *)model->extra_args[0];
@@ -161,7 +197,6 @@ void *dfsp(void *data){
              report_level, tau_d);
 	
 	/* Attach trajectory to model. */
-	
 	if (model->nsol >= model->nsolmax){
 		printf("Warning, you are trying to add more trajectories to model struct\n" );
 	    printf("but it already contains its maximum number. This is not my fault, you screwed up.");

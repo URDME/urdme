@@ -70,15 +70,11 @@ end
 
 umod.data = data;
 
-% Verbose mode on solver. 
-%umod.options = [2 NaN 1];
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % We need to modify the diffusion matrix such that the membrane
 % bound species only diffuse on the membrane. We achieve this by
 % zeroing out the elements corresponding to diffusion in the 
 % cytosol. 
-
 % For all species, flag all dofs in the cytosol for removal. 
 ixremove = [];
 for s = 1:Mspecies

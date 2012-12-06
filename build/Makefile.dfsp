@@ -10,17 +10,43 @@ LIB = $(URDME_ROOT)/lib
 BIN = $(URDME_ROOT)/bin
 SRC = $(SOLVER_ROOT)/src
 USRC = $(URDME_ROOT)/src
+
+###########################################################################
+MATLAB = $(shell $(URDME_ROOT)/bin/urdme_init -m)
+MATLAB_ARCH = $(shell $(URDME_ROOT)/bin/urdme_init -a)
+###########################################################################
+MATLAB_EXT = $(MATLAB)/extern
+MATLAB_INC=$(MATLAB_EXT)/include
 ###########################################################################
 ARCHS=$(shell $(URDME_ROOT)/bin/urdme_init -s)
 ifneq ($(ARCHS),)
 SET_ARCH=-arch $(ARCHS)
 endif
 ###########################################################################
-INCLUDE = -I$(URDME_ROOT)/include -I$(SOLVER_ROOT)/include
+
+URDME_LIBMAT=
+ifeq ($(URDME_LIBMAT),)
+LMAT = -lmx -lmat -lmex -lmwservices 
+MATLAB_LIB =-L$(MATLAB)/bin/$(MATLAB_ARCH)
+else
+DMAT = -DURDME_LIBMAT
+endif
+
+# Sparse output
+#DSPARSE = -DURDME_OUTPUT_SPARSE
+ifdef DSPARSE
+ifdef URDME_LIBMAT
+$(error URDME_LIBMAT does not support sparse output, please use Matlab libraries.)
+endif
+endif
+
+DEBUG = -gdwarf-2
+
+INCLUDE = -I$(URDME_ROOT)/include -I$(SOLVER_ROOT)/include -I$(MATLAB_LIB) -I$(MATLAB_INC)
 CC	=gcc
 LINKER = gcc 
-CFLAGS = -c $(SET_ARCHS) -msse2 -O3 -DMEXP=19937 -Wall -Wlong-long -Wformat -Wpointer-arith $(INCLUDE) -DURDME_LIBMAT
-LFLAGS = -lm 
+CFLAGS = -c $(SET_ARCHS) $(DEBUG) -msse2 -O3 -DMEXP=19937 -Wall -Wlong-long -Wformat -Wpointer-arith $(INCLUDE) $(DMAT) $(DSPARSE)
+LFLAGS = -lm $(LMAT) $(DEBUG) $(MATLAB_LIB)
 ###########################################################################
 ifeq ($(URDME_MODEL),)
      $(error URDME_MODEL not set)
@@ -37,7 +63,13 @@ all:  dfsp
 dfsp: $(OUT)$(URDME_MODEL).dfsp
 
 ###########################################################################
+ifeq ($(URDME_LIBMAT),)
+OBJS= $(URDME_MODEL).o dfsp_diffusion.o dfsp_reactions.o dfsp.o dfspcore.o report.o matmodel.o 
+else
 OBJS= $(URDME_MODEL).o dfsp_diffusion.o dfsp_reactions.o dfsp.o dfspcore.o report.o matmodel.o read_matfile.o
+endif
+
+
 DEPS= $(addprefix $(OUT),$(OBJS))
 ###########################################################################
 

@@ -3,16 +3,16 @@
 % Used internally by urdme.m to compile the solvers when 
 % running urdme in interactive mode.  
 %
-% B. Drawert, 2009,2010. 
+% B. Drawert, 2009-2012
 %
 % urdme_compile(fem,model_name,propensity_file,solver_name,varagin)
 
-function umod = urdme_compile(umod,model_name,propensity_file,solver,verbose)
+function fem = urdme_compile(fem,model_name,propensity_file,solver,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% verbose=0;
-% if(nargin==5)
-%     verbose=1;
-% end
+verbose=0;
+if(nargin==5)
+    verbose=1;
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %fprintf('urdme_compile(): model_name=%s propensities=%s solvers=%s verbose=%i \n',model_name,propensity_file,solver,verbose);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -99,18 +99,19 @@ end
 % if propensity file exists, copy it to ".urdme/model_name.c" (if newer)
 if(file_exists(propensity_file))
     dest_file = sprintf('.urdme/%s.c',model_name);
-    if(file_exists(dest_file))
-        dest_fi=dir(dest_file);
-        src_fi =dir(propensity_file);
-        % only copy if the src/dest files have differnting change-date or size
-        if(dest_fi.datenum ~= src_fi.datenum ||  dest_fi.bytes ~= src_fi.bytes)
-            copy_dest_file=1;
-        else
-            copy_dest_file=0;
-        end
-    else
-        copy_dest_file=1;
-    end
+%    if(file_exists(dest_file))
+%        dest_fi=dir(dest_file);
+%        src_fi =dir(propensity_file);
+%        % only copy if the src/dest files have differnting change-date or size
+%        if(dest_fi.datenum ~= src_fi.datenum ||  dest_fi.bytes ~= src_fi.bytes)
+%            copy_dest_file=1;
+%        else
+%            copy_dest_file=0;
+%        end
+%    else
+%        copy_dest_file=1;
+%    end
+    copy_dest_file=1;
     if(copy_dest_file)
         if(verbose),fprintf('cp %s %s\n',propensity_file,dest_file);end
         [copy_status,copy_msg,copy_msgId]=copyfile(propensity_file,dest_file);
@@ -121,11 +122,16 @@ if(file_exists(propensity_file))
             % of the old object file.
             system(['rm ' strrep(dest_file,'.c','.o')]);
         end
+        %fprintf(['if(exist([''urdme_propensity_'',',solver,'])==2);\n']);
+        if(exist(['urdme_propensity_',solver])==2)
+            if(verbose),fprintf(['urdme_propensity_',solver,'(fem,dest_file);']);end
+            eval(['urdme_propensity_',solver,'(fem,dest_file);']);
+        end
     %else
     %    fprintf('No copy\n');
     end
 % else check if inline propensities exist, create ".urdme/model_name.c"
-elseif(isfield(umod,'M1')) % inline propensities specified
+elseif(isfield(fem.urdme,'M1')) % inline propensities specified
     dest_file = sprintf('.urdme/%s.c',model_name);
     if(file_exists([solroot,'/msrc/urdme_inline_convert_',solver,'.m']))
         orig_path = path();
@@ -135,7 +141,7 @@ elseif(isfield(umod,'M1')) % inline propensities specified
         path(orig_path);
     else
         if(verbose)fprintf('executing %s(fem,%s.c) in %s\n','urdme_inline_convert',strcat('.urdme/',model_name),[solroot,'/msrc/']);end
-        urdme_inline_convert(umod,dest_file);
+        urdme_inline_convert(fem,dest_file);
     end
 % else error
 else

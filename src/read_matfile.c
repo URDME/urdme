@@ -486,7 +486,11 @@ mxArray* matGetNextVariable(MATFile*matfile){
     //else if(array_class==2){  print_structure(dsize-offset,&data_ptr[offset],ndims,dim_arr);  }
     //else if(array_class==1){  print_cell_array(dsize-offset,&data_ptr[offset],ndims,dim_arr);  }
     else{
-        fprintf(stderr,"ERROR: can not handle data type (array_class=%i)\n",mat_var->array_class);exit(0);
+        //printf(mat_var->name);
+        /* AH: THIS CHECK MAKES IT EXIT IF THERE ARE STRINGS IN THE FILE, EVEN IF WE ARE NOT TRYING TO READ THEM. 
+           I HAVE COMMENTED OUT THE CHECK, BUT NOW THERE IS A RISK OF SUPPLYING AN UNSOPPRTED STRUCTURE AND TRYING
+           TO READ IT. */
+         //fprintf(stderr,"ERROR: can not handle data type (array_class=%i)\n",mat_var->array_class);exit(0);
     }
     //------------------------------
     free(data_ptr);
@@ -508,9 +512,10 @@ mxArray* matGetVariable(MATFile*matfile,const char* var_name){
         //printf("matGetNextVariable()  %ld / %ld \n", cur_pos , file_len );
         mat_var = matGetNextVariable(matfile);
         //printf("\tmatGetNextVariable: found %s\n",mat_var->name);
-        if( strcmp(mat_var->name,var_name)==0 ){
+        if(strcmp(mat_var->name,var_name)==0 ){
             return mat_var;
         }
+        
         //printf("\tmxDestroyArray(%s)\n",mat_var->name);
         mxDestroyArray(mat_var);
     }while(mat_var!=NULL);

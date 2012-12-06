@@ -9,17 +9,6 @@
 #include <math.h>
 #include "propensities.h"
 #include "report.h"
-#include "mat.h"
-#include "mex.h"
-
-#if !defined(MALLOC) || !defined(FREE)
-  #error "Must define MALLOC and FREE."
-#endif
-
-
-void *MALLOC(size_t);
-void FREE(void *);
-
 
 int dfsp_reactions(int *xx, 
             const size_t *irN, const size_t *jcN, const int *prN,
@@ -71,10 +60,9 @@ of size Mspecies X Ncells.
 */
 {
     int i, j, k, re;
-    //const size_t Ndofs=Ncells*Mspecies;
 
     double a0_rxn;
-    double *a_rxn = MALLOC(Mreactions*sizeof(double));
+    double *a_rxn = (double *)malloc(Mreactions*sizeof(double));
     double tti,tau;
     double rand,cum,old,delta;
 
@@ -82,30 +70,16 @@ of size Mspecies X Ncells.
 
     // Process each voxel
     for (i=0; i<Ncells; i++) {
-        //#ifdef _DEBUG
-        //fprintf(stderr,"\tProcessing Reactions in voxel %i\n",i);
-        //#endif
-        //find each reaction propensity
         a0_rxn=0.0;
         for (j=0; j<Mreactions; j++) {
             a0_rxn += a_rxn[j] = (*rfun[j])(&xx[i*Mspecies],tt, vol[i], &data[i*dsize], sd[i]);
-            //#ifdef _DEBUG
-            //fprintf(stderr,"\t\ta_rxn[%i] = %e\n",j,a_rxn[j]);
-            //#endif
+        
         }
-        //sleep(1);
-          
         // Main Loop
         tti=0.0;
-        while(tti<tau_d){  // has this voxel reach the end of the time step
-            //#ifdef _DEBUG
-            //fprintf(stderr,"\ttime=%e\n",tti);
-            //#endif
+        while(tti<tau_d){  // has this voxel reached the end of the time step
             // find time to next reaction
             tau= -log( 1.0 - drand48() )/a0_rxn;
-            //#ifdef _DEBUG
-            //fprintf(stderr,"\t\ttau=%e\n",tau);
-            //#endif
             if(tti+tau > tau_d) break;
             tti=tti+tau;
             // find which reaction fired
@@ -117,17 +91,11 @@ of size Mspecies X Ncells.
                 if(rand<=cum){ re=j; break; }
             }
             if(re==-1 || re>Mreactions){
-                fprintf(stderr,"ERROR: could not find which reaction fired\n");
+                fprintf(stderr,"ERROR: could not find which reaction fired.\n");
                 exit(0);
             }
-            //#ifdef _DEBUG
-            //fprintf(stderr,"\tfiring reaction %i  rand=%e cum=%e a0_rxn=%e a_rxn[%i]=%e time=%e  tau=%e\n",re,rand,cum,a0_rxn,re,a_rxn[re],tti,tau);
-            //#endif
             // process reaction
             for (k=jcN[re]; k<jcN[re+1]; k++) {
-                //#ifdef _DEBUG
-                //fprintf(stderr,"\t\txx[i*Mspecies+%i] += %i\n",irN[k],prN[k]);
-                //#endif
                 xx[i*Mspecies+irN[k]] += prN[k];
                 if (xx[i*Mspecies+irN[k]]<0){
                     fprintf(stderr,"ERROR: Negative species population, while processing reaction %i in voxel %i\n",re,i);
@@ -148,16 +116,13 @@ of size Mspecies X Ncells.
                 if(a0_rxn < 0.0){
                     a0_rxn=0.0;
                 }
-                //#ifdef _DEBUG
-                //fprintf(stderr,"\t\ta_rxn[%i] = %e \t\tdelta=%e\n",j,a_rxn[j],delta);
-                //#endif
             }
             // update rxn count
             rxn_count++;
         } //end Main Loop
 
     }
-    FREE(a_rxn);
+    free(a_rxn);
     return rxn_count;
     //--------------------------
 	

@@ -8,15 +8,8 @@
 #include <math.h>
 #include "propensities.h"
 #include "dfsp.h"
-#include "mex.h"
-
-
-#if !defined(MALLOC) || !defined(FREE)
-#error "Must define MALLOC and FREE."
-#endif
 
 /* One timestep of dfsp diffusion, moving every molecule individually. */
-
 int dfsp_diffusion(int *xx, const size_t *irD, const size_t *jcD, const double *prD,
                    const size_t Ncells,const int Mspecies)
 {
@@ -28,7 +21,7 @@ int dfsp_diffusion(int *xx, const size_t *irD, const size_t *jcD, const double *
 	
 	/* Need copy of state vector. */
 	int *xtemp;
-	xtemp = MALLOC(Ndofs*sizeof(int));
+	xtemp = (int *)malloc(Ndofs*sizeof(int));
 	memcpy(xtemp,xx,Ndofs*sizeof(int));
 	
 	/* For every dof... */
@@ -58,7 +51,7 @@ int dfsp_diffusion(int *xx, const size_t *irD, const size_t *jcD, const double *
 	}
 		
 	memcpy(xx,xtemp,Ndofs*sizeof(int));
-	FREE(xtemp);
+	free(xtemp);
     return 1;
 		
 }

@@ -24,32 +24,26 @@ SET_ARCH=-arch $(ARCHS)
 endif
 ###########################################################################
 
-URDME_LIBMAT=
+URDME_LIBMAT=yes
 ifeq ($(URDME_LIBMAT),)
 LMAT = -lmx -lmat -lmex -lmwservices 
 MATLAB_LIB =-L$(MATLAB)/bin/$(MATLAB_ARCH)
-#MEMOPTS = -DMALLOC\(n\)=mxMalloc\(n\) -DFREE\(p\)=mxFree\(p\)
 else
 DMAT = -DURDME_LIBMAT
-#MEMOPTS = -DMALLOC\(n\)=malloc\(n\) -DFREE\(p\)=free\(p\)
 endif
 
 # Sparse output
 #DSPARSE = -DURDME_OUTPUT_SPARSE
-
 ifdef DSPARSE
 ifdef URDME_LIBMAT
 $(error URDME_LIBMAT does not support sparse output, please use Matlab libraries.)
 endif
 endif
-
-# Debug
-DDEBUG = -gdwarf-2 
  
 CC	   = gcc
 LINKER = gcc 
 
-CFLAGS = -c $(DDEBUG) $(SET_ARCH) -O3 -std=gnu99 $(MEMOPTS) -Wall -Wlong-long -Wformat -Wpointer-arith -I$(MATLAB_LIB) -I$(MATLAB_INC) -I$(INCLUDE) $(DMAT) $(DSPARSE)
+CFLAGS = -c $(SET_ARCH) -O3 -std=gnu99 $(MEMOPTS) -Wall -Wlong-long -Wformat -Wpointer-arith -I$(MATLAB_LIB) -I$(MATLAB_INC) -I$(INCLUDE) $(DMAT) $(DSPARSE)
 
 ifeq ($(MATLAB_LIB),)
 LFLAGS = -lm  

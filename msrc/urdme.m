@@ -13,7 +13,7 @@ function [umod,outputfile] = urdme(fem,varargin)
 %   handle FUN instead and the propensity file 'mymodel.c' for the
 %   reactions.
 %
-%   UMOPD = URDME(COMSOL,FILE,...) passes additional options in the form of
+%   UMOD = URDME(COMSOL,FILE,...) passes additional options in the form of
 %   property/value pairs, see the table below.
 %
 %   For example, after installing the DFSP-solver, you may use the

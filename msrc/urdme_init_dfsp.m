@@ -8,7 +8,7 @@ function fem  = urdme_init_dfsp(fem,varargin)
     use_cache=0;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if ~isfield(fem,'urdme')
-        fem=fem2rdme(fem);
+        fem=comsol2urdme(fem);
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     Error_Tolerance = 1e-02; %default value
@@ -47,14 +47,14 @@ function fem  = urdme_init_dfsp(fem,varargin)
     %return;
     
     M  = 5;
-    dt = 1e-3;
+    dt = 1;
     dt_set=1; M_set =1;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    [nspec,Ncells] = size(fem.urdme.u0);
+    [nspec,Ncells] = size(fem.u0);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if(dt_set==0 || M_set==0)
-        sumDiag = -sum(diag(fem.urdme.D));
-        maxDiag = max(abs(diag(fem.urdme.D)));
+        sumDiag = -sum(diag(fem.D));
+        maxDiag = max(abs(diag(fem.D)));
         if(dt_set==0 && M_set==0)
             M = urdme_init_DFSP_findM(fem,Ncells,Error_Tolerance,sumDiag,maxDiag,0);
         elseif(M_set==0)
@@ -64,13 +64,11 @@ function fem  = urdme_init_dfsp(fem,varargin)
             dt = urdme_init_DFSP_dt(fem,M,Error_Tolerance,sumDiag,maxDiag,Ncells);
         end
     end
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   
     fprintf('DFSP: using parameters tau_D=%g MAX=%g\n',dt,M);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     [DT,err] = urdme_init_DFSP_uniformization(fem,dt,M);
-%    [DT,err] = urdme_init_DFSP_ode(fem,dt,M);
-   
     fprintf('DFSP: finished state-space exploration, error (max/avg/std) = %e/%e/%e\n',max(err),mean(err),std(err));
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     fem.urdme.err = err;
@@ -91,100 +89,11 @@ end %function urdme_init_DFSP
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [DT,err] =  urdme_init_DFSP_sse(fem,dt,M)
-    D = fem.urdme.D;
-    [Ndofs,foo] = size(fem.urdme.D);
-
-    % 10 is an arbitrary number. Fix this! 
-    % should be a function of M and the dimentionality of the system
-    DT = spalloc(Ndofs,Ndofs,10*nnz(D));
-
-    err = zeros(1,Ndofs);
-
-    fprintf('Starting State-Space exploration\n');
-    sse_timer = tic;
-    last_percent_reported=0;
-    for i=1:Ndofs
-        if(floor(i/Ndofs*100) > last_percent_reported + 4 )
-            %fprintf('%g%% complete\n',floor(i/Ndofs*100));
-            last_percent_reported = floor(i/Ndofs*100);
-            elapsed_time = toc(sse_timer);
-            time_remain = floor((1-(i/Ndofs))/((i/Ndofs)/elapsed_time));
-            fprintf('%g%% complete\t\t\telapsed: %g\teta: %is\n',last_percent_reported,elapsed_time,time_remain);
-        end
-       
-       tier1 = i; 
-       total = tier1;
-       
-       % Expand by reachability M steps. 
-       for j=1:M
-           
-           tir = [];
-           for k=1:numel(tier1)
-              [ir,jc,s]=find(D(:,tier1(k)));       
-              tir = [tir,ir'];
-           end
-           
-          tier1 = setdiff(tir,total);
-          total = union(total,tir);
-
-       end
-       tier1 = total;
-       
-       % tier1 now contains all states that can be touched in M steps. States
-       % are sorted in ascending order in dof number. 
-       
-       % Assemble small FSP matrix.
-       N    = numel(tier1)+1;
-       DFSP = zeros(N,N); 
-       DFSP(1:N-1,1:N-1) = D(tier1,tier1); 
-       
-       % get diagonal
-       d    = diag(DFSP);
-       DFSP = DFSP-diag(d);
-       d    = sum(DFSP);
-       
-       % Add absorbing state. States in the M:th tier can go to the 
-       % absorbing state. 
-       
-       % Difference between diagonal element in DFSP and D
-       diagfull = diag(D(tier1,tier1));
-       abso     = diagfull+d(1:N-1)';
-       DFSP(N,1:N-1)=-abso;
-       d = sum(DFSP);
-       
-       % Assemble diagonal into small matrix.
-       DFSP = DFSP-diag(d);
-       DFSP(N,N)=0;
-       
-       % Compute probabilities
-       
-       % initital condition. 
-       ind = tier1 == i;
-       p0  = zeros(N,1);
-       p0(ind) =1;
-       
-       
-       pdv = expm(dt*DFSP)*p0;
-      % tol = 0.01*Error_Tolerance;
-      % [t,p] = ode45(@rhs,[0 dt],p0,{'Abstol', tol},DFSP);
-      % pdv = p(end,:);
-       
-       % Assemble probabilities into the table, spread the error
-       % evenly to the reachable states.
-       
-       DT(tier1,i) = pdv(1:N-1)+pdv(N)/(N-1); 
-       err(i)=pdv(N);
-           
-    end
-
-
-end
 
 function [DT,err] =  urdme_init_DFSP_uniformization(fem,tau,M)
 
-    D = fem.urdme.D;
-    [Ndofs,foo] = size(fem.urdme.D);
+    D = fem.D;
+    [Ndofs,foo] = size(fem.D);
 
     % 10 is an arbitrary number. Fix this! 
     % should be a function of M and the dimentionality of the system
@@ -201,18 +110,18 @@ function [DT,err] =  urdme_init_DFSP_uniformization(fem,tau,M)
     last_percent_reported=0;
    
     p0 = speye(Ndofs,Ndofs);
-    % Uniformization
+    % Costruct matrix to be used in uniformization method
     lambda_max = max(abs(diag(D)));
     I = speye(Ndofs,Ndofs);
     A = I+D/lambda_max;
     nmax = 100;
     % tolp should be <= The DFSP tolerance \epsilon.  
     tolp=1e-2;
+    pdv = p0;
     temp = p0;
-    pdv = poisspdf(0,lambda_max*tau)*p0;
+    totp = 1;
     
-    totp=1;
-    for i=1:nmax
+    for i=0:nmax
         
        pp  = poisspdf(i,lambda_max*tau);
        temp = A*temp; 
@@ -228,13 +137,13 @@ function [DT,err] =  urdme_init_DFSP_uniformization(fem,tau,M)
     % Truncate 
     for i=1:Ndofs
         
-        if(floor(i/Ndofs*100) > last_percent_reported + 4 )
-            %fprintf('%g%% complete\n',floor(i/Ndofs*100));
-            last_percent_reported = floor(i/Ndofs*100);
-            elapsed_time = toc(sse_timer);
-            time_remain = floor((1-(i/Ndofs))/((i/Ndofs)/elapsed_time));
-            fprintf('%g%% complete\t\t\telapsed: %g\teta: %is\n',last_percent_reported,elapsed_time,time_remain);
-        end
+       if(floor(i/Ndofs*100) > last_percent_reported + 4 )
+           %fprintf('%g%% complete\n',floor(i/Ndofs*100));
+           last_percent_reported = floor(i/Ndofs*100);
+           elapsed_time = toc(sse_timer);
+           time_remain = floor((1-(i/Ndofs))/((i/Ndofs)/elapsed_time));
+           fprintf('%g%% complete\t\t\telapsed: %g\teta: %is\n',last_percent_reported,elapsed_time,time_remain);
+       end
        
        maxp = max(pdv(:,i)); 
        [tier1,jj,ss] = find(pdv(:,i)/maxp>droptol);  
@@ -250,70 +159,6 @@ function [DT,err] =  urdme_init_DFSP_uniformization(fem,tau,M)
 
 
 end
-
-function [DT,err] =  urdme_init_DFSP_ode(fem,tau)
-
-    D = fem.urdme.D;
-    [Ndofs,foo] = size(fem.urdme.D);
-
-    % 10 is an arbitrary number. Fix this! 
-    % should be a function of M and the dimentionality of the system
-    DT = spalloc(Ndofs,Ndofs,100*nnz(D));
-
-    err = zeros(1,Ndofs);
-     
-    % Drop probabilities with lower probability than droptol relative
-    % to the most likely state. 
-    droptol = 1e-4;
-    
-    fprintf('Starting State-Space exploration\n');
-    sse_timer = tic;
-    last_percent_reported=0;
-   
-    p0 = speye(Ndofs,Ndofs);
-    I = speye(Ndofs,Ndofs);
-    dt = tau;
-    A1 = I+0.5*dt*D';
-    A2 = I-0.5*dt*D';
-        
-    % Truncate 
-    for i=1:Ndofs
-        
-        if(floor(i/Ndofs*100) > last_percent_reported + 4 )
-            %fprintf('%g%% complete\n',floor(i/Ndofs*100));
-            last_percent_reported = floor(i/Ndofs*100);
-            elapsed_time = toc(sse_timer);
-            time_remain = floor((1-(i/Ndofs))/((i/Ndofs)/elapsed_time));
-            fprintf('%g%% complete\t\t\telapsed: %g\teta: %is\n',last_percent_reported,elapsed_time,time_remain);
-        end
-        
-       % pdv = A1\(A2*p0(:,i)); 
-       %[t,pdv] = ode45(@ode_rhs,[0 tau],p0(:,i),[],D);
-
-        
-       
-       maxp = max(pdv); 
-       [tier1,jj,ss] = find(pdv/maxp>droptol);  
-       ss = pdv(tier1,i);
-       % Assemble probabilities into the DFSP table, spread the error
-       % evenly to the reachable states.
-       ee = 1-norm(ss,1);
-       err(i)=ee;
-       DT(tier1,i) = ss/norm(ss,1); 
-       
-       i    
-    end
-
-
-end
-
-function y = ode_rhs(t,x,D)
-
-    y = D*x;    
-
-end
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -337,8 +182,6 @@ function M = urdme_init_DFSP_findM(fem,Ncells,Error_Tolerance,sumDiag,maxDiag,dt
         fprintf('\tM=%g E[err]=%g  (maxDiag=%g)\n',i,tmp_err,full(maxDiag));
         if(tmp_err < Error_Tolerance)
             M = i;
-            %fprintf('MAX=%g\n',M);
-            %error('stop');
             return;
         end
     end
@@ -368,7 +211,6 @@ function dt = urdme_init_DFSP_dt(fem,M,Error_Tolerance,sumDiag,maxDiag,Ncells)
         fprintf('DFSP tau_D=%g\t\terror=%e\t\ttol=%e\n',dt,tmp_err,Error_Tolerance);
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         if( tmp_err < Error_Tolerance )
-            %fprintf('\ttoo small\n');
             dt_low_set=1;
             dt_low=dt;
             if(dt_high_set)
@@ -387,7 +229,6 @@ function dt = urdme_init_DFSP_dt(fem,M,Error_Tolerance,sumDiag,maxDiag,Ncells)
                 break;
             end
         else
-            %fprintf('\ttoo big\n');
             dt_high_set=1;
             dt_high=dt;
             if(dt_low_set)
@@ -400,9 +241,7 @@ function dt = urdme_init_DFSP_dt(fem,M,Error_Tolerance,sumDiag,maxDiag,Ncells)
 end
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 function [rv,fem] = urdme_init_DFSP_read_cache(fem,dfsp_cache_filename,Error_Tolerance)
     rv=0;
     fid=fopen(dfsp_cache_filename); %does the file exist?

@@ -21,9 +21,8 @@ function umod = comsol2urdme(fem,varargin)
 % V. Gerdin    2012-02-08 (mod2rdme)
 % S. Engblom   2008-08-01 (fem2rdme)
 % A. Hellander 2009-11-18 (fem2rdme)
-
 is4x = isjava(fem);
-if nargin > 1
+if nargin > 2
     verbose = varargin{1};
 else
     verbose = 0;
@@ -249,8 +248,6 @@ else
   d = full(sum(D,2));
   D = D+sparse(1:Ndofs,1:Ndofs,-d);
   diagsum2 = sum(d);
-
-  % abs(diagsum2-diagsum1)/abs(diagsum1)
 
   % check if the difference is too big
   if abs(diagsum2-diagsum1) > abs(diagsum1)*0.10
