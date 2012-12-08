@@ -1,18 +1,22 @@
 urdme
 =====
 
-URDME 1.2
-Copyright 2008,2009,2010,2011,2012
-See the file AUTHORS for complete list of authors
+URDME 1.2. Copyright 2008,2009,2010,2011,2012
+See the file AUTHORS for complete list of authors. 
+
+URDME is a general software framework for modeling and simulation of stochastic reaction-diffusion processes on unstructured, tetrahedral and triangular meshes. URDME emphasizes modularity in order to be useful both as a simulation tool and as a framework for developemnt of stochastic simulation algorithms.
+
+www.urdme.
 
 Quick Start
 ------
 
-Download the latest packaged release and unpack it or clone the repository (requires a git client)
+Download the latest stable release and unpack it, alternatively clone the repository (requires a git client) or 
 
 -- In a terminal --
 
 $ git clone https://github.com/URDME/urdme.git
+
 $ sudo ./install.sh
  
  Consult the software manual:
@@ -26,8 +30,8 @@ System requirements and software dependencies
 
 - Linux or Apple OSX operating system.
 - Matlab
-     -- Tested versions: 2007a, 2008a, 2008b, 2009a, 2009b, 2011b, 2012a.
-         Command line interface must be installed. 
+     -Tested versions: 2007a, 2008a, 2008b, 2009a, 2009b, 2011b, 2012a. Command line interface must be installed. 
+     
 -  Comsol multiphysics 3.5a (with appropriate patches) or Comsol multiphysics 4.x 
      	-Tested versions: 3.5a, 4.0, 4.2, 4.3 (recommended)
 	- Must have Matlab integration components installed
@@ -37,3 +41,9 @@ System requirements and software dependencies
 - The optional SBML support requires additionally
 	- Python runtime libraries 2.6 or higher
   	- SBML library for python (libsbml)
+	
+
+Additional information can be found in the paper:
+
+- URDME: A modular framework for stochastic simulation of reaction-transport processes in complex geometries, 
+B. Drawert, S. Engblom and A. Hellander, BMC Systems Biology 2012 6:76
