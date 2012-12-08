@@ -17,13 +17,13 @@ if [ "$HAS_MATLAB" = "" ]; then
 fi
 ####################################################
 echo -n "URDME version: "
-echo `./urdme/bin/urdme_init -v`
+echo `./bin/urdme_init -v`
 ###
 echo -n "Matlab: "
-echo `./urdme/bin/urdme_init -m`
+echo `./bin/urdme_init -m`
 ###
 echo -n "Matlab Arch: "
-echo `./urdme/bin/urdme_init -a`
+echo `./bin/urdme_init -a`
 ####################################################
 echo "URDME installation destination: $URDME_ROOT"
 echo "To specify a different installation location, exit and call this script with the location as the argument."
@@ -49,7 +49,9 @@ fi
 echo "Press return to continue with installation, or ^C (ctrl + c) to EXIT"
 read -s
 ####################################################
+cd ..
 cp -r ./urdme/* "$URDME_ROOT"
+cd urdme
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
 fi
