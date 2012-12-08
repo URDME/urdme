@@ -1,17 +1,17 @@
 urdme
 =====
 
-URDME 1.2. Copyright 2008,2009,2010,2011,2012
+URDME 1.2. Copyright 2008,2009,2010,2011,2012.
 See the file AUTHORS for complete list of authors. 
 
 URDME is a general software framework for modeling and simulation of stochastic reaction-diffusion processes on unstructured, tetrahedral and triangular meshes. URDME emphasizes modularity in order to be useful both as a simulation tool and as a framework for developemnt of stochastic simulation algorithms.
 
-www.urdme.
+www.urdme.org
 
 Quick Start
 ------
 
-Download the latest stable release and unpack it, alternatively clone the repository (requires a git client) or 
+Download the latest stable release and unpack it, alternatively clone the repository (requires a git client)  
 
 -- In a terminal --
 
