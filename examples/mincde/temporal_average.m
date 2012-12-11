@@ -16,7 +16,7 @@ function umod2 = temporal_average(umod)
 
 pm = umod.sd == 2;
 Mspecies =5;
-
+open urdme
 % Temporal average of the populations
 U = umod.U;
 tspan    = umod.tspan;
