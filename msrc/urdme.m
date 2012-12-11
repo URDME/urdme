@@ -189,6 +189,22 @@ elseif(~file_exists(opts.propensities) && file_exists(strcat(opts.propensities,'
         opts.propensities = strcat(opts.propensities,'.c');
 end
 
+% add 'msrc' directory to path, if using alternate solver path
+if strcmp(getenv('URDME_SOLVER_PATH'),'')
+    rest = getenv('URDME_SOLVER_PATH');
+    while(~isempty(rest))
+        [tok,rest]=strtok(rest,':');
+        if(isdir([tok,'/src/',opts.solver]))
+            orig_path = path();
+            path(orig_path,[tok,'/msrc/']);
+            if(opts.verbose>=2)
+                fprintf('adding %s to path\n',[tok,'/msrc/']);
+            end
+            break;
+        end
+    end
+end
+
 % initialize solvers using an optional initialization script.
 s = strcat('urdme_init_',char(opts.solver));
 if exist(s)
@@ -196,28 +212,28 @@ if exist(s)
       fprintf('executing %s\n',s);
     end
     umod = eval(strcat(s,'(umod,varargin)'));
-elseif ~strcmp(getenv('URDME_SOLVER_PATH'),'')
-    rest = getenv('URDME_SOLVER_PATH');
-    while(~isempty(rest))
-        [tok,rest]=strtok(rest,':');
-        if(isdir([tok,'/src/',opts.solver]))
-            fid=fopen([tok,'/msrc/urdme_init_',opts.solver,'.m']);
-            if(fid~=-1)
-                orig_path = path();
-                path(orig_path,[tok,'/msrc/']);
-                if(exist(s))
-                    if(opts.verbose>=2)
-                        fprintf('\texecuting %s in %s\n',s,[tok,'/msrc/']);
-                    end
-                    umod = eval(strcat(s,'(umod,varargin)'));
-                else
-                    error(sprintf('file %s is found, but exits(%s)==0\n',s,s));
-                end
-                path(orig_path);
-            end
-            break;
-        end
-    end
+% elseif ~strcmp(getenv('URDME_SOLVER_PATH'),'')
+%     rest = getenv('URDME_SOLVER_PATH');
+%     while(~isempty(rest))
+%         [tok,rest]=strtok(rest,':');
+%         if(isdir([tok,'/src/',opts.solver]))
+%             fid=fopen([tok,'/msrc/urdme_init_',opts.solver,'.m']);
+%             if(fid~=-1)
+%                 orig_path = path();
+%                 path(orig_path,[tok,'/msrc/']);
+%                 if(exist(s))
+%                     if(opts.verbose>=2)
+%                         fprintf('\texecuting %s in %s\n',s,[tok,'/msrc/']);
+%                     end
+%                     umod = eval(strcat(s,'(umod,varargin)'));
+%                 else
+%                     error(sprintf('file %s is found, but exits(%s)==0\n',s,s));
+%                 end
+%                 path(orig_path);
+%             end
+%             break;
+%         end
+%     end
 end
 
 % get safe temporary files for input/output
