@@ -17,7 +17,7 @@ comsol ='3.5';
 
 % parameter space to sweep over
 %Nval = 30;
-Nval=10;
+Nval=1;
 
 xsep = linspace(0,4.5e-6,Nval+1);
 
@@ -37,7 +37,7 @@ for i = 1:Nval
   disp(['Running sequence ',num2str(i),'/',num2str(Nval)]);
   umod = urdme(fem,'huang', ...
                     'mode','bg',...
-                    'verbose',1,...
+                    'verbose',2,...
                     'report',1,...
                     'outfile',sprintf('results/out%d.mat',i));
 
