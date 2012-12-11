@@ -180,7 +180,12 @@ else
   if verbose>0
     disp('Start meshextend')
   end
+  try
   fem.xmesh = meshextend(fem);
+  catch
+      umod=fem;
+      return;
+  end
   if verbose>0
     disp('Done')
   end

@@ -7,7 +7,7 @@ function rdme2mat(umod,filename)
 
 urdme_validate(umod); 
 % We do not save the comsol datastructure
-if ~isfield(umod,'test')
+if ~isfield(umod,'test') && isfield(umod,'comsol');
   umod=rmfield(umod,'comsol');
 end
 save(filename, '-struct', 'umod','-v6');

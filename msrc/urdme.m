@@ -82,8 +82,8 @@ if nargin > 2
   try
     % URDME 1.1 syntax
     if iscell(varargin{2})
-      arr=varargin{2};
-      opts = struct(arr{:});  
+      urdme_args=varargin{2};
+      opts = struct(urdme_args{:});  
     % URDME 1.2 syntax
     else
       opts = struct(varargin{2:end});
@@ -98,10 +98,20 @@ if nargin > 2
       % In general, we canot restrict what options are passed in to the
       % solvers. New solvers may need new options.  Also all DFSP options must be supported.
       % This is a consequence of the overall design of the interface layer.
-      % To warn the user, we instead issue a warning if verbose > 0. 
-      if ~isfield(optdef,lower(fn{i}))
-            warning(['Property name ''' fn{i} ''' is not a valid option for the core nsm solver.']);
-      end
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%%% BAD BAD BAD: BELOW IS A BUG!!!!! Thus is is removed!
+      %%%% We can never print warning about options when using 
+      %%%% other solvers, this neither respect the verbose flag
+      %%%% nor does it respect the fact that options can be parsed
+      %%%% in any order.  Solver specific (even nsm) option parsing
+      %%%% can be done in the file 'urdme_init_'solver'.m', and 
+      %%%% must not be part of the main urdme() function.
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%%%% To warn the user, we instead issue a warning if verbose > 0. 
+      %%%%if ~isfield(optdef,lower(fn{i})) && strcmp(optdef.solver,'nsm')
+      %%%%      warning(['Property name ''' fn{i} ''' is not a valid option for the core nsm solver.']);
+      %%%%end
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       optdef = setfield(optdef,lower(fn{i}),getfield(opts,fn{i}));
   end
 end
@@ -117,7 +127,7 @@ if ~isfield(fem,'test')
     if isfield(fem,'comsol')  
       umod=comsol2urdme(fem.comsol,opts.verbose);
     else     
-     umod=comsol2urdme(fem,opts.verbose);
+      umod=comsol2urdme(fem,opts.verbose);
     end
   end
 else
@@ -211,7 +221,7 @@ if exist(s)
     if opts.verbose>=2
       fprintf('executing %s\n',s);
     end
-    umod = eval(strcat(s,'(umod,varargin)'));
+    umod = eval(strcat(s,'(umod,urdme_args)'));
 % elseif ~strcmp(getenv('URDME_SOLVER_PATH'),'')
 %     rest = getenv('URDME_SOLVER_PATH');
 %     while(~isempty(rest))
