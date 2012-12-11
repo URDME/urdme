@@ -289,18 +289,19 @@ if ~strcmp(opts.mode,'bg')
     system(['rm ' inputfile]);
     error('Solver did not finish correctly.');
   else 
-    data=load(opts.outfile);
-    
-    % if a test, a manually created mesh or model with sd=1 has been executed,
-    % only add U to umod, otherwise add solution to comsol file as well. 
-    %if isfield(umod,'test') || length(unique(umod.sd))==1
-      umod.U = data.U;
-      if isfield(data,'tspan') 
-          umod.tspan = data.tspan;
-      else
-          umod.tspan = 0:size(data.U,2)-1;
-      end
-      umod = urdme2comsol(umod,data.U,umod.tspan,opts.verbose);
+  umod = urdme_addsol(umod,opts.outfile);
+%    data=load(opts.outfile);
+%    
+%    % if a test, a manually created mesh or model with sd=1 has been executed,
+%    % only add U to umod, otherwise add solution to comsol file as well. 
+%    %if isfield(umod,'test') || length(unique(umod.sd))==1
+%      umod.U = data.U;
+%      if isfield(data,'tspan') 
+%          umod.tspan = data.tspan;
+%      else
+%          umod.tspan = 0:size(data.U,2)-1;
+%      end
+%      umod = urdme2comsol(umod,data.U,umod.tspan,opts.verbose);
   end
 
 

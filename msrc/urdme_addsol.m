@@ -27,19 +27,19 @@ data=load(filename);
 if ~isfield(umod,'xmesh')||~umod.xmesh.initialized
    % If the urdme field is present, meshextend will choke. 
    
-   if isfield(umod.comsol,'mesh')&&isfield(umod.comsol,'equ');   
+   if isfield(umod,'comol')&& isfield(umod.comsol,'mesh')&&isfield(umod.comsol,'equ');   
      
        % PB: can you change this to the new structure?
        % umod=fem.urdme
        % umod.comsol=fem (without .urdme field)
        
-       urdmefield = fem.urdme;
-       fem = rmfield(fem,'urdme');
-       fem.xmesh = meshextend(fem);
-       fem.urdme=urdmefield;
+       urdmefield = umod.urdme;
+       umod = rmfield(umod,'urdme');
+       umod.xmesh = meshextend(umod);
+       umod.urdme=urdmefield;
    else
-       if isfield(fem,'mesh')&&isfield(fem,'equ')
-          fem.xmesh=meshextend(fem);
+       if isfield(umod,'mesh')&&isfield(umod,'equ')
+          umod.xmesh=meshextend(umod);
        else % If not using Comsol. 
           umod.U = data.U;
           return;
@@ -53,8 +53,8 @@ s
 
 % PB: In the new structure, there is no fem.urdme field, so what is it
 % really you want to check for?
-if ~isfield(fem,'urdme')
-   fem = fem2rdme(fem);
+if ~isfield(umod,'urdme')
+   umod = fem2rdme(umod);
 end
 
 % Add trajectory to model. In addition to adding the concentation data
@@ -79,6 +79,6 @@ end
 % In the special case of only one subdomain (a well mixed simulation), 
 % rdme2fem does not work (and is not needed). Here we simply add the 
 % U matrix to the struct. 
-if numel(fem.urdme.sd) > 1
+if numel(umod.urdme.sd) > 1
     umod = urdme2comsol(umod,data.U,verbose);
 end
