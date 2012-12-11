@@ -280,7 +280,7 @@ if ~strcmp(opts.mode,'bg')
       else
           umod.tspan = 0:size(data.U,2)-1;
       end
-      umod = urdme2comsol(umod,data.U,opts.verbose);
+      umod = urdme2comsol(umod,data.U,umod.tspan,opts.verbose);
   end
 
 
