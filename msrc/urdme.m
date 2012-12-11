@@ -114,7 +114,11 @@ if ~isfield(fem,'test')
     error(['No .urdme field in fem-struct and no model ' ...
            'function handle specified.']);
   else
-    umod=comsol2urdme(fem,opts.verbose);
+    if isfield(fem,'comsol')  
+      umod=comsol2urdme(fem.comsol,opts.verbose);
+    else     
+     umod=comsol2urdme(fem,opts.verbose);
+    end
   end
 else
   % externally defined umod structure (for tests)
