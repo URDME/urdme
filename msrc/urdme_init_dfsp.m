@@ -42,9 +42,8 @@ function fem  = urdme_init_dfsp(fem,varargin)
                 if(verbose),fprintf('\tError_Tolerance=%g\n',Error_Tolerance);end
                 i=i+2;
             elseif(strcmp(varargin{1}{i},'DFSP_cache'))
-                if(verbose),fprintf('checking for a cached DFSP lookup table\n');end
                 dfsp_cache_filename=varargin{1}{i+1};
-                if(verbose),fprintf('\t%s\n',dfsp_cache_filename);end
+                if(verbose),fprintf('checking for a cached DFSP lookup table: %s\n',dfsp_cache_filename);end
                 use_cache=1;
                 [rv,fem] = urdme_init_DFSP_read_cache(fem,dfsp_cache_filename,Error_Tolerance);
                 if(rv==1),return,end
@@ -424,32 +423,30 @@ function [rv,fem] = urdme_init_DFSP_read_cache(fem,dfsp_cache_filename,Error_Tol
     rv=0;
     fid=fopen(dfsp_cache_filename); %does the file exist?
     if(fid==-1)
+        if(verbose),fprintf('\t%s not found\n',dfsp_cache_filename);end
         return;
     else
+        if(verbose),fprintf('\tfound cache file: %s\n',dfsp_cache_filename);end
         fclose(fid);
         verified=0;
         %%%%%
         tmp_fem = load(dfsp_cache_filename);
-        if(isfield(tmp_fem,'urdme'))
-            tmp_u = tmp_fem.urdme;
-            if(...
-            isfield(tmp_u,'Error_Tolerance') &&...
-            isfield(tmp_u,'DT') &&...
-            isfield(tmp_u,'sopts') &&...
-            isfield(tmp_u,'err') ...
-            )
-                if((tmp_fem.urdme.Error_Tolerance == Error_Tolerance) &...
-                   (tmp_fem.mesh.p == fem.mesh.p) )
-                    verified=1;
-                end
+        if(...
+        isfield(tmp_fem,'Error_Tolerance') &&...
+        isfield(tmp_fem,'DT') &&...
+        isfield(tmp_fem,'sopts') &&...
+        isfield(tmp_fem,'err') ...
+        )
+            if(tmp_fem.Error_Tolerance == Error_Tolerance) 
+                verified=1;
             end
         end
         %%%%%
         if verified==1
-            fem.urdme.DT = tmp_fem.urdme.DT;
-            fem.urdme.err = tmp_fem.urdme.err;
-            fem.urdme.sopts = tmp_fem.urdme.sopts;
-            fem.urdme.Error_Tolerance = tmp_fem.urdme.Error_Tolerance;
+            fem.DT = tmp_fem.DT;
+            fem.err = tmp_fem.err;
+            fem.sopts = tmp_fem.sopts;
+            fem.Error_Tolerance = tmp_fem.Error_Tolerance;
             rv=1;
             return
         end

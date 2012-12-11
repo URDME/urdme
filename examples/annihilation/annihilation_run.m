@@ -9,8 +9,9 @@ umod.name = 'annihilation';
 % from the inline proponsties described in the function annihilation.m
 %umod = urdme(umod,@annihilation);
 %umod = urdme(umod,'annihilation');
-umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',1});
+%umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',1});
 %umod = urdme(umod,'annihilation',{'Solver','dfsp','tau',1e-4,'max_jump',10,'verbose',0});
+umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',1,'DFSP_cache','ann_dfsp_cache_file.mat'});
 
 
 %setenv('URDME_SOLVER_PATH',strcat(strcat(pwd,'/Users/brian/Desktop/research/operator_splitting/urdme_solvers/:'),getenv('URDME_ROOT')))
