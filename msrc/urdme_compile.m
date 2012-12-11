@@ -131,7 +131,7 @@ if(file_exists(propensity_file))
     %    fprintf('No copy\n');
     end
 % else check if inline propensities exist, create ".urdme/model_name.c"
-elseif(isfield(fem.urdme,'M1')) % inline propensities specified
+elseif(isfield(fem,'M1')) % inline propensities specified
     dest_file = sprintf('.urdme/%s.c',model_name);
     if(file_exists([solroot,'/msrc/urdme_inline_convert_',solver,'.m']))
         orig_path = path();

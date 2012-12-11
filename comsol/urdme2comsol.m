@@ -22,7 +22,11 @@ function umod = urdme2comsol(umod,U,tspan,verbose)
 % A. Hellander  2010-05-04 (rdme2fem)
 % J. Cullhed    2008-08-06 (rdme2fem)
 
-is4x = isjava(umod.comsol);
+if(isfield(umod,'comsol'))
+    is4x = isjava(umod.comsol);
+else
+    is4x = 0;
+end
 
 if nargin < 3
     tspan = umod.tspan;
