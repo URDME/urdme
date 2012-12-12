@@ -95,9 +95,9 @@ if nargin > 2
   %first determine the level of verbosity and the default solver
   fn = fieldnames(opts);
   for i = 1:length(fn)
-     if(strcmpi(fn{2},'verbose'))
+     if(strcmpi(fn{i},'verbose'))
         optdef.verbose = getfield(opts,fn{i});
-     elseif(strcmpi(fn{2},'solver'))
+     elseif(strcmpi(fn{i},'solver'))
         optdef.solver = getfield(opts,fn{i});
      end
   end
@@ -108,7 +108,7 @@ if nargin > 2
       % solvers. New solvers may need new options.  Also all DFSP options must be supported.
       % This is a consequence of the overall design of the interface layer.
       % To warn the user, we instead issue a warning if verbose > 0. 
-      if optdef.verbose>0 && ~isfield(optdef,lower(fn{i})) && strcmp(optdef.solver,'nsm')
+      if optdef.verbose>0 && strcmp(optdef.solver,'nsm') && ~isfield(optdef,lower(fn{i}))
             warning(['Property name ''' fn{i} ''' is not a valid option for the core nsm solver.']);
       end
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -228,6 +228,7 @@ if exist(init_file)
          end
      end
 end
+
 
 % get safe temporary files for input/output
 [foo,inputfile] = system('mktemp -t urdmemodel.XXXXXXXXXX');
