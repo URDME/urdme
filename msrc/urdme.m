@@ -212,7 +212,7 @@ if exist(init_file)
      while(~isempty(rest))
          [tok,rest]=strtok(rest,':');
          if(isdir([tok,'/src/',opts.solver]))
-             if(file_exits([tok,'/msrc/urdme_init_',opts.solver,'.m']))
+             if(file_exists([tok,'/msrc/urdme_init_',opts.solver,'.m']))
                  % add 'msrc' directory to path, if using alternate solver path
                  path(path(),[tok,'/msrc/']);
                  if(exist(init_file))
