@@ -74,7 +74,7 @@ umod2=umod;
 umod2.vol = vol;
 
 umod2.tspan=umod.tspan(end);
-%umod2 = urdme2comsol(umod2,Umean,1); %TODO: why is this here?
+umod2 = urdme2comsol(umod2,Umean,1);
 
 % slices in the x-direction
 minx = min(x);
@@ -156,7 +156,7 @@ if nargout == 0
 
   figure(2); 
   %postplot(fem2,'Tetdata','MinD_m','Geom','off','Tetbar','off');
-  if strcmp(umod.mph,'4.x')
+  if strcmp(umod2.mph,'4.x')
     mphplot(umod2.comsol,'Tetdata','MinD_m','Geom','off','Tetbar','off');
   else
     postplot(umod2.comsol,'Tetdata','MinD_m','Geom','off','Tetbar','off');
