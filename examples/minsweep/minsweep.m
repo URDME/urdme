@@ -17,7 +17,7 @@ comsol ='3.5';
 
 % parameter space to sweep over
 %Nval = 30;
-Nval=1;
+Nval=4;
 
 xsep = linspace(0,4.5e-6,Nval+1);
 
@@ -25,6 +25,10 @@ xsep(end) = []; % (avoid creating two distinct bacteria)
 save results/info.mat xsep % convenient
 
 for i = 1:Nval
+  if(file_exists(sprintf('results/out%d.mat',i)))
+    fprintf('output file %s found, skipping\n',sprintf('results/out%d.mat',i));
+    continue;
+  end
   % generate two merged E. colis with separation xsep(i) 
   % along the positive x-axis
   if strcmp(comsol,'3.5')
