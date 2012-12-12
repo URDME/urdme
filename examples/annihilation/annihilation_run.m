@@ -9,13 +9,13 @@ umod.name = 'annihilation';
 % from the inline proponsties described in the function annihilation.m
 %umod = urdme(umod,@annihilation);
 %umod = urdme(umod,'annihilation');
-%umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',1});
-%umod = urdme(umod,'annihilation',{'Solver','dfsp','tau',1e-4,'max_jump',10,'verbose',0});
-umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',1,'DFSP_cache','ann_dfsp_cache_file.mat'});
+umod = urdme(umod,'annihilation',{'Solver','nsm','verbose',2,'report',0,'tau',0.01});
+%umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',2,'report',0});
+%umod = urdme(umod,'annihilation',{'Solver','dfsp','tau',2.5e-2,'max_jump',10,'verbose',2,'report',0});
+%umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',1,'DFSP_cache','ann_dfsp_cache_file.mat'});
 
-
-%setenv('URDME_SOLVER_PATH',strcat(strcat(pwd,'/Users/brian/Desktop/research/operator_splitting/urdme_solvers/:'),getenv('URDME_ROOT')))
-%umod = urdme(umod,'annihilation',{'Solver','adaptive_dfsp'});
+%setenv('URDME_SOLVER_PATH',strcat('/Users/brian/Desktop/research/operator_splitting/urdme_solvers/:',getenv('URDME_ROOT')))
+%umod = urdme(umod,'annihilation',{'Solver','adaptive_dfsp','verbose',2,'report',0});
 
 Mspecies=2;
 N = size(umod.mesh.p,2);

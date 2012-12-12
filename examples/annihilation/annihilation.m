@@ -115,7 +115,7 @@ umod.sd(end)=3;
 umod.u0 = zeros(Mspecies,Ncells);
 
 % Setup  sample times (every second)
-umod.tspan = 0:1:200;
+umod.tspan = 0:1:1200;
 
 % empty data vec
 umod.data = zeros(0,Ncells);

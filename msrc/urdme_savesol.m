@@ -5,14 +5,14 @@
 
 function fem = urdme_savesol(fem, filename)
 
-% Make sure that the urdme field is present
-if ~isfield(fem,'urdme')
-   error('No urdme field in fem-struct.'); 
-end
+%% Make sure that the urdme field is present
+%if ~isfield(fem,'urdme')
+%   error('No urdme field in fem-struct.'); 
+%end
 
 % Get trajectory from the model. 
-U = fem.urdme.U;
-tspan = fem.urdme.tspan;
+U = fem.U;
+tspan = fem.tspan;
 save(filename,'U','tspan');
 
 

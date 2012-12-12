@@ -91,26 +91,26 @@ if nargin > 2
   catch
     error('Options must be passed as property/value pairs.');
   end
-    
-  % merge fields
+
+  %first determine the level of verbosity and the default solver
+  fn = fieldnames(opts);
+  for i = 1:length(fn)
+     if(strcmpi(fn{2},'verbose'))
+        optdef.verbose = getfield(opts,fn{i});
+     elseif(strcmpi(fn{2},'solver'))
+        optdef.solver = getfield(opts,fn{i});
+     end
+  end
+  % Next merge fields
   fn = fieldnames(opts);
   for i = 1:length(fn)
       % In general, we canot restrict what options are passed in to the
       % solvers. New solvers may need new options.  Also all DFSP options must be supported.
       % This is a consequence of the overall design of the interface layer.
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-      %%%% BAD BAD BAD: BELOW IS A BUG!!!!! Thus is is removed!
-      %%%% We can never print warning about options when using 
-      %%%% other solvers, this neither respect the verbose flag
-      %%%% nor does it respect the fact that options can be parsed
-      %%%% in any order.  Solver specific (even nsm) option parsing
-      %%%% can be done in the file 'urdme_init_'solver'.m', and 
-      %%%% must not be part of the main urdme() function.
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-      %%%%% To warn the user, we instead issue a warning if verbose > 0. 
-      %%%%if ~isfield(optdef,lower(fn{i})) && strcmp(optdef.solver,'nsm')
-      %%%%      warning(['Property name ''' fn{i} ''' is not a valid option for the core nsm solver.']);
-      %%%%end
+      % To warn the user, we instead issue a warning if verbose > 0. 
+      if optdef.verbose>0 && ~isfield(optdef,lower(fn{i})) && strcmp(optdef.solver,'nsm')
+            warning(['Property name ''' fn{i} ''' is not a valid option for the core nsm solver.']);
+      end
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       optdef = setfield(optdef,lower(fn{i}),getfield(opts,fn{i}));
   end
@@ -199,51 +199,34 @@ elseif(~file_exists(opts.propensities) && file_exists(strcat(opts.propensities,'
         opts.propensities = strcat(opts.propensities,'.c');
 end
 
-% add 'msrc' directory to path, if using alternate solver path
-if strcmp(getenv('URDME_SOLVER_PATH'),'')
-    rest = getenv('URDME_SOLVER_PATH');
-    while(~isempty(rest))
-        [tok,rest]=strtok(rest,':');
-        if(isdir([tok,'/src/',opts.solver]))
-            orig_path = path();
-            path(orig_path,[tok,'/msrc/']);
-            if(opts.verbose>=2)
-                fprintf('adding %s to path\n',[tok,'/msrc/']);
-            end
-            break;
-        end
-    end
-end
 
 % initialize solvers using an optional initialization script.
-s = strcat('urdme_init_',char(opts.solver));
-if exist(s)
+init_file = strcat('urdme_init_',char(opts.solver));
+if exist(init_file)
     if opts.verbose>=2
-      fprintf('executing %s\n',s);
+      fprintf('executing %s\n',init_file);
     end
-    umod = eval(strcat(s,'(umod,urdme_args)'));
-% elseif ~strcmp(getenv('URDME_SOLVER_PATH'),'')
-%     rest = getenv('URDME_SOLVER_PATH');
-%     while(~isempty(rest))
-%         [tok,rest]=strtok(rest,':');
-%         if(isdir([tok,'/src/',opts.solver]))
-%             fid=fopen([tok,'/msrc/urdme_init_',opts.solver,'.m']);
-%             if(fid~=-1)
-%                 orig_path = path();
-%                 path(orig_path,[tok,'/msrc/']);
-%                 if(exist(s))
-%                     if(opts.verbose>=2)
-%                         fprintf('\texecuting %s in %s\n',s,[tok,'/msrc/']);
-%                     end
-%                     umod = eval(strcat(s,'(umod,varargin)'));
-%                 else
-%                     error(sprintf('file %s is found, but exits(%s)==0\n',s,s));
-%                 end
-%                 path(orig_path);
-%             end
-%             break;
-%         end
-%     end
+    umod = eval(strcat(init_file,'(umod,urdme_args)'));
+ elseif ~strcmp(getenv('URDME_SOLVER_PATH'),'')
+     rest = getenv('URDME_SOLVER_PATH');
+     while(~isempty(rest))
+         [tok,rest]=strtok(rest,':');
+         if(isdir([tok,'/src/',opts.solver]))
+             if(file_exits([tok,'/msrc/urdme_init_',opts.solver,'.m']))
+                 % add 'msrc' directory to path, if using alternate solver path
+                 path(path(),[tok,'/msrc/']);
+                 if(exist(init_file))
+                     if(opts.verbose>=2)
+                         fprintf('\texecuting %s in %s\n',init_file,[tok,'/msrc/']);
+                     end
+                     umod = eval(strcat(s,'(umod,urdme_args)'));
+                 else
+                     error(sprintf('file %s is found, but exits(%s)==0\n',init_file,init_file));
+                 end
+             end
+             break;
+         end
+     end
 end
 
 % get safe temporary files for input/output
@@ -271,7 +254,7 @@ umod = urdme_compile(umod,model_name,opts.propensities,opts.solver,opts.verbose)
 
 %fem = urdme_compile(fem,opts.propensities,opts.solver,opts.solvopts);
 if opts.verbose ~= 0
-  fprintf('   ...done.\n\n');
+  fprintf('   ...done.\n');
 end
 
 % Serialize model to temporary input-file.
@@ -288,18 +271,27 @@ cmd = ['./.urdme/' model_name '.' opts.solver ' ' inputfile ' ' ...
    
 if(opts.verbose>1)
     fprintf('cmd=%s\n',cmd)
+    solver_timer=tic;
 end  
 system(cmd);
+if(opts.verbose>1)
+    fprintf('solver execution time=%gs\n',toc(solver_timer));
+end
 
 % if not in background mode, load the result file and add the solution
 % to the field fem.urdme
 if ~strcmp(opts.mode,'bg')
     
   if ~exist(opts.outfile,'file')
-    system(['rm ' inputfile]);
+    if(opts.delete_inputfile)
+        if(opts.verbose>2)
+            fprintf('rm %s\n',inputfile);
+        end
+        system(['rm ' inputfile]);
+    end
     error('Solver did not finish correctly.');
   else 
-  umod = urdme_addsol(umod,opts.outfile);
+    umod = urdme_addsol(umod,opts.outfile);
 %    data=load(opts.outfile);
 %    
 %    % if a test, a manually created mesh or model with sd=1 has been executed,
