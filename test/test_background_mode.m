@@ -38,10 +38,18 @@ end
 umod = urdme_addsol(umod,outfile);
 
 disp('Passed test.')
+% Clean up
+if(file_exists(outfile))
+    system(['rm ' outfile]);
+end
+cd(wd);
+
+%% error handling
 catch err
 % Clean up
 if(file_exists(outfile))
     system(['rm ' outfile]);
+end
 cd(wd);
 rethrow(err);
 end
