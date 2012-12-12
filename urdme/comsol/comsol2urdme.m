@@ -323,7 +323,6 @@ else
 end  
 
 % Create URDME 1.2 structure
-
 umod = struct();
 umod.version = '1.2';
 if(isjava(fem))
@@ -331,6 +330,7 @@ if(isjava(fem))
 else
   umod.mph     = '3.5a';	
 end
+
 umod.tspan   = tspan;
 umod.u0      = u0;
 umod.D       = D';

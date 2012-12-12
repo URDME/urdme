@@ -17,7 +17,7 @@ comsol ='3.5';
 
 % parameter space to sweep over
 %Nval = 30;
-Nval=10;
+Nval=1;
 
 xsep = linspace(0,4.5e-6,Nval+1);
 
