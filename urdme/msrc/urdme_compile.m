@@ -11,7 +11,7 @@ function fem = urdme_compile(fem,model_name,propensity_file,solver,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 verbose=0;
 if(nargin==5 && varargin{1}~=0)
-    verbose=1;
+    verbose=varargin{1};
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %fprintf('urdme_compile(): model_name=%s propensities=%s solvers=%s verbose=%i \n',model_name,propensity_file,solver,verbose);
