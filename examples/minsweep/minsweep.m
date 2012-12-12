@@ -22,6 +22,8 @@ Nval=4;
 xsep = linspace(0,4.5e-6,Nval+1);
 
 xsep(end) = []; % (avoid creating two distinct bacteria)
+
+if(~exist('results/','file')>0),system('mkdir results');end
 save results/info.mat xsep % convenient
 
 for i = 1:Nval

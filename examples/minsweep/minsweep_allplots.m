@@ -28,7 +28,7 @@ zlabel('MinD_m [Relative concentration, temporal average]');
 axis square
 grid on
 
-
+if(~exist('plots/','file')>0),system('mkdir plots');end
 for i = 1:numel(x)
     xc(:,i) = x{i};
     yc(:,i) = y{i};
