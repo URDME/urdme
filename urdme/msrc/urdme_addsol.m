@@ -48,6 +48,6 @@ end
 
 % In the special case of only one subdomain (a well mixed simulation), 
 % urdme2comsol does not work (and is not needed). 
-if numel(umod.sd) > 1
+if numel(umod.sd)>1&&isfield(umod,'comsol')
     umod = urdme2comsol(umod,umod.U,umod.tspan,verbose);
 end
