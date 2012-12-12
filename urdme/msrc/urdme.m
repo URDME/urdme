@@ -241,6 +241,8 @@ end
 if isempty(opts.outfile)
   [foo,opts.outfile] = system('mktemp -t urdmeresults.XXXXXXXXXX');
   opts.outfile = strcat(strtrim(opts.outfile), '.mat');
+else
+  opts.delete_outputfile=0;
 end
 if opts.verbose>1
   fprintf('outputfile=%s\n',opts.outfile);
