@@ -3,7 +3,7 @@
 clc;
 
 umod.name = 'annihilation';
-%umod.test=1;
+umod.test=1;
 
 % Execute the solver. This will autimatically generate a propensity file
 % from the inline proponsties described in the function annihilation.m
