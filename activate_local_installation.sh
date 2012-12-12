@@ -1,14 +1,18 @@
 #!/bin/bash
 
 ####################################################
-DEFAULT="/usr/local/urdme"
-if [ "$1" == "" ]; then
-    URDME_ROOT=$DEFAULT
-else
-    URDME_ROOT=$1
+DEFAULT=`pwd`"/urdme"
+####################################################
+if [ ! -d $DEFAULT ]; then
+    echo "Error: $DEFAULT not found, exiting"
+    exit
 fi
 ####################################################
-# if $1 is "PREFIX=/blah/blah/"
+echo "This script will activated $DEFAULT as the current URDME installation on this computer."
+echo "Press return to continue,  or ^C (ctrl + c) to EXIT"
+read -s
+####################################################
+URDME_ROOT=$DEFAULT
 ####################################################
 HAS_MATLAB=`which matlab`
 if [ "$HAS_MATLAB" = "" ]; then
@@ -19,7 +23,6 @@ fi
 echo -n "URDME version: "
 VER=`./urdme/bin/urdme_init -v`
 echo $VER
-DEFAULT=$DEFAULT"-"$VER
 ###
 echo -n "Matlab: "
 echo `./urdme/bin/urdme_init -m`
@@ -27,37 +30,14 @@ echo `./urdme/bin/urdme_init -m`
 echo -n "Matlab Arch: "
 echo `./urdme/bin/urdme_init -a`
 ####################################################
-if [ "$1" == "" ]; then
-    URDME_ROOT=$DEFAULT
-else
-    URDME_ROOT=$1
-fi
-####################################################
 echo "URDME installation destination: $URDME_ROOT"
-echo "To specify a different installation location, exit and call this script with the location as the argument."
-echo "    install.sh /path/to/install/directory/ "
-if [ ! -d "$URDME_ROOT" ]; then
-    mkdir -p $URDME_ROOT
-else
-    FILE_COUNT=`/bin/ls -l $URDME_ROOT | wc -l`
-    if [ "$FILE_COUNT" != "0" ]; then
-        echo "$URDME_ROOT already exists and is not empty.  Please remove all previous installations of URDME."
-        exit
-    fi
-    echo "FILE_COUNT=$FILE_COUNT"
-fi
-if [ ! -w "$URDME_ROOT" ]; then
-    echo "ERROR: '$URDME_ROOT' is not writeable"
-    echo "Run this script with the correct permissions."
-    exit
-fi
+echo "To specify a different use the 'install.sh' script'"
 ####################################################
 ####################################################
 ####################################################
 echo "Press return to continue with installation, or ^C (ctrl + c) to EXIT"
 read -s
 ####################################################
-cp -r ./urdme/* "$URDME_ROOT"
 if [ ! -d /usr/local/bin ]; then
     mkdir -p /usr/local/bin
 fi
@@ -69,7 +49,7 @@ read -s
 ####################################################
 ./set_matlab_path.pl $URDME_ROOT >  /dev/null
 ####################################################
-echo "URDME installation complete"
+echo "Local URDME installation activated"
 ####################################################
 
 
