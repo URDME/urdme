@@ -46,7 +46,7 @@ u0(5,:) = full(sparse(1,ceil(Ncells*rand(1,nMinD_c_adp)),1,1,Ncells));
 umod.u0 = u0;
 
 % default sampling interval
-umod.tspan = 0:100:2000;
+umod.tspan = 0:1:2000;  %must sample every second,and have size(tspan)=2001 for analysis to work
 
 % assigne the value of 'h' (local element size) to the data vector
 if iscmp4x(umod.comsol) % Comsol 4.x
