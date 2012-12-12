@@ -7,9 +7,9 @@ umod.name = 'annihilation';
 
 % Execute the solver. This will autimatically generate a propensity file
 % from the inline proponsties described in the function annihilation.m
-%umod = urdme(umod,@annihilation);
+umod = urdme(umod,@annihilation);
 %umod = urdme(umod,'annihilation');
-umod = urdme(umod,'annihilation',{'Solver','nsm','verbose',2,'report',0,'tau',0.01,'mode','testmode'});
+%umod = urdme(umod,'annihilation',{'Solver','nsm','verbose',2,'report',0,'tau',0.01,'mode','testmode'});
 %umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',2,'report',0});
 %umod = urdme(umod,'annihilation',{'Solver','dfsp','tau',2.5e-2,'max_jump',10,'verbose',2,'report',0});
 %umod = urdme(umod,'annihilation',{'Solver','dfsp','verbose',1,'DFSP_cache','ann_dfsp_cache_file.mat'});
