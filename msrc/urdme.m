@@ -219,7 +219,7 @@ if exist(init_file)
                      if(opts.verbose>=2)
                          fprintf('\texecuting %s in %s\n',init_file,[tok,'/msrc/']);
                      end
-                     umod = eval(strcat(s,'(umod,urdme_args)'));
+                     umod = eval(strcat(init_file,'(umod,urdme_args)'));
                  else
                      error(sprintf('file %s is found, but exits(%s)==0\n',init_file,init_file));
                  end
