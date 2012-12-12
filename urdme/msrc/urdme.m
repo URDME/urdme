@@ -186,7 +186,7 @@ if(isempty(model_name))
 end
 
 
-% check that fem.urdme contains all data structures required by the
+% check that umod contains all data structures required by the
 % NSM solver and that they make sense
 urdme_validate(umod);
 
