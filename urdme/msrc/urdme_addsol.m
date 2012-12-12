@@ -21,40 +21,34 @@
 
 function umod = urdme_addsol(umod, filename, verbose)
 
+if nargin < 3
+    verbose = 0;
+end
+
 data=load(filename);
 
 % Check for the extendended mesh. 
-if ~isfield(umod,'xmesh')||~umod.comsol.xmesh.initialized
-   
-   if isfield(umod,'comsol')&&isfield(umod.comsol,'mesh')&&isfield(umod.comsol,'equ');   
-     
-       % PB: can you change this to the new structure?
-       % umod=fem.urdme
-       % umod.comsol=fem (without .urdme field)
-       
-       %urdmefield = umod.urdme;
-       %umod = rmfield(umod,'urdme'); % ??
-       umod.comsol.xmesh = meshextend(umod.comsol);
-       %umod.urdme=urdmefield;
-   else
-       if isfield(umod,'mesh')&&isfield(umod,'equ')
-          umod.xmesh=meshextend(umod);
-        else % If not using Comsol. 
-          umod.U = data.U;
-          return;
-       end
-   end
-end
-
-% Make sure that the urdme field is present. It may not be if we are adding
-% a solution to a fem-struct that we have loaded from file, or a 
-% newly exported struct from Comsol. 
-
-% PB: In the new structure, there is no fem.urdme field, so what is it
-% really you want to check for?
-%if ~isfield(umod,'urdme')
-%   umod = fem2rdme(umod);
-%end
+% if ~isfield(umod,'xmesh')||~umod.comsol.xmesh.initialized
+%    
+%    if isfield(umod,'comsol')&&isfield(umod.comsol,'mesh')&&isfield(umod.comsol,'equ');   
+%      
+%        % PB: can you change this to the new structure?
+%        % umod=fem.urdme
+%        % umod.comsol=fem (without .urdme field)
+%        
+%        %urdmefield = umod.urdme;
+%        %umod = rmfield(umod,'urdme'); % ??
+%        umod.comsol.xmesh = meshextend(umod.comsol);
+%        %umod.urdme=urdmefield;
+%    else
+%        if isfield(umod,'mesh')&&isfield(umod,'equ')
+%           umod.xmesh=meshextend(umod);
+%         else % If not using Comsol. 
+%           umod.U = data.U;
+%           return;
+%        end
+%    end
+% end
 
 % Add trajectory to model. In addition to adding the concentation data
 % to the Comsol data structure, we also save the raw copy numbers in the
@@ -77,6 +71,6 @@ end
 
 % In the special case of only one subdomain (a well mixed simulation), 
 % urdme2comsol does not work (and is not needed). 
-if numel(umod.urdme.sd) > 1
-    umod = urdme2comsol(umod,data.U,verbose);
+if numel(umod.sd) > 1
+    umod = urdme2comsol(umod,data.U,data.tspan,verbose);
 end
