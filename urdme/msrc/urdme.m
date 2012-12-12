@@ -119,15 +119,28 @@ end
 opts = optdef;
 
 % check for urdme struct
-if ~isfield(fem,'test')
+if ~isfield(fem,'test') 
   if nargin < 2
     error(['No .urdme field in fem-struct and no model ' ...
            'function handle specified.']);
   else
-    if isfield(fem,'comsol')  
-      umod=comsol2urdme(fem.comsol,opts.verbose);
-    else     
-      umod=comsol2urdme(fem,opts.verbose);
+    % First check if this is a presassembled umod that will validate.
+    try
+        urdme_validate(fem)
+        % If it does, and no model file is passed in, we use the 
+        % original fem-input. 
+        if isempty(varargin{1})
+            umod = fem;
+        else
+            throw;
+        end
+    catch  
+        % If not, extend the strucute with geometry info.        
+        if isfield(fem,'comsol')  
+            umod=comsol2urdme(fem.comsol,opts.verbose);
+        else     
+            umod=comsol2urdme(fem,opts.verbose);
+        end
     end
   end
 else
