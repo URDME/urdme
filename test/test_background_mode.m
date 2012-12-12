@@ -7,6 +7,7 @@
 
 
 % Add mincde example to path
+clear;
 wd = pwd;
 try 
 % Load previously stored input file
@@ -18,24 +19,29 @@ umod = comsol2urdme(umod);
 cd ../examples/mincde/
 umod = mincde(umod);
 % Make sure that it does not run for very long. 
-umod.tspan = 0:20;
+umod.tspan = 0:100;
 outfile = 'mincde_bg_run_out.mat';
-
 % Passing an empty file-handle argument needs to work
 umod = urdme(umod,[],'mode','bg','outfile',outfile);
 
-while ~file_exists(outfile)
-    sleep(1)
+t=0;
+while ~file_exists('mincde_bg_run_out.mat')
+    pause(1)
+    t = t+1;
+    if (t>40)
+       cd(wd);
+       error('This problem should not run this long.') 
+    end
 end
 
 % Add solution back to the struct
 umod = urdme_addsol(umod,outfile);
 
+disp('Passed test.')
 catch err
 % Clean up
 if(file_exists(outfile))
     system(['rm ' outfile]);
-end
 cd(wd);
 rethrow(err);
 end

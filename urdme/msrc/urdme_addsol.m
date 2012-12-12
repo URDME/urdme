@@ -27,29 +27,6 @@ end
 
 data=load(filename);
 
-% Check for the extendended mesh. 
-% if ~isfield(umod,'xmesh')||~umod.comsol.xmesh.initialized
-%    
-%    if isfield(umod,'comsol')&&isfield(umod.comsol,'mesh')&&isfield(umod.comsol,'equ');   
-%      
-%        % PB: can you change this to the new structure?
-%        % umod=fem.urdme
-%        % umod.comsol=fem (without .urdme field)
-%        
-%        %urdmefield = umod.urdme;
-%        %umod = rmfield(umod,'urdme'); % ??
-%        umod.comsol.xmesh = meshextend(umod.comsol);
-%        %umod.urdme=urdmefield;
-%    else
-%        if isfield(umod,'mesh')&&isfield(umod,'equ')
-%           umod.xmesh=meshextend(umod);
-%         else % If not using Comsol. 
-%           umod.U = data.U;
-%           return;
-%        end
-%    end
-% end
-
 % Add trajectory to model. In addition to adding the concentation data
 % to the Comsol data structure, we also save the raw copy numbers in the
 % struct as they are frequently needed by postprocessing routines. 
@@ -72,5 +49,5 @@ end
 % In the special case of only one subdomain (a well mixed simulation), 
 % urdme2comsol does not work (and is not needed). 
 if numel(umod.sd) > 1
-    umod = urdme2comsol(umod,data.U,data.tspan,verbose);
+    umod = urdme2comsol(umod,umod.U,umod.tspan,verbose);
 end
