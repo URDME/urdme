@@ -46,7 +46,7 @@ umod.u0 = u0;
 
 % The time span. The state of the trajectory will be stored at all
 % time points in tspan. 
-umod.tspan = 0:400;
+umod.tspan = 0:20;
 
 % We need to modify the diffusion matrix such that the membrane
 % bound species only diffuse on the membrane. We achieve this by

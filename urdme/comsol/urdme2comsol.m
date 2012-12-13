@@ -71,9 +71,7 @@ if is4x
   vol = umod.vol;
 
   V = repmat(vol(:)'*6.022e23,[Mspecies 1]);
-  if ~exist(tspan)
-    tspan = umod.tspan;
-  end
+ 
   for i = 1:numel(tspan)
       U(:,:,i) = U(:,:,i)./V;
   end
