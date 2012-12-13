@@ -73,7 +73,7 @@ tMinD_m2 = sum(MinD_m(ind2,:));
 tMinDE   = sum(MinDE(ind1,:)); 
 
 tspan = umod.tspan;
-meanspec = [mean(sum(MinD_c_atp)) mean(sum(MinD_m)) mean(sum(MinE)) mean(sum(MinDE)) mean(sum(MinD_c_adp))]
+meanspec = [mean(sum(MinD_c_atp)) mean(sum(MinD_m)) mean(sum(MinE)) mean(sum(MinDE)) mean(sum(MinD_c_adp))];
 subplot(2,1,1); plot(tspan,tMinD_m1,'Linewidth',2);
 title('Copy number in one of the poles. ');
 xlabel('t [s]');
