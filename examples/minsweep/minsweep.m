@@ -13,7 +13,7 @@
 % S. Engblom and A. Hellander 2011-06-01
 
 % specify comsol version - '3.5' or '4.x'
-comsol ='3.5';
+comsol ='4.x';
 
 % parameter space to sweep over
 %Nval = 30;

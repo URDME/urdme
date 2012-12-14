@@ -8,7 +8,19 @@ global cent;
 Mspecies   = 3;
 Mreactions = 8;
 
-[dim,Ncells] = size(umod.comsol.mesh.p); 
+if iscmp4x(umod.comsol) %Comsol 4.x
+  xmi = mphxmeshinfo(umod.comsol);
+  dofs = xmi.dofs; 
+  tri = xmi.elements.tri.nodes+1;
+  nodes=dofs.nodes(1:Mspecies:end)+1;
+else
+  dofs = xmeshinfo(umod.comsol,'Out','dofs');
+  tri = umod.comsol.mesh.e;
+  nodes= dofs.nodes(1:Mspecies:end);
+end
+p = dofs.coords(:,1:Mspecies:end);
+
+[dim,Ncells] = size(p); 
 Ndofs = dim*Ncells;
 
 V  = 1;
@@ -27,16 +39,7 @@ N(V,8) = -1;
 
 umod.N = sparse(N);
 umod.G = sparse(ones(Mreactions,Mspecies+Mreactions));
-
-if iscmp4x(umod.comsol)
-  xmi = mphxmeshinfo(umod.comsol);
-  dofs = xmi.dofs; 
-else
-  dofs = xmeshinfo(umod.comsol,'Out','dofs');
-end
     
-p = dofs.coords(:,1:Mspecies:end);
-
 % Subdomains
 all=1:Ncells;
 
@@ -57,15 +60,12 @@ umod.data(umod.soma)=1;
 umod.data(umod.axon)=2;
 
 % Surface mesh data.
-
-tri = umod.comsol.mesh.e;
 pn = 1:Ncells;
-pn(dofs.nodes(1:Mspecies:end))=pn;
+pn(nodes)=pn;
 tri = pn(tri(1:3,:));
 [~,ntri]=size(tri);
 
 mem = find(umod.sd==2);
-
 
 % To approximate a velocity field we construct tangent vectors to the
 % surface (defined by the triangles) in directions determinied for 
@@ -100,7 +100,6 @@ for i=1:ntri
    
 end
 
-
 % Delaunay triangulation object for nearest neighbour interpolation. 
 global DT;
 DT = DelaunayTri(cent);
@@ -131,8 +130,10 @@ A = sparse(i,j,s,Ndofs,Ndofs);
 
 umod.A = A;
 umod.DM = umod.D;
+umod.D = umod.D+umod.A;
 
-%umod.D = umod.D+umod.A;
+% Initial condition
+umod.u0 = zeros(3,Ncells);
 
 % Microtubule density in axon.
 mtd = 10;  

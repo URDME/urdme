@@ -13,16 +13,21 @@ function A  = assemblefvm3d(fem,velo)
 if iscmp4x(fem.comsol)
   xmi = mphxmeshinfo(fem.comsol);
   dofs = xmi.dofs; 
+  Mspecies = numel(xmi.dofs.dofnames);
+  nodes=dofs.nodes(1:Mspecies:end)+1;
+  t = xmi.elements.tet.nodes+1;
 else
   dofs = xmeshinfo(fem.comsol,'Out','dofs');
+  Mspecies = numel(dofs.names);
+  nodes=dofs.nodes(1:Mspecies:end);
+  t = umod.comsol.mesh.t;
 end
 
-Mspecies = numel(dofs.names);
 p = dofs.coords(:,1:Mspecies:end);
 [foo,Ncells]=size(p);
 pn = 1:Ncells;
-pn(dofs.nodes(1:Mspecies:end))=pn;
-t = pn(fem.comsol.mesh.t);
+pn(nodes)=pn;
+t = pn(t);
 
 %Number of nodes, triangles and edges.
 N = length(p);

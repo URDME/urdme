@@ -7,9 +7,13 @@
 
 function K = assemblefvm(umod,velo)
 
-     
-    [dim,ndofs] = size(umod.comsol.mesh.p);
-       
+    if iscmp4x(umod.comsol) 
+      xmi = mphxmeshinfo(umod.comsol);
+      [dim,ndofs] = size(xmi.dofs.coords);
+    else
+      [dim,ndofs] = size(umod.comsol.mesh.p);
+    end
+      
     if dim == 2 
         K = assemblefvm2d(umod,velo);
     elseif dim == 3

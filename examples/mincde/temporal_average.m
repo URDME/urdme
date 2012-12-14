@@ -1,6 +1,6 @@
 %  Postprocessing script for the mincde model. 
 %  
-%  Computes and plots the temporal average of MinD_m
+%  Computes and plots the temporal average of MinD_m.
 %  along with the total number of MinD_m in one half of the
 %  bacterium. 
 %
@@ -9,7 +9,6 @@
 %
 %  P. Bauer,     2012-09-3
 %  A. Hellander, 2010-06-9. 
-%
 %
 
 function umod2 = temporal_average(umod)

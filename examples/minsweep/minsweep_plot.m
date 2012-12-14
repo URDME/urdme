@@ -21,7 +21,8 @@ if strcmp(umod.mph,'4.x')
 end
 
 %insert solution to comsol model
-%umod = urdme2comsol(umod,U,1);
+%load(sprintf('results/out%d',index));
+%umod = urdme2comsol(umod,U,umod.tspan,2);
 umod = urdme_addsol(umod,sprintf('results/out%d',index));
 
 
