@@ -52,9 +52,7 @@ double rFun2(const int *x, double t, double vol, const double *data, int sd)
  */
 
 {
-   //if((int)data[0] == 2)
    return sigma_f*x[V]; 
-   return 0.0;
 }
 
 double rFun3(const int *x, double t, double vol, const double *data, int sd)
@@ -65,9 +63,7 @@ double rFun3(const int *x, double t, double vol, const double *data, int sd)
  */
 
 {
-   //if((int)data[0] == 2)
    return sigma_f*x[V]; 
-   return 0.0;
 }
 
 double rFun4(const int *x, double t, double vol, const double *data, int sd)

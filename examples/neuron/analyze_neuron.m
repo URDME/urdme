@@ -1,6 +1,6 @@
 % Plot sum of V in different parts of the neuron domain. 
 
-function xx = analyze_neuron(fem)
+function [] = analyze_neuron(fem)
 
 V  = 1;
 Vk = 2;
@@ -8,17 +8,17 @@ Vd = 3;
 
 Ms =  3;
 
-totV = sum(fem.urdme.U);
+totV = sum(fem.U);
 %normalized time
-tspan = fem.urdme.tspan/fem.urdme.tspan(end);
+tspan = fem.tspan/fem.tspan(end);
 
-axon = fem.urdme.axon;
-soma = fem.urdme.soma;
-dendrites = fem.urdme.dendrites;
+axon = fem.axon;
+soma = fem.soma;
+dendrites = fem.dendrites;
 
-sV  = fem.urdme.U(1:Ms:end,:);
-sVk = fem.urdme.U(2:Ms:end,:);
-sVd = fem.urdme.U(3:Ms:end,:);
+sV  = fem.U(1:Ms:end,:);
+sVk = fem.U(2:Ms:end,:);
+sVd = fem.U(3:Ms:end,:);
 
 sA = sV+sVk+sVd;
 
