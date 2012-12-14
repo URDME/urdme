@@ -278,8 +278,9 @@ int destroy_model(urdme_model *model)
 	free(model->U);
     
     for (i=0; i<model->num_extra_args; i++)
-      if (model->extra_args[i]!=NULL)
+      if (model->extra_args[i]!=NULL){
         free(model->extra_args[i]);
+	}
     
 	free(model);
     

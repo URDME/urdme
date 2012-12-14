@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         report_level=1;
     
     /* Set report level */
-	model->extra_args[0] = malloc(sizeof(int));
+	model->extra_args[0] = (int *)malloc(sizeof(int));
 	*(int *)(model->extra_args[0]) = report_level;
     
     /* Set tau_d */
@@ -133,9 +133,25 @@ int main(int argc, char *argv[])
         printf("Step length (tau_d) is missing in the model file\n");
         return(-1);   
     }
-    model->extra_args[2]  = (size_t *)mxGetIr(DT);
-    model->extra_args[3]  = (size_t *)mxGetJc(DT);
-    model->extra_args[4]  = (double *)mxGetPr(DT);
+	
+    /* Since the extra arg is freed in destroy model, we need to create 
+       copies of these arrays to make sure that all memory in the model struct
+       is allocated with malloc, not mxMalloc. */
+    int Ndofs = model->Mspecies*model->Ncells;
+    int nnzDT = mxGetNzmax(DT);
+    size_t *irDT,*jcDT;
+    double *prDT; 
+    irDT = (size_t *)malloc(nnzDT*sizeof(size_t));	 
+    jcDT = (size_t *)malloc((Ndofs+1)*sizeof(size_t));	
+    prDT = (double *)malloc(nnzDT*sizeof(double));	
+    memcpy(irDT,(size_t *)mxGetIr(DT),nnzDT*sizeof(size_t));
+    memcpy(jcDT,(size_t *)mxGetJc(DT),(Ndofs+1)*sizeof(size_t));
+    memcpy(prDT,(double *)mxGetPr(DT),nnzDT*sizeof(double));
+    model->extra_args[2]  = irDT;
+    model->extra_args[3]  = jcDT;
+    model->extra_args[4]  = prDT;
+
+
     /* close MAT file*/
     matClose(input_file);
 
