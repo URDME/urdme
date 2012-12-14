@@ -31,15 +31,17 @@ umod2 = urdme2comsol(umod2,U2,[tspan(1) tspan(end)]);
 if iscmp4x(umod.comsol) %Comsol 4.x
   xmi = mphxmeshinfo(umod.comsol);
   dofs = xmi.dofs; 
+  p = xmi.nodes.coords;
 else
   dofs = xmeshinfo(umod.comsol,'Out','dofs');
+  p = umod.comsol.mesh.p;
 end
  
-[~,Ncells] = size(umod.comsol.mesh.p);
+[~,Ncells] = size(p);
 
 % 1D version
-minz = min(umod.comsol.mesh.p(3,:));
-maxz = max(umod.comsol.mesh.p(3,:));
+minz = min(p(3,:));
+maxz = max(p(3,:));
 
 vpm     = zeros(1,Ncells);
 vpm(pm) = umod.vol(pm);
@@ -71,7 +73,7 @@ tMinD_m2 = sum(MinD_m(ind2,:));
 tMinDE   = sum(MinDE(ind1,:)); 
 
 tspan = umod.tspan;
-meanspec = [mean(sum(MinD_c_atp)) mean(sum(MinD_m)) mean(sum(MinE)) mean(sum(MinDE)) mean(sum(MinD_c_adp))]
+meanspec = [mean(sum(MinD_c_atp)) mean(sum(MinD_m)) mean(sum(MinE)) mean(sum(MinDE)) mean(sum(MinD_c_adp))];
 subplot(2,1,1); plot(tspan,tMinD_m1,'Linewidth',2);
 title('Copy number in one of the poles. ');
 xlabel('t [s]');
@@ -85,5 +87,13 @@ subplot(2,1,2); plot(slices(1:end-1)+0.5e-6,conc./max(conc),'*',xline,vline,'--'
 set(gca,'YTick',[0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0],'YLim',[0 1],'XLim',[0 4.5e-6],'XTick',[0 2.25e-6 4.5e-6]);
 title('Spatiotemporal average');
 
-figure(2); postplot(umod2.comsol,'Tetdata','MinD_m');
+figure(2); 
+if iscmp4x(umod2.comsol)
+    umod2.comsol.result.create('res1','PlotGroup3D');
+    umod2.comsol.result('res1').feature.create('surf1','Surface');
+    umod2.comsol.result('res1').feature('surf1').set('expr','MinD_m');
+    mphplot(umod2.comsol,'res1');
+else
+    postplot(umod2.comsol,'Tetdata','MinD_m');
+end
 title('Spatiotemporal average');
