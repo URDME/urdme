@@ -1,0 +1,5 @@
+1.2.0
+----------
+- Support for Comsol Multiphysics 4.x
+- Re-integrated the inline-propensities from URDME 1.0
+- Major update to the model structure in the Matlab layer.  
