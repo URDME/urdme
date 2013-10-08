@@ -8,7 +8,7 @@ extern int errno;
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include "zlib.h"    /* support for compression (-v7 files) */
+/*#include "zlib.h"  // support for compression (-v7 files) */
 #include <time.h>
 #include "read_matfile.h"
 //**************************************************************************************
