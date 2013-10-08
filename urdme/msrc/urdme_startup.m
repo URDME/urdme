@@ -4,7 +4,9 @@
 
 function [] = urdme_startup() 
 
-setenv('PATH',strcat( getenv('PATH'), ':/usr/local/bin' ));
+if(isempty(findstr(getenv('PATH'), ':/usr/local/bin')))
+  setenv('PATH',strcat( getenv('PATH'), ':/usr/local/bin' ));
+end
 
 %%% URDME initialization
 if(isempty(getenv('URDME_ROOT')))
