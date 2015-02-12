@@ -1,66 +1,115 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8">
+    <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>URDME by URDME</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
 
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
+
+    <title>URDME by URDME</title>
   </head>
+
   <body>
-    <div class="wrapper">
-      <header>
+    <header>
+      <div class="inner">
         <h1>URDME</h1>
-        <p></p>
+        <h2></h2>
+        <a href="https://github.com/URDME/urdme" class="button"><small>View project on</small> GitHub</a>
+      </div>
+    </header>
 
-        <p class="view"><a href="https://github.com/URDME/urdme">View the Project on GitHub <small>URDME/urdme</small></a></p>
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h3>
+<a id="welcome-to-the-urdme-webpage" class="anchor" href="#welcome-to-the-urdme-webpage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to the URDME Webpage.</h3>
 
+<p>URDME is a general software framework for modeling and simulation of stochastic reaction-diffusion processes on unstructured, tetrahedral and triangular meshes. URDME emphasizes modularity in order to be useful both as a simulation tool and as a framework for developemnt of stochastic simulation algorithms.</p>
 
-        <ul>
-          <li><a href="https://github.com/URDME/urdme/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/URDME/urdme/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/URDME/urdme">View On <strong>GitHub</strong></a></li>
-        </ul>
-      </header>
-      <section>
-        <h3>Welcome to GitHub Pages.</h3>
+<h3>
+<a id="quick-start" class="anchor" href="#quick-start" aria-hidden="true"><span class="octicon octicon-link"></span></a>Quick Start</h3>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<p>Download the latest stable release and unpack it, alternatively clone the repository (requires a git client). In a terminal type:</p>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
+<pre><code>$ git clone https://github.com/URDME/urdme.git
+$ sudo ./install.sh
 </code></pre>
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+<p>Consult the software manual in <em>doc/manual.pdf</em> for further instructions, examples and tutorials. </p>
 
-<h3>Designer Templates</h3>
+<h3>
+<a id="system-requirements-and-software-dependencies" class="anchor" href="#system-requirements-and-software-dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>System requirements and software dependencies</h3>
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
+<ul>
+<li>Linux or Apple OSX operating system.</li>
+<li>
+<p>Matlab</p>
 
-<h3>Rather Drive Stick?</h3>
+<ul>
+<li>Tested versions: 2007a, 2008a, 2008b, 2009a, 2009b, 2011b, 2012a, 2014b. Command line interface must be installed. </li>
+</ul>
+</li>
+<li>
+<p>Comsol multiphysics 3.5a (with appropriate patches) or Comsol multiphysics 4.x </p>
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
+<ul>
+<li>Tested versions: 3.5a, 4.0, 4.2, 4.3, 4.3b (recommended)</li>
+<li>Must have Matlab integration components installed</li>
+</ul>
+</li>
+<li>GCC (Xcode on Apple computers+command-line tools)
 
-<h3>Authors and Contributors</h3>
+<ul>
+<li>Executables gcc and make must be in the path</li>
+<li>Standard libraries must be installed</li>
+</ul>
+</li>
+<li>The optional SBML support requires additionally
 
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+<ul>
+<li>Python runtime libraries 2.6 or higher</li>
+<li>SBML library for python (libsbml)</li>
+</ul>
+</li>
+</ul>
 
-<h3>Support or Contact</h3>
+<h3>
+<a id="copyright" class="anchor" href="#copyright" aria-hidden="true"><span class="octicon octicon-link"></span></a>Copyright</h3>
 
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
-      </section>
-      <footer>
-        <p>This project is maintained by <a href="https://github.com/URDME">URDME</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
-      </footer>
+<p>URDME 1.2. Copyright 2008,2009,2010,2011,2012.
+See the file AUTHORS for complete list of authors. </p>
+
+<h3>
+<a id="publications" class="anchor" href="#publications" aria-hidden="true"><span class="octicon octicon-link"></span></a>Publications</h3>
+
+<p>URDME: A modular framework for stochastic simulation of reaction-transport processes in complex geometries, 
+B. Drawert, S. Engblom and A. Hellander, BMC Systems Biology 2012 6:76</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/URDME/urdme/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/URDME/urdme/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/URDME/urdme"></a> is maintained by <a href="https://github.com/URDME">URDME</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
     </div>
-    <script src="javascripts/scale.fix.js"></script>
-    
+
+  
   </body>
 </html>
