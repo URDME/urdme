@@ -1,6 +1,7 @@
-#URDME
+# URDME
 
 Unstructured Reaction-Diffusion Master Equation
+
 www.urdme.org
 
 URDME is a general software framework for modeling and simulation of
@@ -9,10 +10,11 @@ emphasizes modularity in order to be useful both as a simulation tool
 and as a framework for development of stochastic simulation
 algorithms.
 
-URDME 1.3. Copyright 2008--2017,
+URDME 1.3. Copyright 2008--2017
+
 See the file AUTHORS for a complete list of authors. 
 
-###Quick Start
+### Quick Start
 
 Download the latest stable release and unpack it, alternatively clone
 the repository (requires a git client),
@@ -37,7 +39,7 @@ manual,
 doc/manual.pdf 
 ```
 
-###System requirements and software dependencies
+### System requirements and software dependencies
 
 See the file VERSION for a fuller list.
 
@@ -49,34 +51,30 @@ See the file VERSION for a fuller list.
 
 - PDE Toolbox, tested with versions: 1.5, 2.3
 
-###Licence: GPL 3
+### Licence: GPL 3
 
 See the file LICENCE for the full statement.
 
-###Citing URDME:
+### Citing URDME:
 
 URDME is a research software and correctly citing it is important to
 the maintainers.
 
-* The software package
-
-B. Drawert, S. Engblom and A. Hellander: "URDME: A modular framework
-for stochastic simulation of reaction-transport processes in complex
-geometries", BMC Systems Biology 6(76):1--17 (2012)
+* The software package; B. Drawert, S. Engblom and A. Hellander:
+"URDME: A modular framework for stochastic simulation of
+reaction-transport processes in complex geometries", BMC Systems
+Biology 6(76):1--17 (2012)
 [(doi)](http://dx.doi.org/10.1186/1752-0509-6-76)
 
-* The AEM solver
-
-P. Bauer and S. Engblom: "Sensitivity estimation and inverse problems
-in spatial stochastic models of chemical kinetics", pp. 519--527 in
-A. Abdulle, S. Deparis, D. Kressner, F. Nobile and M. Picasso
-(editors): "Numerical Mathematics and Advanced Applications: ENUMATH
-2013", vol 103 of Lecture Notes in Computational Science and
-Engineering, Springer (2015).
+* The AEM solver; P. Bauer and S. Engblom: "Sensitivity estimation and
+inverse problems in spatial stochastic models of chemical kinetics",
+pp. 519--527 in A. Abdulle, S. Deparis, D. Kressner, F. Nobile and
+M. Picasso (editors): "Numerical Mathematics and Advanced
+Applications: ENUMATH 2013", vol 103 of Lecture Notes in Computational
+Science and Engineering, Springer (2015).
 [(doi)](http://dx.doi.org/10.1007/978-3-319-10705-9_51)
 
 * The UDS solver implements the first order method described in
-
 S. Engblom: "Computing the Moments of High Dimensional Solutions of
 the Master Equation" Appl. Math. Comput. 18(2):498--515 (2006).
 [(doi)](http://dx.doi.org/10.1016/j.amc.2005.12.032)
