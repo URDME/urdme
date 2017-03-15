@@ -1,0 +1,8 @@
+title: URDME
+description: Stochastic reaction-diffusion simulation on unstructured meshes.
+google_analytics: 
+show_downloads: true
+theme: jekyll-theme-slate
+
+gems:
+  - jekyll-mentions
