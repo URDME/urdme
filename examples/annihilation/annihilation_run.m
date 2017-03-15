@@ -1,22 +1,27 @@
-% Run the annihilation example.
-%
-clc;
+% Annihilation example.
+%   Species A and B start at opposite boundaries (in 1D) and
+%   annihilate when they meet. This example shows how inline
+%   propensities are used, and how one can set up a simple 1D
+%   simulation.
 
-umod.name = 'annihilation';
-%umod.test=1;
+% S. Engblom 2017-02-18 (Major revision, URDME 1.3, Comsol 5)
+% B. Drawert 2012
 
-% Execute the solver. This will autimatically generate a propensity file
-% from the inline proponsties described in the function annihilation.m
-umod = urdme(umod,@annihilation);
+% generate URDME model
+clear umod
+umod = annihilation;
 
-Mspecies=2;
-N = size(umod.mesh.p,2);
-Z = umod.mesh.p(3,:);
-vol=umod.vol;
-mean_A = mean(umod.U(1:2:end,50:101),2)./vol;
-mean_B = mean(umod.U(2:2:end,50:101),2)./vol;
+% simulate
+umod = urdme(umod,'seed',20170219);
 
-figure(1);plot(Z,mean_A,'-dr');hold on;
-plot(Z,mean_B,'-db');hold off
-legend('a','b','Location','N');
-axis tight;
+% compute means
+mean_A = mean(umod.U(1:2:end,end/2:end),2)./umod.vol;
+mean_B = mean(umod.U(2:2:end,end/2:end),2)./umod.vol;
+
+% visualize (can be turned off)
+if ~exist('plotting_off','var') || ~plotting_off
+  figure(1), clf
+  plot(umod.private.mesh,mean_A,'-sb',umod.private.mesh,mean_B,'-dr');
+  legend('A','B');
+  xlabel('x');
+end
