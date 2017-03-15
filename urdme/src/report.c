@@ -1,47 +1,62 @@
-/* Report function used with rdme_solve. */
+/* report.c - URDME report function. */
 
-/* A. Hellander 2008-12-15 */
+/* S. Engblom 2017-02-17 (Major revision, URDME 1.3, Comsol 5) */
+/* S. Engblom 2014-06-10 (Revision) */
 /* B. Drawert 2010-12-12 */
+/* A. Hellander 2008-12-15 */
 
-// all files must compile without Matlab 
-#include <stdlib.h>
-#ifndef URDME_LIBMAT   
 #include "mex.h"
-#define printf mexPrintf
-#define error_fn mexErrMsgTxt
-#else //-------------------
-#include <stdio.h>
-#define error_fn(a) fprintf(stderr,a);exit(0);
-#endif
+#include "report.h"
 
-void reportFun1(double time, const double t0, const double tend, long int total_diffusion,
-		long int total_reaction, int errcode, int report_level)
-/* Report function passed as argument to rdme_solve. */
+/*----------------------------------------------------------------------*/
+void URDMEreportFun(double time,double t0,double tend,
+		    long total_diffusion,long total_reaction,
+		    int errcode,int report_level)
 {
+  static int ncalls;
+
   if (!errcode) {
-    double prct=(time-t0)/(tend-t0)*100.0;
+    double prct = (time-t0)/(tend-t0)*100.0;
     
     switch (report_level) {
     case 1:
-      printf("%i%% done.\n",(int)prct);
+      PRINTF("%i%% ",(int)prct);
+      if (++ncalls == 20) {
+	PRINTF("\n");
+	ncalls = 0;
+      }
       break;
     case 2:
-      printf("%i%% done.\n",(int)prct);
-      printf("\t#Reaction  events = %li\n", total_reaction);
-	  printf("\t#Diffusion events = %li\n", total_diffusion);
-	  break;
+      PRINTF("%i%% done.\n",(int)prct);
+      PRINTF("\t#Reaction  events = %li\n",total_reaction);
+      PRINTF("\t#Diffusion events = %li\n",total_diffusion);
+      break;
+    case 3:
+      PRINTF("%i%% done.\n",(int)prct);
+      PRINTF("\t#Reaction  events = %li\n",total_reaction);
+      PRINTF("\t#Diffusion events = %li\n",total_diffusion);
+      /* callback allows for interactive exit: */
+      PRINTF("Enter RETURN to continue, DBQUIT to quit.\n");
+      mexCallMATLAB(0,NULL,0,NULL,"keyboard");
+      break;
     default:
       /* May be expanded in the future... */
       break;
     }
-  } else {
+  }
+  else {
     switch (errcode) {
     case 1:
-      error_fn("Negative state detected.");
+      PERROR("Negative state detected (reaction).\n");
+      break;
+    case 2:
+      PERROR("Negative state detected (diffusion).\n");
       break;
     default:
-      error_fn("Unknown error code.");
+      PRINTF("Unknown error code = %d.\n",errcode);
+      PERROR("Bailing out.\n");
       break;
     }
   }
 }
+/*----------------------------------------------------------------------*/

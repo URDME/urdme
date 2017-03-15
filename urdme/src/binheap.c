@@ -1,5 +1,6 @@
 /* binheap.c */
 
+/* S. Engblom 2017-02-16 */
 /* J. Cullhed 2008-08-04. */
 
 /* Binary heap needed by the NRM and NSM. */
@@ -15,6 +16,7 @@
    the "data" held by node n in the heap is given by INDEX2[INDEX[n]].
 */
 
+/*----------------------------------------------------------------------*/
 void initialize_heap(double *data,int *INDEX,int *INDEX2,int N)
 /*** ? ***/
 {
@@ -22,7 +24,7 @@ void initialize_heap(double *data,int *INDEX,int *INDEX2,int N)
   for (i=(N-1)>>1; i>=0; i--)
     percolate_down(i,data,INDEX,INDEX2,N);
 }
-
+/*----------------------------------------------------------------------*/
 void percolate_down(int n1,double *data,int *INDEX,int *INDEX2,int N)
 /*** ? ***/
 {
@@ -51,7 +53,7 @@ void percolate_down(int n1,double *data,int *INDEX,int *INDEX2,int N)
   INDEX[node]=j;
   INDEX2[j]=node;
 }
-
+/*----------------------------------------------------------------------*/
 void percolate_up(int node,double *data,int *INDEX,int *INDEX2,int N)
 /*** ? ***/
 {
@@ -79,7 +81,7 @@ void percolate_up(int node,double *data,int *INDEX,int *INDEX2,int N)
   INDEX[node]=j;
   INDEX2[j]=node;
 }
-
+/*----------------------------------------------------------------------*/
 void update(int node,double *data,int *INDEX,int *INDEX2,int N)
 /*** ? ***/
 {
@@ -90,7 +92,7 @@ void update(int node,double *data,int *INDEX,int *INDEX2,int N)
   else
     percolate_down(node,data,INDEX,INDEX2,N);
 }
-
+/*----------------------------------------------------------------------*/
 /* For debug. */
 int test_heap_prty(double *data,int *INDEX,int N)
 {
@@ -100,7 +102,7 @@ int test_heap_prty(double *data,int *INDEX,int N)
       return -1; 
   return 0;
 }
-
+/*----------------------------------------------------------------------*/
 void print_heap(double *data,int N)
 {	
   int i;
@@ -108,7 +110,7 @@ void print_heap(double *data,int N)
   for(i=0; i<(N-1)/2; i++)
     printf("%.10f %.10f %.10f\n",data[i],data[2*i+1],data[2*i+2]);
 }
-
+/*----------------------------------------------------------------------*/
 void test_min_prty(double *data,int N)
 {
   int i;
@@ -119,3 +121,4 @@ void test_min_prty(double *data,int N)
       break;
     }
 }
+/*----------------------------------------------------------------------*/
