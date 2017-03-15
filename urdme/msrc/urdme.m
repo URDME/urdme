@@ -1,342 +1,188 @@
-function [umod,outputfile] = urdme(fem,varargin)
+function umod = urdme(umod,varargin)
 %URDME Interface to spatial stochastic simulation algorithms.
-%   UMOD = URDME(COMSOL,FILE) generates a single trajectory using the model
-%   .m-file FILE as the specification of the model. It is assumed the
-%   propensity functions are found in the model .c-file with the same
-%   name.
+%   UMOD = URDME(UMOD,...) generates a single trajectory for the
+%   diffusion/transport model defined in the URDME-struct UMOD. The
+%   arguments to URDME are passed via property/value pairs, see the
+%   table below.
 %
-%   For example, UMOD = URDME(COMSOL,'mymodel') uses the model .m-file
-%   'mymodel.m' by executing UMOD = mymodel(COMSOL) and also compiles the
-%   model propensity .c-file 'mymodel.c'.
+%   For example,
+%     UMOD = URDME(UMOD,'solver','mysolver','propensities','mymodel')
+%   compiles the solver 'mysolver', assumed to have the Mex-interface
+%   source file 'mexmysolver.c', together with the propensity source
+%   file 'mymodel.c' for the reactions.
 %
-%   UMOD = URDME(COMSOL,@FUN,'propensities','mymodel') uses the function
-%   handle FUN instead and the propensity file 'mymodel.c' for the
-%   reactions.
+%   Comsol Java objects are conventionally stored in UMOD.comsol and
+%   PDE Toolbox structures in UMOD.pde. After simulating the resulting
+%   object may be loaded back into Comsol (or PDE Toolbox) for
+%   visualization and postprocessing. See URDME2COMSOL and URDME2PDE.
 %
-%   UMOD = URDME(COMSOL,FILE,...) passes additional options in the form of
-%   property/value pairs, see the table below.
-%
-%   For example, after installing the DFSP-solver, you may use the
-%   syntax
-%     UMOD = URDME(COMSOL,FILE,'solver','dfsp')
-%   to launch the solver named 'dfsp' in interactive mode. 
-%
-%   Solvers can generally be run in background mode by specifying the
-%   property 'mode' to be 'bg', that is,
-%     [UMOD,OUTFILE] = URDME(COMSOL,FILE,'mode','bg')
-%   will launch the default NSM solver in background mode, returning
-%   control to the Matlab-prompt immediately. See the example below.
-%
-%   Property     Value/{Default}        Description
+%   Property        Value/{Default}         Description
 %   -----------------------------------------------------------------------
-%   solver       {'nsm'} | ...          Name of solver.
-%   mode         {'interactive'} | 'bg' Mode of operation.
-%   verbose      {0}, 1, 2              Level of Matlab layer report.
-%   report        0, {1}, 2             Level of solver report.   
-%   seed         uint32                 Random number seed.
-%   propensities character array        Name of propensity .c-file.
-%   outfile      character array        Name of output file
-%   solvopts     character array        Solver options
-%   delete_inputfile    0,{1}                  Delete the input file. 
-%   delete_outputfile   0,{1}                  Delete the output file. 
+%   solver          string {'nsm'}          Name of solver
+%   propensities    string                  Name of propensity .c-file
+%   report          {0}, 1, 2, 3            Level of report
+%   compile         {1} | 0                 Compile on/off
+%   parse           {1} | 0                 Parse on/off
+%   seed            double {NaN}            Solver random number seed
 %
-%   The default NSM solver supports three report levels, 0 (no
-%   report), 1 (progress report), 2 (progress report + event count).
+%   The URDME Matlab interface supports three levels of report: 0
+%   (silent), 1 (intermediate), 2 (comprehensive), 3 (as 2, but also
+%   allowing for an early exit).
 %
-%   The URDME matlab interface supports three levels of verbosity. 
-%   0 (silent), 1 (intermediary) and 2 (comprehensive). Level 1 can be 
-%   of interests to an advanced user, while the highest level
-%   is only recommened as a tool to debug the interface. 
+%   Turn compilation off when you are solving the same model several
+%   times and after the first call to URDME. You may similarly turn
+%   parsing off after the UMOD-struct has been extended correctly once
+%   (and preferably checked). For example,
+%     % first call, compile mymodel.c:
+%     UMOD = URDME(UMOD,'propensities','mymodel','seed',1234);
+%     % second call, new seed, no compilation:
+%     UMOD = URDME(UMOD,'seed',2345,'compile',0);
+%     % a sequence of calls:
+%     UMOD.parse = 0; % don't parse the URDME struct
+%     for seed = 1:10
+%       UMOD.seed = seed; % set seed directly
+%       UMOD = URDME(UMOD);
+%     end
 %
-%   Example:
-%     [fem,out] = urdme(fem,file,'mode','bg'); % background mode
-%     % wait until done
-%     load(out);
+%   The URDME solver sequence takes the generic form
+%     make_<UMOD.solver>(UMOD.propensities);
+%     UMOD.U = mex<UMOD.solver>(UMOD.tspan,UMOD.u0, ...
+%                UMOD.D,UMOD.N,UMOD.G, ...
+%                UMOD.vol,UMOD.ldata,UMOD.gdata,UMOD.sd, ...
+%                UMOD.report,UMOD.seed,UMOD.solverargs);
 %
-%     % Comsol 3.5-syntax:
-%     fem = rdme2fem(fem,U);
-%
-%     % Comsol 4.x-syntax:
-%     fem = rdme2mod(fem,model,U);
-%     % (where model is the Comsol Java-object)
-%
-%   See also MOD2RDME, FEM2RDME, RDME2MOD, RDME2FEM, RDME2MAT.
+%   See also COMSOL2URDME, URDME2COMSOL, URDME_VALIDATE, NSM.
 
-% B. Drawert, A. Hellander 2012-10-2 (Revision, inline propensities)
-% P. Bauer and S. Engblom 2012-04-04 (Revision, cleanup)
+%   The URDME-struct has the following fields:
+%   -----------------------------------------------------------------------
+%
+%   Required fields before call:
+%
+%   tspan           Time vector
+%   u0              Initial state
+%   D               Diffusion matrix
+%   N               Stoichiometric matrix
+%   G               Dependency graph
+%   vol             Voxel volumes
+%   sd              Subdomain numbers
+%
+%   Usually passed as options to URDME:
+%
+%   solver          Solver
+%   propensities    Propensity source file
+%   report          Solver feedback
+%   compile         Compilation on/off
+%   parse           Parsing on/off
+%   seed            Random seed
+%
+%   Optional, empty understood when left out:
+%
+%   ldata           Local data vector
+%   gdata           Global data vector
+%   solverargs      Arguments to solver, property/value cell-vector
+%
+%   Optional:
+%
+%   U               Latest stored solution
+%   comsol          Comsol Java object
+%   pde             PDE Toolbox structure
+%   private         Field to store anything extra
+
+% S. Engblom 2017-02-15 (Major revision, URDME 1.3, Comsol 5)
+% P. Bauer, S. Engblom 2012-04-04 (Revision, cleanup)
 % V. Gerdin 2012-02-01 (Revision, Comsol 4.2)
-% B. Drawert and A. Hellander 2010-06-07 (Revision, background mode)
+% B. Drawert, A. Hellander 2010-06-07 (Revision, background mode)
 % J. Cullhed 2008-06-18
 
-% make sure everything is initialized
-urdme_startup;
-
-% valid options (supported by NSM-solver) 
-optdef = struct('report',1,'seed',[],'mode','interactive', ...
-                'solver','nsm','outfile',[],'propensities',[], ...
-                'solvopts',[],'verbose',1,'delete_inputfile',1, ...
-                'delete_outputfile',1);
-
-% parse property/value pairs
-if nargin > 2 
+% parse property/value pairs, the logic of this if-statement is: (1)
+% either options have been given, or (2) the umod-struct is
+% incomplete, or (3) the umod-struct instructs us to parse it
+if nargin > 1 || ~isfield(umod,'parse') || umod.parse
+  % default options
+  optdef = struct('solver','nsm', ...
+                  'propensities','', ...
+                  'report',0, ...
+                  'compile',1, ...
+                  'parse',1, ...
+                  'seed',NaN, ...
+                  'tspan',[], ...
+                  'u0',[], ...
+                  'D',[], ...
+                  'N',[], ...
+                  'G',[], ...
+                  'vol',[], ...
+                  'sd',[], ...
+                  'ldata',[], ...
+                  'gdata',[], ...
+                  'solverargs',{{}}, ...
+                  'U',[], ...
+                  'comsol',[], ...
+                  'pde',[], ...
+                  'private',[]);
+  % input options
   try
-    % URDME 1.1 syntax
-    if iscell(varargin{2})
-      urdme_args=varargin{2};
-      opts = struct(urdme_args{:});  
-    % URDME 1.2 syntax
-    else
-      opts = struct(varargin{2:end});
-    end
+    opts = struct(varargin{:});
   catch
-    error('Options must be passed as property/value pairs.');
+    error('Could not create Matlab struct from input property/value pairs.');
   end
 
-  %first determine the level of verbosity and the default solver
+  % merge options: opts --> umod, opts takes precedence
   fn = fieldnames(opts);
   for i = 1:length(fn)
-     if(strcmpi(fn{i},'verbose'))
-        optdef.verbose = getfield(opts,fn{i});
-     elseif(strcmpi(fn{i},'solver'))
-        optdef.solver = getfield(opts,fn{i});
-     end
+    umod = setfield(umod,fn{i},getfield(opts,fn{i}));
   end
-  % Next merge fields
-  fn = fieldnames(opts);
+
+  % merge options: umod --> optdef, umod takes precedence
+  fn = fieldnames(umod);
   for i = 1:length(fn)
-      % In general, we canot restrict what options are passed in to the
-      % solvers. New solvers may need new options.  Also all DFSP options must be supported.
-      % This is a consequence of the overall design of the interface layer.
-      % To warn the user, we instead issue a warning if verbose > 0. 
-      if optdef.verbose>0 && strcmp(optdef.solver,'nsm') && ~isfield(optdef,lower(fn{i}))
-            warning(['Property name ''' fn{i} ''' is not a valid option for the core nsm solver.']);
-      end
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-      optdef = setfield(optdef,lower(fn{i}),getfield(opts,fn{i}));
+    if ~isfield(optdef,fn{i})
+      error(sprintf('Unrecognized property ''%s''.',fn{i}));
+    end
+    optdef = setfield(optdef,fn{i},getfield(umod,fn{i}));
   end
+  umod = optdef;
 end
 
-opts = optdef;
-
-% check for urdme struct
-if ~isfield(fem,'test') 
-  if nargin < 2
-    error(['No .urdme field in fem-struct and no model ' ...
-           'function handle specified.']);
-  else
-    % First check if this is a presassembled umod that will validate.
-    try
-        urdme_validate(fem)
-        % If it does, and no model file is passed in, we use the 
-        % original fem-input. 
-        if isempty(varargin{1})
-            umod = fem;
-        else
-            throw;
-        end
-    catch  
-        % If not, extend the strucute with geometry info.        
-        if isfield(fem,'comsol')  
-            umod=comsol2urdme(fem.comsol,opts.verbose);
-        else     
-            umod=comsol2urdme(fem,opts.verbose);
-        end
-    end
+% possibly add empty fields and then check the URDME struct
+if umod.parse
+  if isempty(umod.ldata)
+    umod.ldata = zeros(0,numel(umod.vol));
   end
+  urdme_validate(umod);
 else
-  % externally defined umod structure (for tests)
-  umod=fem;
+  l_info(umod.report,2,'Parsing turned off.\n');
 end
 
-% We don't impose any restrictions on report levels (all integers) since
-% add-on solvers may suport a highel report level than 2. You should
-% write report level logic tests using ">", not "==".  
-if isnumeric(opts.report) && opts.report==int32(opts.report)
-    umod.report = opts.report;
-else
-    fprintf('report=%g\n',opts.report);
-    error('Unsupported report level (must be integer).');
-end
-
-umod.seed = opts.seed;
-
-if strcmp(opts.mode,'bg')
-    md = '&';
-elseif ~strcmp(opts.mode,'interactive')
-    error('Unsupported mode.');
-else
-    md = '';
-end
-
-% execute .m-model file, 3.5/4.x-style (empty propensity allowed for
-% the purpose of convenient testing)
-if nargin > 1 && ~isempty(varargin{1})
-  if ~isa(varargin{1},'function_handle')
-    if ~exist([varargin{1} '.m'],'file')
-      error(['Could not find model file ' ...
-             varargin{1} ...
-             '.m in current directory or path.']);
-    end
+% (1) Compile the solver.
+if umod.compile
+  % propensities, if any
+  if ~isempty(umod.propensities) && ~any(umod.propensities == '.')
+    umod.propensities = [umod.propensities '.c'];
   end
-  % execute model file
-  umod = feval(varargin{1},umod);
-end
-
-% name of model file
-if ischar(varargin{1})
-  model_name = varargin{1};
+  feval(['mexmake_' umod.solver],umod.propensities);
 else
-  model_name = '';
-end
-% If no model file is given, assume that it is named the
-% same as the current working directory. 
-if(isempty(model_name))
-    [t,r]=strtok(pwd,'/');
-    while ~isempty(r)
-        [t,r]=strtok(r,'/');
-    end
-    model_name = t;
+  l_info(umod.report,2,'Compilation turned off.\n');
 end
 
-
-% check that umod contains all data structures required by the
-% NSM solver and that they make sense
-urdme_validate(umod);
-
-% precompiled propensities
-if isempty(opts.propensities) 
-    if(~isempty(model_name) && file_exists([model_name,'.c']))
-        opts.propensities = strcat(model_name,'.c');
-    end
-elseif(~file_exists(opts.propensities) && file_exists(strcat(opts.propensities,'.c')))
-        opts.propensities = strcat(opts.propensities,'.c');
+% (2) Solve!
+if umod.report >= 2, solver_timer = tic; end 
+l_info(umod.report,1,'Starting simulation...\n');
+umod.U = feval(['mex' umod.solver], ...
+               umod.tspan,umod.u0,umod.D,umod.N,umod.G, ...
+               umod.vol,umod.ldata,umod.gdata,umod.sd, ...
+               umod.report,umod.seed, ...
+               umod.solverargs);
+l_info(umod.report,1,'   ...done.\n');
+if umod.report >= 2
+  fprintf('Solver execution time = %gs.\n',toc(solver_timer));
 end
 
+%-------------------------------------------------------------------------
+function l_info(level,lim,msg)
+%L_INFO Display information.
+%   L_INFO(LEVEL,LIM,MSG) Displays the message MSG whenever LEVEL >=
+%   LIM.
 
-% initialize solvers using an optional initialization script.
-init_file = strcat('urdme_init_',char(opts.solver));
-if exist(init_file)
-    if opts.verbose>=2
-      fprintf('executing %s\n',init_file);
-    end
-    umod = eval(strcat(init_file,'(umod,urdme_args)'));
- elseif ~strcmp(getenv('URDME_SOLVER_PATH'),'')
-     rest = getenv('URDME_SOLVER_PATH');
-     while(~isempty(rest))
-         [tok,rest]=strtok(rest,':');
-         if(isdir([tok,'/src/',opts.solver]))
-             if(file_exists([tok,'/msrc/urdme_init_',opts.solver,'.m']))
-                 % add 'msrc' directory to path, if using alternate solver path
-                 path(path(),[tok,'/msrc/']);
-                 if(exist(init_file))
-                     if(opts.verbose>=2)
-                         fprintf('\texecuting %s in %s\n',init_file,[tok,'/msrc/']);
-                     end
-                     umod = eval(strcat(init_file,'(umod,urdme_args)'));
-                 else
-                     error(sprintf('file %s is found, but exits(%s)==0\n',init_file,init_file));
-                 end
-             end
-             break;
-         end
-     end
-end
+if level >= lim, fprintf(msg); end
 
-
-% get safe temporary files for input/output
-[foo,inputfile] = system('mktemp -t urdmemodel.XXXXXXXXXX');
-inputfile = strcat(strtrim(inputfile), '.mat');
-if opts.verbose>1
-  fprintf('inputfile=%s\n',inputfile);
-end
-
-% if output file not supplied by the user, get a temporary file
-if isempty(opts.outfile)
-  [foo,opts.outfile] = system('mktemp -t urdmeresults.XXXXXXXXXX');
-  opts.outfile = strcat(strtrim(opts.outfile), '.mat');
-else
-  opts.delete_outputfile=0;
-end
-if opts.verbose>1
-  fprintf('outputfile=%s\n',opts.outfile);
-end
-
-% compile the solver
-if opts.verbose > 0
-  fprintf('Compiling solver...\n');
-end
-
-umod = urdme_compile(umod,model_name,opts.propensities,opts.solver,opts.verbose);
-
-%fem = urdme_compile(fem,opts.propensities,opts.solver,opts.solvopts);
-if opts.verbose ~= 0
-  fprintf('   ...done.\n');
-end
-
-% Serialize model to temporary input-file.
-if(opts.verbose>1)
-    fprintf('Writing temporary input file.\n',inputfile);
-end
-rdme2mat(umod,inputfile);
-% solve!
-if opts.verbose ~= 0
-  fprintf('Starting simulation...\n');
-end
-cmd = ['./.urdme/' model_name '.' opts.solver ' ' inputfile ' ' ...
-       opts.outfile ' ' md];
-   
-if(opts.verbose>1)
-    fprintf('cmd=%s\n',cmd)
-    solver_timer=tic;
-end  
-system(cmd);
-if(opts.verbose>1)
-    fprintf('solver execution time=%gs\n',toc(solver_timer));
-end
-
-% if not in background mode, load the result file and add the solution
-% to the field fem.urdme
-if ~strcmp(opts.mode,'bg')
-    
-  if ~exist(opts.outfile,'file')
-    if(opts.delete_inputfile)
-        if(opts.verbose>2)
-            fprintf('rm %s\n',inputfile);
-        end
-        system(['rm ' inputfile]);
-    end
-    error('Solver did not finish correctly.');
-  else 
-    umod = urdme_addsol(umod,opts.outfile);
-%    data=load(opts.outfile);
-%    
-%    % if a test, a manually created mesh or model with sd=1 has been executed,
-%    % only add U to umod, otherwise add solution to comsol file as well. 
-%    %if isfield(umod,'test') || length(unique(umod.sd))==1
-%      umod.U = data.U;
-%      if isfield(data,'tspan') 
-%          umod.tspan = data.tspan;
-%      else
-%          umod.tspan = 0:size(data.U,2)-1;
-%      end
-%      umod = urdme2comsol(umod,data.U,umod.tspan,opts.verbose);
-  end
-
-
-  % clean temporary input/output files.
-  if(opts.delete_inputfile)
-      if(opts.verbose>2)
-          fprintf('rm %s\n',inputfile);
-      end
-      system(['rm ' inputfile]);
-  end
-  if(opts.delete_outputfile)
-      if(opts.verbose>2)
-          fprintf('rm %s\n',opts.outfile);
-      end
-      system(['rm ' opts.outfile]);
-  end
-  
-end
-
-outputfile = opts.outfile;
+%-------------------------------------------------------------------------
