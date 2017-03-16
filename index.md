@@ -1,5 +1,5 @@
 ### Welcome to the URDME Webpage.
-URDME is a general software framework for modeling and simulation of stochastic reaction-diffusion processes on unstructured, tetrahedral and triangular meshes. URDME emphasizes modularity in order to be useful both as a simulation tool and as a framework for developemnt of stochastic simulation algorithms.
+URDME is a general software framework for modeling and simulation of stochastic reaction-diffusion processes on unstructured, tetrahedral and triangular meshes. URDME emphasizes modularity in order to be useful both as a simulation tool and as a framework for development of stochastic simulation algorithms.
 
 ### Quick Start 
 
