@@ -22,7 +22,18 @@ if nargin < 2, verbose = 0; end
 
 % Get extended mesh data
 l_info(verbose,1,'Start mphxmeshinfo...');
-xmi = mphxmeshinfo(fem); 
+try
+  xmi = mphxmeshinfo(fem);
+catch ME
+  % Comsol-problems: sometimes the solution is lost and a model
+  % re-run is the most immediate solution.
+  if strcmp(ME.message,'The model does not contain any solutions')
+    warning(['No solution found in the Comsol object. ' ...
+             'Will now try to execute model.sol.run().']);
+    fem.sol.run()
+    xmi = mphxmeshinfo(fem);
+  end
+end
 l_info(verbose,1,' ...done.\n');
 
 % Get number of species and number of cells.
