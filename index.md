@@ -1,10 +1,23 @@
-### Welcome to the URDME Webpage.
-URDME is a general software framework for modeling and simulation of stochastic reaction-diffusion processes on unstructured, tetrahedral and triangular meshes. URDME emphasizes modularity in order to be useful both as a simulation tool and as a framework for development of stochastic simulation algorithms.
+# URDME
 
-### Quick Start 
+Unstructured Reaction-Diffusion Master Equation
 
-Download the latest stable release and unpack it, alternatively clone the repository (requires a git client). In a terminal type:
+www.urdme.org
 
+URDME is a general software framework for modeling and simulation of
+stochastic reaction-diffusion processes on arbitrary meshes. URDME
+emphasizes modularity in order to be useful both as a simulation tool
+and as a framework for development of stochastic simulation
+algorithms.
+
+URDME 1.3. Copyright 2008--2017
+
+See the file AUTHORS for a complete list of authors. 
+
+### Quick Start
+
+Download the latest stable release and unpack it, alternatively clone
+the repository (requires a git client),
 ```
 $ git clone https://github.com/URDME/urdme.git
 ```
@@ -27,21 +40,23 @@ doc/manual.pdf
 ```
 
 ### System requirements and software dependencies
+
 See the file VERSION for a fuller list.
 
-* OS, tested with Ubuntu 14.04 LTS, 16.04 LTS, Mac OS X 10.9.5
+- OS, tested with Ubuntu 14.04 LTS, 16.04 LTS, Mac OS X 10.9.5
 
-* Matlab, tested with versions: 8.4, 9.1
+- Matlab, tested with versions: 8.4, 9.1
 
-* Comsol Multiphysics 5.2a with Matlab integration components
+- Comsol Multiphysics 5.2a with Matlab integration components
 
-* PDE Toolbox, tested with versions: 1.5, 2.3
+- PDE Toolbox, tested with versions: 1.5, 2.3
 
-### Copyright
-URDME 1.3. Copyright 2008,2009,2010,2011,2012.
-See the file AUTHORS for complete list of authors. 
+### Licence: GPL 3
 
-### Publications
+See the file LICENCE for the full statement.
+
+### Citing URDME:
+
 URDME is a research software and correctly citing it is important to
 the maintainers.
 
@@ -63,3 +78,4 @@ Science and Engineering, Springer (2015).
 S. Engblom: "Computing the Moments of High Dimensional Solutions of
 the Master Equation" Appl. Math. Comput. 18(2):498--515 (2006).
 [(doi)](http://dx.doi.org/10.1016/j.amc.2005.12.032)
+
