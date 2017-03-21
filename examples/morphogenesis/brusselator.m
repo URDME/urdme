@@ -2,7 +2,7 @@ function umod = brusselator(umod)
 %Model file for the Brusselator reaction
 
 % S. Engblom 2017-02-20 (Revision, URDME 1.3, Comsol 5)
-% Y. Saygun - Stochastic Morphogenesis
+% Y. Saygun 2015-06-01 (Computational Stochastic Morphogenesis)
 
 % transitions and rates
 r1 = '@ > k1*a*vol > U';
