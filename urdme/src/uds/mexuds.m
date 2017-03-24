@@ -56,7 +56,7 @@ function dy = l_rhs(t,y,N,D,vol,ldata,gdata,sd,K,I,S)
 %  reaction-transport model at time T. The system is described by the
 %  reactions N and the transport rates D in voxel volumes VOL.
 
-dy = reshape(N*mexrhs(t,y,size(N,2),vol,ldata,gdata,sd,K,I,S),[],1)+D'*y;
+dy = reshape(N*mexrhs(t,y,size(N,2),vol,ldata,gdata,sd,K,I,S),[],1)+D*y;
 
 %--------------------------------------------------------------------------
 function status = l_report(t,y,s,varargin)
