@@ -77,13 +77,14 @@ N = sparse(size(spec,2),size(r,2));
 H = sparse(size(spec,2),size(r,2));
 for i = 1:size(r,2)
   % separate reaction r{i} according to 'from > propensity > dest'
-  ixgt = find(r{i} == '>');
-  if size(ixgt,2) ~= 2
+  ixgt1 = find(r{i} == '>',1);
+  ixgt2 = find(r{i} == '>',1,'last');
+  if isempty(ixgt1) || isempty(ixgt2) || ixgt1 == ixgt2
     error('Each reaction must contain exactly 2 ''>''.');
   end
-  from = r{i}(1:ixgt(1)-1);
-  prop = r{i}(ixgt(1)+1:ixgt(2)-1);
-  dest = r{i}(ixgt(2)+1:end);
+  from = r{i}(1:ixgt1-1);
+  prop = r{i}(ixgt1+1:ixgt2-1);
+  dest = r{i}(ixgt2+1:end);
 
   % remove spaces and the empty set
   from = from(from ~= ' ' & from ~= '@');
