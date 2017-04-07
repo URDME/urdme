@@ -1,10 +1,12 @@
-function mexmake_aem(propensity_file)
+function mexmake_aem(propensity_file,~)
 %MEXMAKE_AEM Makefile for MEXAEM.
 %   MEXMAKE_AEM(P) Makes the AEM-solver with propensity source file P,
 %   given as a relative path.
 
 % S. Engblom 2017-02-17 (Major revision, URDME 1.3, Comsol 5)
 % J. Cullhed 2008-06-18 (make)
+
+if nargin > 1, error('AEM does not accept make arguments.'); end
 
 % global defines, if any
 define = [];

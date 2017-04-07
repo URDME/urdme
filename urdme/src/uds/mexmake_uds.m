@@ -1,9 +1,11 @@
-function mexmake_uds(propensity_file)
+function mexmake_uds(propensity_file,~)
 %MEXMAKE_UDS Makefile for MEXRHS.
 %   MEXMAKE_UDS(P) Makes the UDS-solver with propensity source file P,
 %   given as a relative path.
 
 % S. Engblom 2017-02-24
+
+if nargin > 1, error('UDS does not accept make arguments.'); end
 
 % global defines, if any
 define = [];

@@ -6,7 +6,8 @@ function ssa
 %   reaction processes in the voxels of the model.
 %
 %   The SSA solver supports the same solver arguments as the NSM, see
-%   NSM.
+%   NSM. Additionally, the SSA solver accepts make arguments, see
+%   MEXMAKE_SSA.
 %
 %   Example:
 %     % a dimerization under increasing system volume

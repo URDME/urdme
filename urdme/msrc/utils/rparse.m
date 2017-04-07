@@ -270,7 +270,7 @@ function [prop,dep] = l_rewriteprop(prop,spec)
 
 % switch to an intermediate representation using '###', replacing
 % larger strings first in order to avoid changing e.g., 'BA' with
-% '$$$(1)A' whenever 'B' and 'BA' are two different species
+% '###[1]A' whenever 'B' and 'BA' are two different species
 symbols = [spec; ...
            mat2cell(1:size(spec,2),1,ones(1,size(spec,2)))];
 [foo,i] = sort(cellfun('prodofsize',symbols(1,:)));

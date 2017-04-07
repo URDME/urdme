@@ -80,6 +80,7 @@ function umod = urdme(umod,varargin)
 %   ldata           Local data vector
 %   gdata           Global data vector
 %   solverargs      Arguments to solver, property/value cell-vector
+%   makeargs        Arguments passed to makefile_<solver>.m
 %
 %   Optional:
 %
@@ -115,6 +116,7 @@ if nargin > 1 || ~isfield(umod,'parse') || umod.parse
                   'ldata',[], ...
                   'gdata',[], ...
                   'solverargs',{{}}, ...
+                  'makeargs',{{}}, ...
                   'U',[], ...
                   'comsol',[], ...
                   'pde',[], ...
@@ -159,7 +161,7 @@ if umod.compile
   if ~isempty(umod.propensities) && ~any(umod.propensities == '.')
     umod.propensities = [umod.propensities '.c'];
   end
-  feval(['mexmake_' umod.solver],umod.propensities);
+  feval(['mexmake_' umod.solver],umod.propensities,umod.makeargs{:});
 else
   l_info(umod.report,2,'Compilation turned off.\n');
 end

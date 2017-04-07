@@ -1,10 +1,12 @@
-function mexmake_nsm(propensity_file)
+function mexmake_nsm(propensity_file,~)
 %MEXMAKE_NSM Makefile for MEXNSM.
 %   MEXMAKE_NSM(P) Makes the NSM-solver with propensity source file P,
 %   given as a relative path.
 
 % S. Engblom 2017-02-16 (Major revision, URDME 1.3, Comsol 5)
 % J. Cullhed 2008-06-18 (make)
+
+if nargin > 1, error('NSM does not accept make arguments.'); end
 
 % global defines, if any
 define = [];

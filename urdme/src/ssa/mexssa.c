@@ -11,9 +11,13 @@
 #include "ssa.h"
 #include "report.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 /*----------------------------------------------------------------------*/
 void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
-{
+{ 
   /* check syntax */
   if (nrhs != 12 || nlhs != 1)
     mexErrMsgTxt("Wrong number of arguments.");
