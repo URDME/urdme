@@ -119,8 +119,9 @@ for i = 1:size(r,2)
   N(:,i) = sparse(ifrom,1,-1,size(spec,2),1)+ ...
            sparse(idest,1,1,size(spec,2),1);
 
-  % search for species in the propensity, rewrite as 'xstate[j]'
-  [rprop{i},dep] = l_rewriteprop(prop,spec);
+  % search for species and rates in the propensity, rewrite as
+  % 'xstate[<species>]', but keep rate constants
+  [rprop{i},dep] = l_rewriteprop(prop,spec,rate);
 
   % the contribution to the dependency graph is now known
   H(:,i) = sparse(dep,1,1,size(spec,2),1);
@@ -261,29 +262,58 @@ for i = 1:size(ii,2)-1
 end
 
 %---------------------------------------------------------------------------
-function [prop,dep] = l_rewriteprop(prop,spec)
-%L_REWRITEPROP Rewrite propensities.
-%   [RPROP,DEP] = L_REWRITEPROP(PROP,SPEC) rewrites the propensities
-%   PROP by replacing all species by 'xstate[SPEC{j}]' where j is the
-%   numbering in SPEC. On return, DEP contains all species upon which
-%   the propensity depends.
+function [prop,dep] = l_rewriteprop(prop,spec,rate)
+%L_REWRITEPROP Rewrite propensity.
+%   [RPROP,DEP] = L_REWRITEPROP(PROP,SPEC,RATE) rewrites the
+%   propensity PROP by replacing all species by 'xstate[SPEC{j}]'
+%   where j is the numbering in SPEC. On return, DEP contains all
+%   species upon which the propensity depends.
 
-% switch to an intermediate representation using '###', replacing
+% switch to an intermediate representation using '$[.]', replacing
 % larger strings first in order to avoid changing e.g., 'BA' with
-% '###[1]A' whenever 'B' and 'BA' are two different species
+% '$[1]A' whenever 'B' and 'BA' are two different species/rates
 symbols = [spec; ...
            mat2cell(1:size(spec,2),1,ones(1,size(spec,2)))];
+% rates have a negative sign:
+symbols = [symbols [rate; ...
+                    mat2cell(-(1:size(rate,2)),1,ones(1,size(rate,2)))]];
 [foo,i] = sort(cellfun('prodofsize',symbols(1,:)));
 symbols = symbols(:,i);
 dep = zeros(1,0);
 for j = size(symbols,2):-1:1
   if strfind(prop,symbols{1,j})
-    dep = [dep symbols{2,j}];
-    prop = strrep(prop,symbols{1,j},['###[' symbols{1,j} ']']);
+    if symbols{2,j} > 0
+      % dependent on species
+      dep = [dep symbols{2,j}];
+    end
+    % replace with $[<nn>]
+    prop = strrep(prop,symbols{1,j},['$[' num2str(symbols{2,j}) ']']);
+  end
+end
+
+% replace back names (an enum is used for the species in the C-code,
+% for rates this is just a declared constant)
+offset = 1;
+while 1
+  % find prop(i:j) = '$[<nn>]'
+  i = find(prop(offset:end) == '$',1);
+  if isempty(i), break; end
+  i = i+offset-1;
+  j = find(prop(i+2:end) == ']',1);
+  j = j+i+2-1;
+  n = str2num(prop(i+2:j-1));
+  if n > 0
+    % species
+    prop = [prop(1:i+1) spec{n} prop(j:end)];
+    offset = i+2;
+  else
+    % rates
+    prop = [prop(1:i-1) rate{-n} prop(j+1:end)];
+    offset = i;
   end
 end
 
 % final replace
-prop = strrep(prop,'###','xstate');
+prop = strrep(prop,'$','xstate');
 
 %---------------------------------------------------------------------------
