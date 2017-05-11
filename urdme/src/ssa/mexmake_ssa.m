@@ -77,6 +77,7 @@ if strcmp(mx,'mexa64')
 elseif strcmp(mx,'mexmaci64')
   if opts.openmp
     warning('OpenMP not supported on this platform.');
+    link = link(2:end); % current fix: simply remove omp_link
   end
   cflags = 'CFLAGS= -std=c99 ';
   mex('-silent','-largeArrayDims',[cflags define], ...

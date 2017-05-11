@@ -63,10 +63,10 @@ report_level
   The desired degree of feedback during simulations. 0, 1, and 2 are
   currently supported options.
 
-Diffusion matrix D. Double sparse (Ndofs X Ndofs).
-  Macroscopic diffusion matrix. D(i,j) is the diffusion rate from dof #j to 
-  dof #i. This matrix uses the CSR-format and not CSC because fast access to
-  rows is needed.
+Diffusion matrix D. Double sparse (Ndofs X Ndofs). 
+  Macroscopic diffusion matrix. For i ~= j, D(i,j) is the linear
+  transport rate from dof #j to dof #i. -D(j,j) is the total outward
+  rate from dof #j.
 
 Initial state vector u0. Integer (Mspecies X Ncells).
   Gives the initial copy number of the species in each subvolume.
@@ -144,7 +144,7 @@ The output is a matrix U (Ndofs X length(tspan)).
   long int total_diffusion = 0;
   int dof,col;
         
-  int subvol,event,re,spec,errcode = 0;
+  int subvol,event,re,spec,to_spec,errcode = 0;
   size_t i,j,it = 0;
   size_t to_node,to_vol = 0;
   const size_t Ndofs = Ncells*Mspecies;
@@ -329,9 +329,12 @@ The output is a matrix U (Ndofs X length(tspan)).
       /* simple floating point fix: */
       if (i >= jcD[col+1]) i = jcD[col+1]-1;
 
-      /* note: subvol and to_vol are allowed to be equal */
+      /* note: only one of the pairs (subvol,to_vol) and
+	 (spec,to_spec) are allowed to be non-equal */
       to_node = irD[i];
       to_vol = to_node/Mspecies;
+      to_spec = to_node%Mspecies;
+      if (subvol != to_vol && spec != to_spec) errcode = -1;
 
       /* c) Execute the diffusion event (check for negative elements). */
       xx[subvol*Mspecies+spec]--;
@@ -399,13 +402,25 @@ The output is a matrix U (Ndofs X length(tspan)).
 	       (*rfun[j-M1])(&xx[subvol*Mspecies],tt,vol[subvol],
 			     &ldata[subvol*dsize],gdata,sd[subvol]))-old;
 	}
-	/*** formally a bug: it is allowed to diffuse from one
-	     subvolume as "species 1" and enter another subvolume as
-	     "species 2"; hence in the case subvol != to_vol, one
-	     should rather loop over the union of G(:,spec) and
-	     G(:,to_spec), with to_spec = to_node%Mspecies, at least
-	     whenever to_spec != spec */
+	srrate[subvol] += rdelta;
 
+	/* here spec != to_spec, so to_spec needs to be taken into account too */
+	for (i = jcG[to_spec], rdelta = 0.0, rrdelta = 0.0; i < jcG[to_spec+1]; i++) {
+	  old = rrate[subvol*Mreactions+irG[i]];
+	  j = irG[i];
+
+	  if (j < M1)
+	    rrdelta += (rrate[subvol*Mreactions+j] = 
+			inlineProp(&xx[subvol*Mspecies],
+				   &K[j*3],&I[j*3],&prS[jcS[j]],
+				   jcS[j+1]-jcS[j],
+				   vol[subvol],sd[subvol]))-old;
+	  else
+	    rdelta += 
+	      (rrate[subvol*Mreactions+j] = 
+	       (*rfun[j-M1])(&xx[subvol*Mspecies],tt,vol[subvol],
+			     &ldata[subvol*dsize],gdata,sd[subvol]))-old;
+	}
 	srrate[subvol] += rdelta;
 
 	/* Adjust diffusion rates. */

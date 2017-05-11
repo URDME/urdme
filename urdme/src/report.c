@@ -52,6 +52,10 @@ void URDMEreportFun(double time,double t0,double tend,
     case 2:
       PERROR("Negative state detected (diffusion).\n");
       break;
+    case -1:
+      PERROR("A transport event can not both change voxel and species "
+	     "at the same time.\n");
+      break;
     default:
       PRINTF("Unknown error code = %d.\n",errcode);
       PERROR("Bailing out.\n");
