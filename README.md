@@ -12,7 +12,7 @@ algorithms.
 
 URDME 1.3. Copyright 2008--2017
 
-See the file AUTHORS for a complete list of authors. 
+See the file [AUTHORS](AUTHORS) for a complete list of authors. 
 
 ### Quick Start
 
@@ -41,7 +41,7 @@ doc/manual.pdf
 
 ### System requirements and software dependencies
 
-See the file VERSION for a fuller list.
+See the file [VERSION](VERSION) for a fuller list.
 
 - OS, tested with Ubuntu 14.04 LTS, 16.04 LTS, Mac OS X 10.9.5
 
@@ -53,7 +53,7 @@ See the file VERSION for a fuller list.
 
 ### Licence: GPL 3
 
-See the file LICENCE for the full statement.
+See the file [LICENCE](LICENSE) for the full statement.
 
 ### Citing URDME:
 
