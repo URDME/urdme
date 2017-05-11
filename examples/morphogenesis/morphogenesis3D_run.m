@@ -4,10 +4,17 @@
 % S. Engblom 2017-03-17
 
 % load Comsol model
-model = mphload('torus.mph');
 
-% create URDME struct
-umod = comsol2urdme(model);
+%% (1) geometry: load Comsol model
+if exist('mli','dir')
+  model = mphload('torus.mph');
+
+  % create URDME struct
+  umod = comsol2urdme(model);
+else
+  % alternative: simply load the equivalence of the above construct
+  load torus
+end
 
 % add reactions
 umod = schnakenberg(umod);

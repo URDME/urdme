@@ -4,7 +4,7 @@
 
 % S. Engblom 2017-03-08
 
-% *** (1) Schnakenberg ***
+%% (1) Schnakenberg
 
 % build the geometry
 C1 = [1 0 0 50]';
@@ -41,7 +41,7 @@ umod = schnakenberg(umod);
 umod.vol = 50/mean(umod.vol)*umod.vol;
 
 % solve
-umod = urdme(umod,'propensities','schnakenberg','report',0);
+umod = urdme(umod,'seed',17,'propensities','schnakenberg','report',0);
 
 % visualize using PDE Toolbox
 umod = urdme2pde(umod);
@@ -56,7 +56,7 @@ if ~exist('plotting_off','var') || ~plotting_off
   view(0,90), axis tight, axis square, colormap('parula')
 end
 
-% *** (2) Brusselator ***
+%% (2) Brusselator
 
 % build the geometry
 C1 = [1 0 0 25]';
@@ -84,7 +84,7 @@ vmod = brusselator(vmod);
 vmod.vol = 100/mean(vmod.vol)*vmod.vol;
 
 % solve
-vmod = urdme(vmod,'propensities','brusselator','report',0);
+vmod = urdme(vmod,'seed',17,'propensities','brusselator','report',0);
 
 % visualize using PDE Toolbox
 vmod = urdme2pde(vmod);

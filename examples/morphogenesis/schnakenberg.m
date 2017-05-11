@@ -15,6 +15,7 @@ r4 = 'U+U+V > (k4/(vol*vol))*(U*(U-1)*V) > U+U+U';
                            'schnakenberg.c');
 
 % random initial number of species
+rng(1702);
 umod.u0 = [randi(500,1,numel(umod.vol)); ...
            randi(50,1,numel(umod.vol))];
 
