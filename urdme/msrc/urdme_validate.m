@@ -43,7 +43,7 @@ elseif any(Ddiag > 0)
   error('Diffusion matrix has positive diagonal elements.');
 elseif any(size(umod.D) ~= Ndofs)
   error('Wrong size of diffusion matrix.');
-elseif any(abs(sum(umod.D,1))>1000*eps*abs(Ddiag)')
+elseif any(abs(sum(umod.D,1)) > 1000*eps*abs(Ddiag)')
   error('Sum of rows criterion in diffusion matrix is violated.');
 end
 
