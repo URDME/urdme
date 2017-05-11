@@ -21,17 +21,17 @@ function umod = pde2urdme(P,T,Dexpr,verbose)
 
 if nargin < 4, verbose = 0; end
 
-% Get number of species and number of cells.
+% number of species and number of cells
 Mspecies = numel(Dexpr);
 Ncells = size(P,2);
 Ndofs = Ncells*Mspecies;
 
-% Assemble matrices
+% assemble matrices
 l_info(verbose,1,'Starting assembly...');
 D = cell(size(Dexpr));
 % evaluate element volume and subdomain first
 [~,M,SD] = assema(P,T,0,1,'sd');
-vol = full(sum(M,2));
+vol = full(sum(M,1))';
 
 % assemble all species
 diagsum1 = 0;
@@ -42,7 +42,7 @@ for i = 1:Mspecies
   % explicitly invert the lumped mass matrix and filter the diffusion matrix
   [ii,jj,ss] = find(D{i});
   diagsum1 = diagsum1+sum(diag(D{i})./vol);
-  ss = -ss./vol(ii);
+  ss = -ss./vol(jj);
   ixkeep = find(ss > 0);
   I = [I; (ii(ixkeep)-1)*Mspecies+i];
   J = [J; (jj(ixkeep)-1)*Mspecies+i];
@@ -50,9 +50,9 @@ for i = 1:Mspecies
 end
 l_info(verbose,1,' ...done.\n');
 
-% permute and rebuild
+% rebuild diffusion matrix
 D = sparse(I(:),J(:),S(:),Ndofs,Ndofs);
-d = full(sum(D,2));
+d = full(sum(D,1));
 D = D+sparse(1:Ndofs,1:Ndofs,-d);
 diagsum2 = sum(d);
 
@@ -66,7 +66,7 @@ sd = SD./vol;
 % (typically to be fixed to arrive at integer values)
 
 % finalize the PDE-part of the URDME structure
-umod = struct('D',D', ...
+umod = struct('D',D, ...
               'vol',vol, ...
               'sd',sd, ...
               'pde',struct('P',P,'T',T,'Dexpr',{Dexpr}));

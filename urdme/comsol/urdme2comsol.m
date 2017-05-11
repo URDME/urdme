@@ -24,7 +24,7 @@ l_info(verbose,1,'Start mphxmeshinfo...');
 xmi = mphxmeshinfo(umod.comsol);
 l_info(verbose,1,' ...done.\n');
 
-% fundamentals
+% number of species and number of cells
 nodes = xmi.nodes;
 [Mspecies,Ncells] = size(nodes.dofs);
 Ndofs = Mspecies*Ncells;
@@ -35,8 +35,6 @@ if isfield(umod,'species')
 else
   fieldnames = xmi.fieldnames;
 end
-
-% fixed for Comsol 4.3
 modName = char(umod.comsol.modelNode.tags());
 if isempty(strfind(char(fieldnames(1)),modName))
   fieldnames = strcat(modName,'.',fieldnames);
@@ -44,19 +42,15 @@ end
 [foo,sp] = ismember(fieldnames,nodes.dofnames);
 isp(sp) = 1:numel(sp); % invert order
 
-% Scale U
+% change from absolute figures to concentration
 U = reshape(umod.U,Mspecies,Ncells,[]);
-
-% Change from absolute figures to concentration
 V = repmat(umod.vol(:)'*6.022e23,[Mspecies 1]);
 for i = 1:numel(umod.tspan)
   U(:,:,i) = U(:,:,i)./V;
 end
-
-% Finally reshape U in order of Dofs
 U = reshape(U(isp,:,:),Ndofs,[]);
 
-% Store U in model
+% store the resulting U in umod.comsol
 l_info(verbose,1,'Saving U to model...');
 for i = 1:numel(umod.tspan)
   umod.comsol.sol('sol1').setU(i,U(:,i));
