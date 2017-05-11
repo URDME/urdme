@@ -1,4 +1,4 @@
-function [F,N,G,L] = rparse(r,spec,rate,filename)
+function [F,N,G,L] = rparse(r,spec,rate,filename,seq)
 %RPARSE URDME reaction propensity parser.
 %   F = RPARSE(R,SPEC,RATE) constructs a valid code F for the
 %   reactions R with species SPEC and rate-constants RATE.
@@ -24,6 +24,10 @@ function [F,N,G,L] = rparse(r,spec,rate,filename)
 %   resulting C-file is ready to be compiled and linked with any of
 %   the solvers in URDME.
 %
+%   F = RPARSE(R,SPEC,RATE,FILENAME,SEQ) allows for sequence expansion
+%   as determined by SEQ. See SEQEXPAND for further details of this
+%   powerful syntax.
+%
 %   [F,N,G] = RPARSE(...) additionally outputs the stoichiometric
 %   matrix N and the dependency graph G, to be placed in the fields
 %   umod.N and umod.G of the URDME structure.
@@ -46,8 +50,9 @@ function [F,N,G,L] = rparse(r,spec,rate,filename)
 %                          'X+Y > kk*X*Y/vol > @'}, ...
 %                         {'X' 'Y'},{'k' 1 'mu' 1e-3 'kk' 1e-4});
 %
-%   See also RPARSE_INLINE, URDME, NSM.
+%   See also RPARSE_INLINE, SEQEXPAND, URDME, NSM.
 
+% S. Engblom 2017-0-08 (input seq added)
 % S. Engblom 2017-03-01 (URDME 1.3)
 % S. Engblom 2016-01-07 (empty default rate)
 % S. Engblom 2007-04-06
@@ -82,6 +87,13 @@ elseif ~isempty(res2)
                  'input arguments: ''%s''.'],res2{1}));
 end
 
+% sequence expansion
+if nargin > 4
+  r = seqexpand(r,seq);
+  spec = seqexpand(spec,seq);
+  [rate,ratedef] = seqexpand(rate,ratedef,seq);
+end
+
 N = sparse(size(spec,2),size(r,2));
 H = sparse(size(spec,2),size(r,2));
 for i = 1:size(r,2)
@@ -89,7 +101,7 @@ for i = 1:size(r,2)
   ixgt1 = find(r{i} == '>',1);
   ixgt2 = find(r{i} == '>',1,'last');
   if isempty(ixgt1) || isempty(ixgt2) || ixgt1 == ixgt2
-    error('Each reaction must contain exactly 2 ''>''.');
+    error('Each reaction must contain at least 2 ''>''.');
   end
   from = r{i}(1:ixgt1-1);
   prop = r{i}(ixgt1+1:ixgt2-1);
@@ -161,7 +173,19 @@ F = [F sprintf('const int NR = %d; /* number of reactions */\n\n', ...
 % rate constants
 F = [F '/* rate constants */\n'];
 for i = 1:size(rate,2)
-  F = [F sprintf('const double %s = %g;\n',rate{i},ratedef{i})];
+  % the magical constant 21 is supposed to be the DECIMAL_DIG of float.h
+  if isscalar(ratedef{i})
+    F = [F sprintf('const double %s = %.*e;\n', ...
+                   rate{i},21,ratedef{i})];
+  else
+    % note: the user is responsible for correctly indexing the elements of
+    % the rate-vector
+    F = [F sprintf('const double %s[] = {',rate{i})];
+    for j = 1:numel(ratedef{i})
+      F = [F sprintf('%.*e,',21,ratedef{i}(j))];
+    end
+    F = [F(1:end-1) '};\n'];
+  end
 end
 F = [F '\n'];
 
@@ -209,7 +233,7 @@ if nargin > 3
     if fid == -1, error(msg); end
     s = fgets(fid);
     if ~strncmp(s,'/* [Remove/modify this line not to overwrite this file] */',58)
-      warning('Will not overwrite existing file if not created by RPARSE');
+      warning('Will not overwrite existing file if not created by RPARSE.');
       filename = '';
     end
     fclose(fid);
@@ -271,9 +295,9 @@ function [prop,dep] = l_rewriteprop(prop,spec,rate)
 %   where j is the numbering in SPEC. On return, DEP contains all
 %   species upon which the propensity depends.
 
-% switch to an intermediate representation using '$[.]', replacing
-% larger strings first in order to avoid changing e.g., 'BA' with
-% '$[1]A' whenever 'B' and 'BA' are two different species/rates
+% First switch to an intermediate representation using '$[<name>]'. We
+% replace larger strings first in order to avoid exchanging e.g., 'BA'
+% with '$[1]A' whenever 'B' and 'BA' are two different species/rates
 symbols = [spec; ...
            mat2cell(1:size(spec,2),1,ones(1,size(spec,2)))];
 % rates have a negative sign:
@@ -288,7 +312,7 @@ for j = size(symbols,2):-1:1
       % dependent on species
       dep = [dep symbols{2,j}];
     end
-    % replace with $[<nn>]
+    % replace with $[<name>]
     prop = strrep(prop,symbols{1,j},['$[' num2str(symbols{2,j}) ']']);
   end
 end
@@ -297,7 +321,7 @@ end
 % for rates this is just a declared constant)
 offset = 1;
 while 1
-  % find prop(i:j) = '$[<nn>]'
+  % find prop(i:j) = '$[<name>]'
   i = find(prop(offset:end) == '$',1);
   if isempty(i), break; end
   i = i+offset-1;

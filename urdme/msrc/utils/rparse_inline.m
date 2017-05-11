@@ -1,4 +1,4 @@
-function [K,I,N,G] = rparse_inline(r,spec,rate)
+function [K,I,N,G] = rparse_inline(r,spec,rate,seq)
 %RPARSE_INLINE URDME inline reaction propensity parser.
 %   [K,I] = RPARSE_INLINE(R,SPEC,RATE) constructs inline propensities
 %   (K,I) for the reactions R with species SPEC and rate-constants
@@ -71,6 +71,13 @@ elseif ~isempty(intersect(spec,rate))
   error('Species and rates must use different names.');
 end
 
+% sequence expansion
+if nargin > 3
+  r = seqexpand(r,seq);
+  spec = seqexpand(spec,seq);
+  [rate,ratedef] = seqexpand(rate,ratedef,seq);
+end
+
 K = zeros(3,size(r,2));
 I = ones(3,size(r,2));
 N = sparse(size(spec,2),size(r,2));
@@ -80,7 +87,7 @@ for i = 1:size(r,2)
   ixgt1 = find(r{i} == '>',1);
   ixgt2 = find(r{i} == '>',1,'last');
   if isempty(ixgt1) || isempty(ixgt2) || ixgt1 == ixgt2
-    error('Each reaction must contain exactly 2 ''>''.');
+    error('Each reaction must contain at least 2 ''>''.');
   end
   from = r{i}(1:ixgt1-1);
   prop = r{i}(ixgt1+1:ixgt2-1);
