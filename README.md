@@ -53,7 +53,7 @@ See the file [VERSION](VERSION) for a fuller list.
 
 ### Licence: GPL 3
 
-See the file [LICENCE](LICENSE) for the full statement.
+See the file [LICENCE](LICENCE) for the full statement.
 
 ### Citing URDME:
 
