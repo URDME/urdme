@@ -1,67 +1,104 @@
 %Basic example script.
 %   Reaction X+Y <--> Z in a 3D sphere.
 
+% S. Engblom 2017-05-09 (Revision, rparse)
 % S. Engblom 2017-02-19 (Revision)
 
-% load Comsol file
-model = mphload('basic.mph');
+%% (1) geometry: load Comsol model
+if exist('mli','dir')
+  model = mphload('basic.mph');
 
-% display mesh
-figure(1), clf,
-mphmesh(model);
+  % create URDME struct
+  umod = comsol2urdme(model);
+else
+  % alternative: simply load the equivalence of the above construct
+  load sphere
+end
+  
+%% (2) reactions
+[~,umod.N,umod.G] = rparse( ...
+    {'X+Y > X*Y/vol > Z' ...
+     'Z > Z > X+Y'}, ...
+    {'X' 'Y' 'Z'},{},'basic.c');
 
-% create URDME struct
-umod = comsol2urdme(model); % get geometry and diffusion from Comsol
-umod = basic(umod);         % add reactions
+% initial number of species
+Mspecies = 3; % ordering is [X Y Z]
+Ncells = numel(umod.vol); 
+umod.u0 = zeros(Mspecies,Ncells); 
 
-% run this example (diffusion is set to 0.1)
-umod = urdme(umod,'propensities','basic');
+% distribute 50 X and 50 Y randomly
+rng(123); % to get reproducible results
+cell = randi(Ncells,1,50);
+umod.u0(1,:) = full(sparse(1,cell,1,1,Ncells));
+cell = randi(Ncells,1,50);
+umod.u0(2,:) = full(sparse(1,cell,1,1,Ncells));
 
-umod = urdme2comsol(umod);  % put result back into Comsol
+%% (3) simulate
 
-% display result using Comsol
-figure(2), clf,
-umod.comsol.result.create('res1','PlotGroup3D');
-umod.comsol.result('res1').set('t','1');
-umod.comsol.result('res1').feature.create('surf1', 'Surface');
-umod.comsol.result('res1').feature('surf1').set('expr', 'Z');
-mphplot(umod.comsol,'res1');
+% diffusion is set to 0.1
+umod = urdme(umod,'tspan',0:.1:100,'seed',123,'propensities','basic');
 
-figure(3), clf,
-umod.comsol.result.create('res2','PlotGroup3D');
-umod.comsol.result('res2').set('t',sprintf('%d',umod.tspan(end)));
-umod.comsol.result('res2').feature.create('surf1', 'Surface');
-umod.comsol.result('res2').feature('surf1').set('expr', 'Z');
-mphplot(umod.comsol,'res2');
+%% (4) postprocessing using Comsol
+if exist('mli','dir') && (~exist('plotting_off','var') || ~plotting_off)
+  umod = urdme2comsol(umod);  % put result back into Comsol
+
+  figure(1), clf, mphmesh(model);
+
+  figure(2), clf,
+  umod.comsol.result.create('res1','PlotGroup3D');
+  umod.comsol.result('res1').set('t','1');
+  umod.comsol.result('res1').feature.create('surf1','Surface');
+  umod.comsol.result('res1').feature('surf1').set('expr','Z');
+  mphplot(umod.comsol,'res1');
+
+  figure(3), clf,
+  umod.comsol.result.create('res2','PlotGroup3D');
+  umod.comsol.result('res2').set('t',sprintf('%d',umod.tspan(end)));
+  umod.comsol.result('res2').feature.create('surf1','Surface');
+  umod.comsol.result('res2').feature('surf1').set('expr','Z');
+  mphplot(umod.comsol,'res2');
+end
 
 % extract Z from the result
 Z_series_fastDiff = umod.U(3:3:end,:);
 
-% change diffusion coefficients to .001
-model.physics('chds').feature('cdm1').set('D_X', {'.001[m^2/s]' '0' '0' '0' '.001[m^2/s]' '0' '0' '0' '.001[m^2/s]'});
-model.physics('chds').feature('cdm1').set('D_Y', {'.001[m^2/s]' '0' '0' '0' '.001[m^2/s]' '0' '0' '0' '.001[m^2/s]'});
-model.physics('chds').feature('cdm1').set('D_Z', {'.001[m^2/s]' '0' '0' '0' '.001[m^2/s]' '0' '0' '0' '.001[m^2/s]'});
+%% (5) re-iterate and run again
 
-% run the modified example
-umod = comsol2urdme(model);
-umod = basic(umod);
+if exist('mli','dir') 
+  % change diffusion coefficients to .001
+  model.physics('chds').feature('cdm1').set('D_X',{'.001[m^2/s]' '0' '0' '0' '.001[m^2/s]' '0' '0' '0' '.001[m^2/s]'});
+  model.physics('chds').feature('cdm1').set('D_Y',{'.001[m^2/s]' '0' '0' '0' '.001[m^2/s]' '0' '0' '0' '.001[m^2/s]'});
+  model.physics('chds').feature('cdm1').set('D_Z',{'.001[m^2/s]' '0' '0' '0' '.001[m^2/s]' '0' '0' '0' '.001[m^2/s]'});
+
+  % run the modified example
+  vmod = comsol2urdme(model);
+  % keep only these fields:
+  umod.D = vmod.D;
+  umod.comsol = vmod.comsol;
+  % (the rest of umod is re-used)
+else
+  % simple way:
+  umod.D = 0.01*umod.D;
+end
 umod = urdme(umod,'compile',0); % already compiled
 
-% plot
-umod = urdme2comsol(umod);
+%% (6) postprocessing using Comsol
+if exist('mli','dir') && (~exist('plotting_off','var') || ~plotting_off)
+  umod = urdme2comsol(umod);
 
-figure(4), clf,
-mphplot(umod.comsol,'res1');
+  figure(4), clf,
+  mphplot(umod.comsol,'res1');
 
-figure(5), clf,
-mphplot(umod.comsol,'res2');
+  figure(5), clf,
+  mphplot(umod.comsol,'res2');
+end
 
 % extract Z
 Z_series_slowDiff = umod.U(3:3:end,:);
 
-% visualize (can be turned off)
+%% (7) visualize
 if ~exist('plotting_off','var') || ~plotting_off
-  figure(6), clf,
+  figure(7), clf,
   subplot(2,1,1)
   plot(sum(Z_series_fastDiff))
   xlim([0 1000])
