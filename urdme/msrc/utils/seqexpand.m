@@ -26,14 +26,14 @@ function [expr,data] = seqexpand(expr,data,seq)
 %   Note: this is a utility function and limited error-checking is
 %   performed.
 %
-%   Example:
+%   Examples:
 %     % mutiple sequences, including a dependent variable 'e'
 %     expr = seqexpand('x$i + y$e * z$i$j', ...
-%                      {['ie']' [1:3; 3:-1:1] 'j' 1:5})
+%                      {['ie']' [1:3; 3:-1:1] 'j' 1:5});
 %
 %     % distribution of data
 %     [expr,data] = seqexpand({'x$i$j' 'y$i$j' 'z$i'},{1:6 1:2 1:6}, ...
-%                             {'i' 1:2 'j' 1:3})
+%                             {'i' 1:2 'j' 1:3});
 
 % S. Engblom 2017-04-14
 
