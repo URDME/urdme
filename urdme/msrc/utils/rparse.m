@@ -154,7 +154,8 @@ end
 F = [F '*/\n\n'];
 
 % includes
-F = [F '#include "propensities.h"\n' '#include "report.h"\n\n'];
+F = [F '#include <math.h>\n' ...
+     '#include "propensities.h"\n' '#include "report.h"\n\n'];
 
 % species enum
 if size(spec,2) > 0
@@ -175,14 +176,24 @@ F = [F '/* rate constants */\n'];
 for i = 1:size(rate,2)
   % the magical constant 21 is supposed to be the DECIMAL_DIG of float.h
   if isscalar(ratedef{i})
-    F = [F sprintf('const double %s = %.*e;\n', ...
-                   rate{i},21,ratedef{i})];
+    Frate = sprintf('%.*e',21,ratedef{i});
+    % safety: read the constant back and see that it is the same
+    if abs(sscanf(Frate,'%e')-ratedef{i}) > eps(1000)*abs(ratedef{i})
+      warning(sprintf(['Large numerical errors in character conversion ' ...
+                       'of rate. Conversion result: %s.'],Frate));
+    end
+    F = [F sprintf('const double %s = ',rate{i}) Frate ';\n'];
   else
     % note: the user is responsible for correctly indexing the elements of
     % the rate-vector
     F = [F sprintf('const double %s[] = {',rate{i})];
     for j = 1:numel(ratedef{i})
-      F = [F sprintf('%.*e,',21,ratedef{i}(j))];
+      Frate = sprintf('%.*e',21,ratedef{i}(j));
+      if abs(sscanf(Frate,'%e')-ratedef{i}(j)) > eps(1000)*abs(ratedef{i}(j))
+        warning(sprintf(['Large numerical errors in character conversion ' ...
+                         'of rate. Conversion result: %s.'],Frate));
+      end
+      F = [F Frate ','];
     end
     F = [F(1:end-1) '};\n'];
   end
