@@ -9,6 +9,10 @@ function nsm
 %   The NSM solver supports three report levels: 0 (no report), 1
 %   (progress report), 2 (progress report + event count).
 %
+%   Property    Value/{Default}           Description
+%   -----------------------------------------------------------------------
+%   K, I, S     Matrices                  Inline propensities.
+%
 %   The NSM solver supports the 'inline' propensity syntax, where
 %   UMOD.solverargs = {'K' K 'I' I 'S' S}. This is an efficient way of
 %   defining elementary reactions and is parsed as follows:

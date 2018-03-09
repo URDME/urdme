@@ -1,5 +1,6 @@
 /* mexnsm.c - Mex-interface NSM solver for use with URDME. */
 
+/* S. Engblom 2018-02-10 (Nreplicas syntax) */
 /* S. Engblom 2017-02-16 (Major revision, URDME 1.3, Comsol 5) */
 /* J. Cullhed 2008-08-04 (mexrdme.c) . */
 
@@ -44,6 +45,8 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   /* Get pointers to non-sparse objects. */
   const double *tspan = mxGetPr(mxTspan);
   const double *u0_double = mxGetPr(mxU0);
+  const size_t Nreplicas = mxGetNumberOfDimensions(mxU0) == 3
+    ? mxGetDimensions(mxU0)[2] : 1;
   const double *vol = mxGetPr(mxVol);
   const double *ldata = mxGetPr(mxLData);
   const double *gdata = mxGetPr(mxGData);
@@ -134,16 +137,16 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   }
 
   /* Typecast from double to int. */
-  int *u0 = mxMalloc(Ndofs*sizeof(int));
+  int *u0 = mxMalloc(Ndofs*Nreplicas*sizeof(int));
   int *sd = mxMalloc(Ncells*sizeof(int));
   int *prN = mxMalloc(nnzN*sizeof(int));
 
-  for (int i = 0; i < Ndofs; i++) u0[i] = (int)u0_double[i];
+  for (int i = 0; i < Ndofs*Nreplicas; i++) u0[i] = (int)u0_double[i];
   for (int i = 0; i < Ncells; i++) sd[i] = (int)sd_double[i];
   for (int i = 0; i < nnzN; i++) prN[i] = (int)prN_double[i];
 
   /* Set up result matrix U. */
-  int *U = mxMalloc(Ndofs*tlen*sizeof(int));
+  int *U = mxMalloc(Ndofs*tlen*Nreplicas*sizeof(int));
 
   /* report */
   const int report_level = (int)*mxGetPr(mxREPORT);
@@ -160,7 +163,7 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
       u0,
       (const size_t *)irN,(const size_t *)jcN,prN,
       (const size_t *)irG,(const size_t  *)jcG,
-      tspan,tlen,
+      tspan,tlen,Nreplicas,
       U,vol,ldata,gdata,sd,
       Ncells,Mspecies,Mreactions,
       dsize,
@@ -182,9 +185,14 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   mxFree(u0);
 
   /* Put result in plhs[0] and typecast from int to double. */
-  plhs[0] = mxCreateDoubleMatrix(Ndofs,tlen,mxREAL);
+  if (Nreplicas == 1)
+    plhs[0] = mxCreateDoubleMatrix(Ndofs,tlen,mxREAL);
+  else {
+    const mwSize dims[] = {Ndofs,tlen,Nreplicas};
+    plhs[0] = mxCreateNumericArray(3,dims,mxDOUBLE_CLASS,mxREAL);
+  }
   double *U_out = mxGetPr(plhs[0]);
-  for (int i = 0; i < Ndofs*tlen; i++) U_out[i] = (double)U[i];
+  for (int i = 0; i < Ndofs*tlen*Nreplicas; i++) U_out[i] = (double)U[i];
   mxFree(U);
 }
 /*----------------------------------------------------------------------*/

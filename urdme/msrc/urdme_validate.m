@@ -5,6 +5,7 @@ function urdme_validate(umod)
 %
 %    See also URDME.
 
+% S. Engblom 2018-02-10 (Revision, Nreplicas syntax)
 % S. Engblom 2017-02-15 (Major revision, URDME 1.3, Comsol 5)
 % J. Cullhed 2008-06-18 (rdme.m)
 
@@ -23,7 +24,13 @@ end
 if ~isfield(umod,'u0');
   error('No field .u0.');
 end
-[Mspecies,Ncells] = size(umod.u0);
+if ndims(umod.u0) == 2
+  [Mspecies,Ncells] = size(umod.u0);
+elseif ndims(umod.u0) == 3
+  [Mspecies,Ncells,Nreplicas] = size(umod.u0);
+else
+  error('Incorrect number of dimensions of initial state.');
+end
 Ndofs = Mspecies*Ncells;
 if issparse(umod.u0) || ~isa(umod.u0,'double')
   error('Initial state must be a double vector.');
@@ -35,7 +42,6 @@ end
 if ~isfield(umod,'D');
   error('No field .D.');
 end
-
 Ddiag = diag(umod.D);
 if ~issparse(umod.D) || ~isa(umod.D,'double')
   error('Diffusion matrix must be sparse.');
@@ -51,7 +57,6 @@ end
 if ~isfield(umod,'N');
   error('No field .N.');
 end
-
 [MM,Mreactions] = size(umod.N);
 if ~issparse(umod.N) || ~isa(umod.N,'double')
   error('Stochiometric matrix must be sparse.');
