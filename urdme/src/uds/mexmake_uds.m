@@ -19,8 +19,8 @@ if nargin > 0 && ~isempty(propensity_file)
   % propensity_file is a relative path
   propensity_source = [pwd '/' propensity_file];
 else
-  % can also compile mexnsm without propensity_file, using inline
-  % propensities only
+  % can also compile without propensity_file, using inline propensities
+  % only
   propensity_source = [path '../propensities.c']';
 end
 

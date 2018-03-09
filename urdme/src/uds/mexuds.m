@@ -52,7 +52,7 @@ end
 %--------------------------------------------------------------------------
 function dy = l_rhs(t,y,N,D,vol,ldata,gdata,sd,K,I,S)
 %L_RHS Reaction-transport equations.
-%  DY = L_RHS(T,Y,N,D,VOL) returns the rate DY for the
+%  DY = L_RHS(T,Y,N,D,VOL,...) returns the rate DY for the
 %  reaction-transport model at time T. The system is described by the
 %  reactions N and the transport rates D in voxel volumes VOL.
 
