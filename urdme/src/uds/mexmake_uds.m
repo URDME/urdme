@@ -3,6 +3,7 @@ function mexmake_uds(propensity_file,~)
 %   MEXMAKE_UDS(P) Makes the UDS-solver with propensity source file P,
 %   given as a relative path.
 
+% S. Engblom 2019-11-06 (Revision, now using URDMEstate_t)
 % S. Engblom 2017-02-24
 
 if nargin > 1, error('UDS does not accept make arguments.'); end
@@ -21,7 +22,7 @@ if nargin > 0 && ~isempty(propensity_file)
 else
   % can also compile without propensity_file, using inline propensities
   % only
-  propensity_source = [path '../propensities.c']';
+  propensity_source = [path '../propensities.c'];
 end
 
 % include and source directories
@@ -30,7 +31,8 @@ link =    {['-L' path] ['-L' path '../']};
 source = {[path 'mexrhs.c'] ...
           propensity_source ...
           [path '../inline.c']};
-define = [define '-DMALLOC\(n\)=mxMalloc\(n\) -DFREE\(p\)=mxFree\(p\)'];
+define = [define '-DUDS_ ' ...
+          '-DMALLOC\(n\)=mxMalloc\(n\) -DFREE\(p\)=mxFree\(p\)'];
 
 % mex extension
 mx = mexext;

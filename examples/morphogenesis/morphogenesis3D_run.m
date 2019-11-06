@@ -1,5 +1,9 @@
 %Morphogenesis 3D script file.
 %   This file runs the Schnakenberg model in a 3D torus.
+%
+%   Reference:
+%     [1] Y. Saygun: "Computational Stochastic Morphogenesis", MSc
+%     thesis in Engineering Physics, Uppsala university (2015).
 
 % S. Engblom 2017-03-17
 

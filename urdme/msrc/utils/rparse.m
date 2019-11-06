@@ -52,6 +52,7 @@ function [F,N,G,L] = rparse(r,spec,rate,filename,seq)
 %
 %   See also RPARSE_INLINE, SEQEXPAND, URDME, NSM.
 
+% S. Engblom 2019-11-06 (Revision, now using URDMEstate_t)
 % S. Engblom 2017-0-08 (input seq added)
 % S. Engblom 2017-03-01 (URDME 1.3)
 % S. Engblom 2016-01-07 (empty default rate)
@@ -203,7 +204,8 @@ F = [F '\n'];
 % declaration of propensity functions
 F = [F '/* forward declaration */\n'];
 for i = 1:size(r,2)
-  F = [F sprintf(['double rFun%d(const int *xstate,double time,double vol,\n' ...
+  F = [F sprintf(['double rFun%d(const URDMEstate_t *xstate,' ...
+                  'double time,double vol,\n' ...
                   '             const double *ldata,' ...
                   'const double *gdata,int sd);\n'],i)];
 end
@@ -221,7 +223,8 @@ F = [F '};\n\n'];
 % definition of propensities
 F = [F '/* propensity definitions */\n'];
 for i = 1:size(r,2)
-  F = [F sprintf(['double rFun%d(const int *xstate,double time,double vol,\n' ...
+  F = [F sprintf(['double rFun%d(const URDMEstate_t *xstate,' ...
+                  'double time,double vol,\n' ...
                   '             const double *ldata,' ...
                   'const double *gdata,int sd)\n{\n'],i)];
   F = [F sprintf('  return %s;\n}\n\n',rprop{i})];

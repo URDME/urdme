@@ -36,7 +36,7 @@ void URDMEreportFun(double time,double t0,double tend,
       PRINTF("\t#Reaction  events = %li\n",total_reaction);
       PRINTF("\t#Diffusion events = %li\n",total_diffusion);
       /* callback allows for interactive exit: */
-      PRINTF("Enter RETURN to continue, DBQUIT to quit.\n");
+      PRINTF("Type RETURN to continue, DBQUIT to quit.\n");
       mexCallMATLAB(0,NULL,0,NULL,"keyboard");
       break;
     default:

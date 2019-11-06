@@ -46,7 +46,7 @@ function ssa
 %   References:
 %     [1] D. T. Gillespie: "A general method for numerically
 %     simulating the stochastic time evolution of coupled chemical
-%     reactions" J. Comput. Phys. 22(4):403--434 (1976).
+%     reactions", J. Comput. Phys. 22(4):403--434 (1976).
                 
 % S. Engblom 2017-02-22
 

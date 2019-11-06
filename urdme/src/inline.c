@@ -1,12 +1,13 @@
 /* inline.c - URDME inline propensity functions. */
 
+/* S. Engblom 2019-11-06 (Revision, now using URDMEstate_t) */
 /* S. Engblom 2017-02-23 */
 
 #include <stdlib.h>
 #include "inline.h"
 
 /*----------------------------------------------------------------------*/
-double inlineProp(const int *xx,const double *k,const int *i,
+double inlineProp(const URDMEstate_t *xx,const double *k,const int *i,
 		  const int *prS, size_t nS, double vol, int sd)
 /* Inline propensity. Given constants k[0..2], indices i[0..2] and
    volume vol, this function computes an elementary propensity at

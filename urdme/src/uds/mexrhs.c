@@ -1,5 +1,6 @@
 /* mexrhs.c - Mex-interface for use with the UDS solver in URDME. */
 
+/* S. Engblom 2019-11-06 (Revision, now using URDMEstate_t) */
 /* S. Engblom 2017-02-24 */
 
 #include <stdlib.h>
@@ -35,16 +36,24 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   const size_t dsize = mxGetM(mxLData);  
 
   /* pointers to non-sparse objects */
-  const double *u0_double = mxGetPr(mxU0);
   const double *vol = mxGetPr(mxVol);
   const double *ldata = mxGetPr(mxLData);
   const double *gdata = mxGetPr(mxGData);
   const double *sd_double = mxGetPr(mxSd);
 
+  /* "typecast" from double to URDMEstate_t */
+#ifdef UDS_
+  /* make by the deterministic solver? */
+  const URDMEstate_t *u0 = mxGetPr(mxU0);
+  /* since URDMEstate_t == double */
+#else
+  const double *u0_double = mxGetPr(mxU0);
+  URDMEstate_t *u0 = mxMalloc(Ndofs*sizeof(URDMEstate_t));
+  for (int i = 0; i < Ndofs; i++) u0[i] = (URDMEstate_t)u0_double[i];
+#endif
+
   /* typecast from double to int */
-  int *u0 = mxMalloc(Ndofs*sizeof(int));
   int *sd = mxMalloc(Ncells*sizeof(int));
-  for (int i = 0; i < Ndofs; i++) u0[i] = (int)u0_double[i];
   for (int i = 0; i < Ncells; i++) sd[i] = (int)sd_double[i];
 
   /* parse solver arguments (K,I,S) */
@@ -102,6 +111,8 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
       mxFree(jcS);
   }
   mxFree(sd);
+#ifndef UDS_
   mxFree(u0);
+#endif
 }
 /*----------------------------------------------------------------------*/

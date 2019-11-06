@@ -21,6 +21,7 @@ function umod = urdme(umod,varargin)
 %   solver          string {'nsm'}          Name of solver
 %   propensities    string                  Name of propensity .c-file
 %   report          {0}, 1, 2, 3            Level of report
+%   solve           {1} | 0                 Solve on/off
 %   compile         {1} | 0                 Compile on/off
 %   parse           {1} | 0                 Parse on/off
 %   seed            double {NaN}            Solver random number seed
@@ -30,12 +31,11 @@ function umod = urdme(umod,varargin)
 %   allowing for an early exit).
 %
 %   Turn compilation off when you are solving the same model several
-%   times and after the first call to URDME. You may similarly turn
-%   parsing off after the UMOD-struct has been extended correctly once
-%   (and preferably checked). For example,
-%     % first call, compile mymodel.c:
+%   times and after the first call to URDME. You may similarly
+%   explicitly turn solving/parsing on/off. For example:
+%     % first call, compile and solve mymodel.c:
 %     UMOD = URDME(UMOD,'propensities','mymodel','seed',1234);
-%     % second call, new seed, no compilation:
+%     % second call, new seed to parse but no compilation:
 %     UMOD = URDME(UMOD,'seed',2345,'compile',0);
 %     % a sequence of calls:
 %     UMOD.parse = 0; % don't parse the URDME struct
@@ -71,6 +71,7 @@ function umod = urdme(umod,varargin)
 %   solver          Solver
 %   propensities    Propensity source file
 %   report          Solver feedback
+%   solve           Solve on/off
 %   compile         Compilation on/off
 %   parse           Parsing on/off
 %   seed            Random seed
@@ -103,6 +104,7 @@ if nargin > 1 || ~isfield(umod,'parse') || umod.parse
   optdef = struct('solver','nsm', ...
                   'propensities','', ...
                   'report',0, ...
+                  'solve',1, ...
                   'compile',1, ...
                   'parse',1, ...
                   'seed',NaN, ...
@@ -163,16 +165,20 @@ else
 end
 
 % (2) Solve!
-if umod.report >= 2, solver_timer = tic; end 
-l_info(umod.report,1,'Starting simulation...\n');
-umod.U = feval(['mex' umod.solver], ...
-               umod.tspan,umod.u0,umod.D,umod.N,umod.G, ...
-               umod.vol,umod.ldata,umod.gdata,umod.sd, ...
-               umod.report,umod.seed, ...
-               umod.solverargs);
-l_info(umod.report,1,'   ...done.\n');
-if umod.report >= 2
-  fprintf('Solver execution time = %gs.\n',toc(solver_timer));
+if umod.solve
+  if umod.report >= 2, solver_timer = tic; end 
+  l_info(umod.report,1,'Starting simulation...\n');
+  umod.U = feval(['mex' umod.solver], ...
+                 umod.tspan,umod.u0,umod.D,umod.N,umod.G, ...
+                 umod.vol,umod.ldata,umod.gdata,umod.sd, ...
+                 umod.report,umod.seed, ...
+                 umod.solverargs);
+  l_info(umod.report,1,'   ...done.\n');
+  if umod.report >= 2
+    fprintf('Solver execution time = %gs.\n',toc(solver_timer));
+  end
+else
+  l_info(umod.report,2,'Solving turned off.\n');
 end
 
 %-------------------------------------------------------------------------

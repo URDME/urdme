@@ -27,7 +27,7 @@ if nargin > 0 && ~isempty(propensity_file)
 else
   % can also compile without propensity_file, using inline propensities
   % only
-  propensity_source = [path '../propensities.c']'; 
+  propensity_source = [path '../propensities.c']; 
 end
 
 % default options

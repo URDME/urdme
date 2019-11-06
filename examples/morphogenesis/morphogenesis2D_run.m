@@ -1,6 +1,10 @@
 %Morphogenesis 2D script file.
 %   This file runs the Schnakenberg and the Brusselator models in
 %   simple 2D geometries.
+%
+%   Reference:
+%     [1] Y. Saygun: "Computational Stochastic Morphogenesis", MSc
+%     thesis in Engineering Physics, Uppsala university (2015).
 
 % S. Engblom 2017-03-08
 

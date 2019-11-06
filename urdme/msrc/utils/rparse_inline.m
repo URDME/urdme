@@ -14,7 +14,7 @@ function [K,I,N,G] = rparse_inline(r,spec,rate,seq)
 %   propensities, the combinatorial law and the scaling with volume is
 %   implicitly understood. Hence with RPARSE, the above is equivalent
 %   to
-%     R = {'X+Y > mu*X*Y > Z' 'Z > k*Z > X+Y'}.
+%     R = {'X+Y > mu*X*Y/vol > Z' 'Z > k*Z > X+Y'}.
 %   Note also the implicit scaling with 2 for the case of a
 %   dimerization: R = {'X+X > nu > @'} with RPARSE_INLINE is
 %   equivalent to R = {'X+X > nu*X*(X-1)/(2*vol) > @'} with RPARSE,
