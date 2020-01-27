@@ -1,5 +1,16 @@
-function [K,I,N,G] = rparse_inline(r,spec,rate,seq)
+function [K,I,N,G] = rparse_inline(umod,r,spec,rate,seq)
 %RPARSE_INLINE URDME inline reaction propensity parser.
+%   UMOD = RPARSE_INLINE(UMOD,R,SPEC,RATE,SEQ) creates/augments the
+%   URDME structure UMOD with fields describing the reactions R with
+%   species SPEC, and rate constants RATE. The sequence expansion
+%   argument SEQ is optional, see functionality below.
+%
+%   Specific syntaxes and descriptions now follow. Note: adding a
+%   (possible empty) URDME structure UMOD to the inputs as in the main
+%   call above implies that this structure is
+%   created/augmented. Otherwise the results are returned in the
+%   various outputs as specified below.
+%
 %   [K,I] = RPARSE_INLINE(R,SPEC,RATE) constructs inline propensities
 %   (K,I) for the reactions R with species SPEC and rate-constants
 %   RATE.
@@ -31,9 +42,6 @@ function [K,I,N,G] = rparse_inline(r,spec,rate,seq)
 %   stoichiometric matrix N and the dependency graph G, to be placed
 %   in the fields umod.N and umod.G of the URDME structure.
 %
-%   Note: this is a utility function and limited error-checking is
-%   performed.
-%
 %   Examples:
 %     % linear birth-death example
 %     [K1,I1] = rparse_inline({'@ > k > X' 'X > mu > @' }, ...
@@ -49,7 +57,32 @@ function [K,I,N,G] = rparse_inline(r,spec,rate,seq)
 %
 %   See also NSM, RPARSE, URDME.
 
+% S. Engblom 2019-11-26 (Revision, now creating/augmenting URDME structure)
 % S. Engblom 2017-03-01
+
+% umod-in-umod-out syntax?
+if ~iscell(umod) && nargout <= 1
+  % rparse(umod,r,spec,rate,[seq])
+  if ~isstruct(umod)
+    if ~isempty(umod)
+      error('URDME structure expected as first argument.');
+    end
+    umod = struct; % (rparse used as constructor)
+  end
+  if nargin < 4
+    error('Minimum 4 arguments required to create/augment URDME structure.');
+  end
+else
+  % rparse(umod,r,spec,rate,seq) --> rparse(r,spec,rate,[seq])
+  if nargin > 3
+    seq = rate;
+  end
+  rate = spec;
+  spec = r;
+  r = umod;
+  umod = [];
+end
+% from now on, just ignore umod until the end
 
 r = reshape(r,1,[]);
 spec = reshape(spec,1,[]);
@@ -72,7 +105,7 @@ elseif ~isempty(intersect(spec,rate))
 end
 
 % sequence expansion
-if nargin > 3
+if nargin > (3+isstruct(umod))
   r = seqexpand(r,seq);
   spec = seqexpand(spec,seq);
   [rate,ratedef] = seqexpand(rate,ratedef,seq);
@@ -141,6 +174,22 @@ end
 % after finding out the stoichiometric matrix we can converge on G
 G = [H' H'*abs(N)]; % [diffusion reaction]-parts of G
 G = double(G ~= 0);
+
+% umod-in-umod-out syntax?
+if isstruct(umod)
+  % output: UMOD.{inline_propensities.{K I S} N G 
+  % private.{Reactions Species RateNames RateVals}}
+  umod.inline_propensities.K = K;
+  umod.inline_propensities.I = I;
+  umod.inline_propensities.S = sparse(0,size(K,2));
+  umod.N = N;
+  umod.G = G;
+  umpd.private.Reactions = r;
+  umod.private.Species = spec;
+  umod.private.RateNames = rate;
+  umod.private.RateVals = ratedef;
+  K = umod;
+end
 
 %---------------------------------------------------------------------------
 function c = l_split(s,d)

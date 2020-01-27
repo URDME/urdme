@@ -1,7 +1,19 @@
-function [F,N,G,L] = rparse(r,spec,rate,filename,seq)
+function [F,N,G,L] = rparse(umod,r,spec,rate,filename,seq)
 %RPARSE URDME reaction propensity parser.
+%   UMOD = RPARSE(UMOD,R,SPEC,RATE,FILENAME,SEQ) creates/augments the
+%   URDME structure UMOD with fields describing the reactions R with
+%   species SPEC, rate constants RATE, and propensity file
+%   FILENAME. The sequence expansion argument SEQ is optional, see
+%   functionality below.
+%
+%   Specific syntaxes and descriptions now follow. Note: adding a
+%   (possible empty) URDME structure UMOD to the inputs as in the main
+%   call above implies that this structure is
+%   created/augmented. Otherwise the results are returned in the
+%   various outputs as specified below.
+%
 %   F = RPARSE(R,SPEC,RATE) constructs a valid code F for the
-%   reactions R with species SPEC and rate-constants RATE.
+%   reactions R with species SPEC and rate constants RATE.
 %
 %   R is a cell-vector containing reactions on the form
 %      'X+Y+... > F(...) > U+V+...'
@@ -14,12 +26,22 @@ function [F,N,G,L] = rparse(r,spec,rate,filename,seq)
 %   SPEC contains the names of the involved species, for example,
 %     SPEC = {'X' 'Y' 'Z'}.
 %
-%   RATE contains the names of the rate-constants followed by their
+%   RATE contains the names of the rate constants followed by their
 %   values, for example,
 %     RATE = {'k' 1 'mu' 0.5e-7}.
+%   Rate constants can be vectors, for example,
+%     RATE = {'birth' [1 0.5 0.2]},
+%   which implies that the rate constants birth[0..2] can be used in
+%   the propensity expressions. Furthermore, you can use 'gdata' and
+%   'ldata' to denote rate constants to be passed via these fields,
+%   for example,
+%     RATE = {'alpha' 'gdata' 'beta' 'ldata'},
+%   which will reauire that the fields umod.gdata and umod.data are
+%   initialized accordingly.
 %
 %   F = RPARSE(R,SPEC,RATE,FILENAME) also writes the result to the
-%   file FILENAME (a string). This file, if already existing, is only
+%   file FILENAME (a string, stored in the field
+%   umod.propensity). This file, if already existing, is only
 %   overwritten provided that is was originally created by RPARSE. The
 %   resulting C-file is ready to be compiled and linked with any of
 %   the solvers in URDME.
@@ -30,33 +52,60 @@ function [F,N,G,L] = rparse(r,spec,rate,filename,seq)
 %
 %   [F,N,G] = RPARSE(...) additionally outputs the stoichiometric
 %   matrix N and the dependency graph G, to be placed in the fields
-%   umod.N and umod.G of the URDME structure.
+%   umod.N and umod.G.
 %
 %   [F,N,G,L] = RPARSE(...) additionally outputs a LaTeX-code L for
 %   the reactions.
 %
-%   Note: this is a utility function and limited error-checking is
-%   performed.
-%
 %   Examples:
-%     % linear birth-death example
+%     % propensity code for linear birth-death model
 %     C1 = rparse({'@ > k*vol > X' 'X > mu*X > @' },{'X'},{'k' 1 'mu' 1e-3});
 %
-%     % 2 reacting species
-%     [C2,N,G,L] = rparse({'@ > k*vol > X' ...
-%                          '@ > k*vol > Y' ...
-%                          'X > mu*X > @' ...
-%                          'Y > mu*Y > @' ...
-%                          'X+Y > kk*X*Y/vol > @'}, ...
-%                         {'X' 'Y'},{'k' 1 'mu' 1e-3 'kk' 1e-4});
+%     % 2 reacting species, create URDME structure
+%     umod = rparse([],{'@ > k*vol > X' ...
+%                       '@ > k*vol > Y' ...
+%                       'X > mu*X > @' ...
+%                       'Y > mu*Y > @' ...
+%                       'X+Y > kk*X*Y/vol > @'}, ...
+%                       {'X' 'Y'},{'k' 1 'mu' 1e-3 'kk' 1e-4}, ...
+%                       'bimol.c');
 %
 %   See also RPARSE_INLINE, SEQEXPAND, URDME, NSM.
 
+% S. Engblom 2019-11-25 (Revision, creating/augmenting umod, ldata/gdata-syntax)
 % S. Engblom 2019-11-06 (Revision, now using URDMEstate_t)
 % S. Engblom 2017-0-08 (input seq added)
 % S. Engblom 2017-03-01 (URDME 1.3)
 % S. Engblom 2016-01-07 (empty default rate)
 % S. Engblom 2007-04-06
+
+% umod-in-umod-out syntax?
+if ~iscell(umod) && nargout <= 1
+  % rparse(umod,r,spec,rate,filename,[seq])
+  if ~isstruct(umod)
+    if ~isempty(umod)
+      error('URDME structure expected as first argument.');
+    end
+    umod = struct; % (rparse used as constructor)
+  end
+  if nargin < 5
+    error('Minimum 5 arguments required to create/augment URDME structure.');
+  end
+else
+  % rparse(umod,r,spec,rate,filename,seq) -->
+  % rparse(r,spec,rate,[filename,seq])
+  if nargin > 3
+    if nargin > 4 
+      seq = filename;
+    end
+    filename = rate;
+  end
+  rate = spec;
+  spec = r;
+  r = umod;
+  umod = [];
+end
+% from now on, just ignore umod until the end
 
 r = reshape(r,1,[]);
 spec = reshape(spec,1,[]);
@@ -69,7 +118,8 @@ if ~all(cellfun('isclass',spec,'char'))
   error('Species must be specified in a cell-vector of strings.');
 elseif any(size(rate) ~= size(ratedef)) || ...
       ~all(cellfun('isclass',rate,'char')) || ...
-      ~all(cellfun('isclass',ratedef,'double'))
+      ~all(cellfun('isclass',ratedef,'double') | ...
+           cellfun('isclass',ratedef,'char'))
   error('Rates must be specified as property/value-pairs.');
 elseif size(unique(spec),2) ~= size(spec,2) || ...
       size(unique(rate),2) ~= size(rate,2)
@@ -89,7 +139,7 @@ elseif ~isempty(res2)
 end
 
 % sequence expansion
-if nargin > 4
+if nargin > (4+isstruct(umod))
   r = seqexpand(r,seq);
   spec = seqexpand(spec,seq);
   [rate,ratedef] = seqexpand(rate,ratedef,seq);
@@ -133,8 +183,7 @@ for i = 1:size(r,2)
   N(:,i) = sparse(ifrom,1,-1,size(spec,2),1)+ ...
            sparse(idest,1,1,size(spec,2),1);
 
-  % search for species and rates in the propensity, rewrite as
-  % 'xstate[<species>]', but keep rate constants
+  % search for species and rates and rewrite in intermediate format
   [rprop{i},dep] = l_rewriteprop(prop,spec,rate);
 
   % the contribution to the dependency graph is now known
@@ -174,9 +223,29 @@ F = [F sprintf('const int NR = %d; /* number of reactions */\n\n', ...
 
 % rate constants
 F = [F '/* rate constants */\n'];
+ldenum = ''; ldrate = {};
+gdenum = ''; gdrate = {};
+Frate = '';
 for i = 1:size(rate,2)
+  % local/global data?
+  if ischar(ratedef{i})
+    if strcmp(ratedef{i},'ldata')
+      if isempty(ldenum)
+        ldenum = 'enum ldataRATE {';
+      end
+      ldenum = [ldenum sprintf('\n  %s,',char(rate{i}))];
+      ldrate = [ldrate rate{i}];
+    elseif strcmp(ratedef{i},'gdata')
+      if isempty(gdenum)
+        gdenum = 'enum gdataRATE {';
+      end
+      gdenum = [gdenum sprintf('\n  %s,',char(rate{i}))];
+      gdrate = [gdrate rate{i}];
+    else
+      error('String rates must be one of ''ldata'' or ''gdata''.');
+    end
   % the magical constant 21 is supposed to be the DECIMAL_DIG of float.h
-  if isscalar(ratedef{i})
+  elseif isscalar(ratedef{i})
     Frate = sprintf('%.*e',21,ratedef{i});
     % safety: read the constant back and see that it is the same
     if abs(sscanf(Frate,'%e')-ratedef{i}) > eps(1000)*abs(ratedef{i})
@@ -199,7 +268,27 @@ for i = 1:size(rate,2)
     F = [F(1:end-1) '};\n'];
   end
 end
-F = [F '\n'];
+if ~isempty(Frate)
+  F = [F '\n'];
+end
+if ~isempty(ldenum)
+  ldenum(end) = [];
+  ldenum = [ldenum '\n};\n\n'];
+  F = [F ldenum];
+end
+if ~isempty(gdenum)
+  gdenum(end) = [];
+  gdenum = [gdenum '\n};\n\n'];
+  F = [F gdenum];
+end
+
+% finish propensities
+for i = 1:size(r,2)
+  % search for species and rates in the propensity, rewrite as
+  % 'xstate[<species>]', 'ldata[<rate>]', 'gdata[<rate>]', and keep
+  % the rest of the rates as constants
+  rprop{i} = l_finishprop(rprop{i},spec,rate,ldrate,gdrate);
+end
 
 % declaration of propensity functions
 F = [F '/* forward declaration */\n'];
@@ -240,7 +329,8 @@ F = [F '  return ptr;\n}\n\n'];
 F = [F 'void FREE_propensities(PropensityFun *ptr)\n'];
 F = [F '{ /* do nothing since a static array was used */ }\n\n'];
 
-if nargin > 3
+% write to file
+if nargin > (3+isstruct(umod))
   % check if file already exists
   if exist(filename,'file')
     [fid,msg] = fopen(filename,'rt');
@@ -265,7 +355,7 @@ end
 F = sprintf(F);
 
 % LaTeX output
-if nargout > 3
+if nargout > 3 || isstruct(umod)
   L = ['\\begin{align}\n' ...
        '  \\left. \\begin{array}{rcl}\n'];
   for i = 1:size(r,2)
@@ -281,6 +371,23 @@ if nargout > 3
   L = [L '  \\end{array} \\right\\}.\n' ...
        '\\end{align}'];
   L = sprintf(L);
+end
+
+% umod-in-umod-out syntax?
+if isstruct(umod)
+  % output: UMOD.{propensities N G <ldata> <gdata> 
+  % private.{Reactions Species RateNames RateVals LaTeX}}
+  umod.propensities = filename;
+  umod.N = N;
+  umod.G = G;
+  if ~isempty(ldrate), umod.ldata = ldrate; end
+  if ~isempty(gdrate), umod.gdata = gdrate; end
+  umpd.private.Reactions = r;
+  umod.private.Species = spec;
+  umod.private.RateNames = rate;
+  umod.private.RateVals = ratedef;
+  umod.private.LaTeX = L;
+  F = umod;
 end
 
 %---------------------------------------------------------------------------
@@ -305,13 +412,14 @@ end
 function [prop,dep] = l_rewriteprop(prop,spec,rate)
 %L_REWRITEPROP Rewrite propensity.
 %   [RPROP,DEP] = L_REWRITEPROP(PROP,SPEC,RATE) rewrites the
-%   propensity PROP by replacing all species by 'xstate[SPEC{j}]'
-%   where j is the numbering in SPEC. On return, DEP contains all
-%   species upon which the propensity depends.
+%   propensity PROP by replacing all species by '$[j]' where j is the
+%   numbering in SPEC, and all rates by '$[-j]$' where j is the
+%   numbering in RATE. On return, DEP contains all species upon which
+%   the propensity depends.
 
-% First switch to an intermediate representation using '$[<name>]'. We
-% replace larger strings first in order to avoid exchanging e.g., 'BA'
-% with '$[1]A' whenever 'B' and 'BA' are two different species/rates
+% The intermediate representation is '$[<name>]'. We replace larger
+% strings first in order to avoid exchanging e.g., 'BA' with '$[1]A'
+% whenever 'B' and 'BA' are two different species/rates
 symbols = [spec; ...
            mat2cell(1:size(spec,2),1,ones(1,size(spec,2)))];
 % rates have a negative sign:
@@ -331,8 +439,14 @@ for j = size(symbols,2):-1:1
   end
 end
 
-% replace back names (an enum is used for the species in the C-code,
-% for rates this is just a declared constant)
+%---------------------------------------------------------------------------
+function prop = l_finishprop(prop,spec,rate,ldrate,gdrate)
+%L_FINISHPROP Finish propensities.
+%   PROP = L_FINISHPROP(PROP,SPEC,RATE,LDRATE,GDRATE) replaces back
+%   the species/rates names from the intermediate format. In the
+%   C-code, enums are used for the species, and for the ldata/gdata
+%   rate constants, while for the other rate constants this is just a
+%   declared constant.
 offset = 1;
 while 1
   % find prop(i:j) = '$[<name>]'
@@ -343,17 +457,28 @@ while 1
   j = j+i+2-1;
   n = str2num(prop(i+2:j-1));
   if n > 0
-    % species
-    prop = [prop(1:i+1) spec{n} prop(j:end)];
-    offset = i+2;
+    % species $ --> $1[...]
+    prop = [prop(1:i) '1[' spec{n} prop(j:end)];
+    offset = i+3;
   else
-    % rates
-    prop = [prop(1:i-1) rate{-n} prop(j+1:end)];
-    offset = i;
+    % rates: ldata --> $2[...], gdata --> $3[...], otherwise just remove
+    % the '$[]'
+    if any(strcmp(rate{-n},ldrate))
+      prop = [prop(1:i) '2[' rate{-n} prop(j:end)];
+      offset = i+3;
+    elseif any(strcmp(rate{-n},gdrate))
+      prop = [prop(1:i) '3[' rate{-n} prop(j:end)];
+      offset = i+3;
+    else
+      prop = [prop(1:i-1) rate{-n} prop(j+1:end)];
+      offset = i;
+    end
   end
 end
 
 % final replace
-prop = strrep(prop,'$','xstate');
+prop = strrep(prop,'$1','xstate');
+prop = strrep(prop,'$2','ldata');
+prop = strrep(prop,'$3','gdata');
 
 %---------------------------------------------------------------------------

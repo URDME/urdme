@@ -24,7 +24,7 @@ function umod = urdme(umod,varargin)
 %   solve           {1} | 0                 Solve on/off
 %   compile         {1} | 0                 Compile on/off
 %   parse           {1} | 0                 Parse on/off
-%   seed            double {NaN}            Solver random number seed
+%   seed            double {0}              Solver random number seed
 %
 %   The URDME Matlab interface supports three levels of report: 0
 %   (silent), 1 (intermediate), 2 (comprehensive), 3 (as 2, but also
@@ -54,42 +54,44 @@ function umod = urdme(umod,varargin)
 %   See also COMSOL2URDME, URDME2COMSOL, URDME_VALIDATE, NSM.
 
 %   The URDME-struct has the following fields:
-%   -----------------------------------------------------------------------
+%   ------------------------------------------
 %
 %   Required fields before call:
 %
-%   tspan           Time vector
-%   u0              Initial state
-%   D               Diffusion matrix
-%   N               Stoichiometric matrix
-%   G               Dependency graph
-%   vol             Voxel volumes
-%   sd              Subdomain numbers
+%   tspan                Time vector
+%   u0                   Initial state
+%   D                    Diffusion matrix
+%   N                    Stoichiometric matrix
+%   G                    Dependency graph
+%   vol                  Voxel volumes
+%   sd                   Subdomain numbers
 %
 %   Usually passed as options to URDME:
 %
-%   solver          Solver
-%   propensities    Propensity source file
-%   report          Solver feedback
-%   solve           Solve on/off
-%   compile         Compilation on/off
-%   parse           Parsing on/off
-%   seed            Random seed
+%   solver               Solver
+%   propensities         Propensity source file
+%   report               Solver feedback
+%   solve                Solve on/off
+%   compile              Compilation on/off
+%   parse                Parsing on/off
+%   seed                 Random seed
 %
 %   Optional, empty understood when left out:
 %
-%   ldata           Local data vector
-%   gdata           Global data vector
-%   solverargs      Arguments to solver, property/value cell-vector
-%   makeargs        Arguments passed to makefile_<solver>.m
+%   inline_propensities  Inline propensity structure
+%   ldata                Local data vector
+%   gdata                Global data vector
+%   solverargs           Arguments to solver, property/value cell-vector
+%   makeargs             Arguments passed to makefile
 %
 %   Optional:
 %
-%   U               Latest stored solution
-%   comsol          Comsol Java object
-%   pde             PDE Toolbox structure
-%   private         Field to store anything extra
+%   U                    Latest stored solution
+%   comsol               Comsol Java object
+%   pde                  PDE Toolbox structure
+%   private              Field to store anything extra
 
+% S. Engblom 2019-11-27 (Revision, inline propensities)
 % S. Engblom 2017-02-15 (Major revision, URDME 1.3, Comsol 5)
 % P. Bauer, S. Engblom 2012-04-04 (Revision, cleanup)
 % V. Gerdin 2012-02-01 (Revision, Comsol 4.2)
@@ -98,16 +100,18 @@ function umod = urdme(umod,varargin)
 
 % parse property/value pairs, the logic of this if-statement is: (1)
 % either options have been given, or (2) the umod-struct is
-% incomplete, or (3) the umod-struct instructs us to parse it
+% incomplete, or (3) the umod-struct itself instructs us to parse it
 if nargin > 1 || ~isfield(umod,'parse') || umod.parse
   % default options
   optdef = struct('solver','nsm', ...
                   'propensities','', ...
+                  'inline_propensities', ...
+                  struct('K',[],'I',[],'S',[]), ...
                   'report',0, ...
                   'solve',1, ...
                   'compile',1, ...
                   'parse',1, ...
-                  'seed',NaN, ...
+                  'seed',0, ...
                   'ldata',[], ...
                   'gdata',[], ...
                   'solverargs',{{}}, ...
@@ -126,20 +130,37 @@ if nargin > 1 || ~isfield(umod,'parse') || umod.parse
     error('Could not create Matlab struct from input property/value pairs.');
   end
 
-  % merge options: input opts --> umod, opts takes precedence
+  % (1) merge options: input opts --> umod, opts takes precedence
   fn = fieldnames(opts);
   for i = 1:length(fn)
     umod = setfield(umod,fn{i},getfield(opts,fn{i}));
   end
 
-  % merge options: umod --> optdef, umod takes precedence
+  % (2) merge options: umod --> optdef, umod takes precedence
   fn = fieldnames(umod);
   for i = 1:length(fn)
     if ~isfield(optdef,fn{i}) && ~isfield(req,fn{i})
       error(sprintf('Unrecognized property ''%s''.',fn{i}));
     end
-    optdef = setfield(optdef,fn{i},getfield(umod,fn{i}));
+    if ~strcmp(fn{i},'inline_propensities')
+      optdef = setfield(optdef,fn{i},getfield(umod,fn{i}));
+    else
+      % the field inline_propensities is a struct itself and it is
+      % convenient to have its empty default fields propagate into any
+      % partially built struct
+      fn_ = fieldnames(umod.inline_propensities);
+      for j = 1:length(fn_)
+       if ~isfield(optdef.inline_propensities,fn_{j})
+         error(sprintf(['Unrecognized property ' ...
+                        '''inline_propensities.%s''.'],fn_{j}));
+       end
+        optdef.inline_propensities = ...
+          setfield(optdef.inline_propensities,fn_{j}, ...
+                                 getfield(umod.inline_propensities,fn_{j}));
+      end
+    end
   end
+  % done!
   umod = optdef;
 end
 
@@ -172,6 +193,9 @@ if umod.solve
                  umod.tspan,umod.u0,umod.D,umod.N,umod.G, ...
                  umod.vol,umod.ldata,umod.gdata,umod.sd, ...
                  umod.report,umod.seed, ...
+                 umod.inline_propensities.K, ...
+                 umod.inline_propensities.I, ...
+                 umod.inline_propensities.S, ...
                  umod.solverargs);
   l_info(umod.report,1,'   ...done.\n');
   if umod.report >= 2
