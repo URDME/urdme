@@ -12,7 +12,7 @@ algorithms.
 
 URDME 1.4. Copyright 2008--2020
 
-See the file [AUTHORS](AUTHORS) for a complete list of authors. 
+See the file [AUTHORS](https://github.com/URDME/urdme/blob/master/AUTHORS) for a complete list of authors. 
 
 ### Quick Start
 
@@ -41,11 +41,11 @@ doc/manual.pdf
 
 ### System requirements and software dependencies
 
-See the file [VERSION](VERSION) for a complete list.
+See the file [VERSION](https://github.com/URDME/urdme/blob/master/VERSION) for a complete list.
 
 ### Licence: GPL 3
 
-See the file [LICENCE](LICENCE) for the full statement.
+See the file [LICENCE](https://github.com/URDME/urdme/blob/master/LICENCE) for the full statement.
 
 ### Citing URDME:
 
