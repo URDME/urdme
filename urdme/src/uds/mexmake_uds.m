@@ -1,12 +1,22 @@
-function mexmake_uds(propensity_file,~)
+function mexmake_uds(propensity_file,varargin)
 %MEXMAKE_UDS Makefile for MEXRHS.
 %   MEXMAKE_UDS(P) Makes the UDS-solver with propensity source file P,
 %   given as a relative path.
+%
+%   MEXMAKE_UDS(P,...) accepts additional arguments as
+%   property/value-pairs.
+%
+%   Property     Value/{Default}     Description
+%   -----------------------------------------------------------------
+%   define       string              Defines on the mex-format 
+%                                    '-D<define>', see MEX.
+%   source       string              Source filename(s).
+%   include      string              Include path.
+%   link         string              Linker path.
 
+% S. Engblom 2019-12-03 (Revision, make arguments)
 % S. Engblom 2019-11-06 (Revision, now using URDMEstate_t)
 % S. Engblom 2017-02-24
-
-if nargin > 1, error('UDS does not accept make arguments.'); end
 
 % global defines, if any
 define = [];
@@ -25,14 +35,44 @@ else
   propensity_source = [path '../propensities.c'];
 end
 
+% default options
+optdef.define = '';
+optdef.include = '';
+optdef.link = '';
+optdef.source = '';
+
+% merge defaults with actual inputs
+if nargin > 1
+  opts = struct(varargin{:});
+  fn = fieldnames(opts);
+  for i = 1:length(fn)
+    optdef = setfield(optdef,fn{i},getfield(opts,fn{i}));
+  end
+end
+opts = optdef;
+
 % include and source directories
 include = {['-I' path] ['-I' path '../../include']};
+if ~isempty(opts.include)
+  include = [include ['-I' opts.include]];
+end
 link =    {['-L' path] ['-L' path '../']};
+if ~isempty(opts.link)
+  link = [link ['-L' opts.link]];
+end
 source = {[path 'mexrhs.c'] ...
           propensity_source ...
           [path '../inline.c']};
+if ~isempty(opts.source)
+  if ischar(opts.source)
+    source = [source {opts.source}];
+  else
+    source = [source opts.source];
+  end
+end
 define = [define '-DUDS_ ' ...
-          '-DMALLOC\(n\)=mxMalloc\(n\) -DFREE\(p\)=mxFree\(p\)'];
+          '-DMALLOC\(n\)=mxMalloc\(n\) -DFREE\(p\)=mxFree\(p\)' ...
+          opts.define];
 
 % mex extension
 mx = mexext;

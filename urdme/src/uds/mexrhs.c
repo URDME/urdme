@@ -1,5 +1,6 @@
 /* mexrhs.c - Mex-interface for use with the UDS solver in URDME. */
 
+/* S. Engblom 2019-11-27 (Revision, inline propensities) */
 /* S. Engblom 2019-11-06 (Revision, now using URDMEstate_t) */
 /* S. Engblom 2017-02-24 */
 
@@ -56,19 +57,27 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   int *sd = mxMalloc(Ncells*sizeof(int));
   for (int i = 0; i < Ncells; i++) sd[i] = (int)sd_double[i];
 
-  /* parse solver arguments (K,I,S) */
-  const double *K = mxGetPr(mxK);
-  const size_t M1 = mxGetN(mxK);
-  const double *I_double = mxGetPr(mxI);
-  int *I = mxMalloc(3*M1*sizeof(int));
-  for (int i = 0; i < 3*M1; i++) {
-    I[i] = (int)I_double[i]-1;
-    if (I[i] < 0 || Mspecies <= I[i])
-      mexErrMsgTxt("Index out of bounds in inline propensity.");
+  /* Parse inline propensities (K,I,S) - assume empty to begin with */
+  double *K = NULL;
+  int *I = NULL,*prS = NULL;
+  mwIndex *jcS = NULL;
+  const bool emptyS = mxIsEmpty(mxS);
+  size_t M1 = 0;
+
+  /* both of {K,I} empty is a common case */
+  if (!mxIsEmpty(mxK) || !mxIsEmpty(mxI)) {
+    /* get pointer to K */
+    K = mxGetPr(mxK);
+    M1 = mxGetN(mxK);
+
+    /* typecast I */
+    const double *I_double = mxGetPr(mxI);
+    I = mxMalloc(3*M1*sizeof(int));
+    for (int i = 0; i < 3*M1; i++)
+      I[i] = (int)I_double[i]-1;
   }
-  int *prS;
-  mwIndex *jcS;
-  const bool emptyS = mxGetNumberOfElements(mxS) == 0;
+
+  /* get sparse matrix S, if any */
   if (!emptyS) {
     jcS = mxGetJc(mxS);
     const double *prS_double = mxGetPr(mxS);
@@ -100,15 +109,13 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
 	(*rfun[j-M1])(&u0[Mspecies*subvol],tt,vol[subvol],
 		      &ldata[subvol*dsize],gdata,sd[subvol]);
   }
+  FREE_propensities(rfun);
 
   /* deallocate */
-  FREE_propensities(rfun);
   if (M1 > 0) {
     mxFree(I);
-    if (!emptyS)
-      mxFree(prS);
-    else
-      mxFree(jcS);
+    mxFree(prS);
+    if (emptyS) mxFree(jcS);
   }
   mxFree(sd);
 #ifndef UDS_

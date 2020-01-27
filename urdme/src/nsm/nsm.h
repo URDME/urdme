@@ -1,5 +1,6 @@
 /* nsm.h - Header file for NSM-solver. */
 
+/* S. Engblom 2019-11-12 (multiple seeds) */
 /* S. Engblom 2018-02-10 (Nreplicas syntax) */
 /* S. Engblom 2017-02-17 (Major revision, URDME 1.3, Comsol 5) */
 /* P. Bauer and S. Engblom 2012-05-04 (Revision) */
@@ -20,7 +21,7 @@ void nsm(const PropensityFun *rfun,
 	 const int *sd,const size_t Ncells,
 	 const size_t Mspecies,const size_t Mreactions,
 	 const size_t dsize,
-	 int report_level,
+	 int report_level,const long *seed_long,
 	 const double *K,const int *I,
 	 const size_t *jcS,const int *prS,const size_t M1
 	 );

@@ -1,5 +1,6 @@
 /* aem.h - Header file for AEM-solver. */
 
+/* S. Engblom 2019-11-12 (Nreplicas syntax) */
 /* S. Engblom 2017-02-17 (Major revision, URDME 1.3, Comsol 5) */
 /* P. Bauer and S. Engblom 2012-05-10 */
 
@@ -13,13 +14,14 @@ void aem(const PropensityFun *rfun,
 	 const int *u0,
 	 const size_t *irN,const size_t *jcN,const int *prN,
 	 const size_t *irG,const size_t *jcG,
-	 const double *tspan,const size_t tlen,
+	 const double *tspan,const size_t tlen,const size_t Nreplicas,
 	 int *U,
 	 const double *vol,
 	 const double *ldata,const double *gdata,const int *sd,
 	 const size_t Ncells,
 	 const size_t Mspecies,const size_t Mreactions,
-	 const size_t dsize,int report_level,
+	 const size_t dsize,
+	 int report_level,const unsigned *seed_uint,
 	 const double *K,const int *I,
 	 const size_t *jcS,const int *prS,const size_t M1);
 

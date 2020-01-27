@@ -22,7 +22,7 @@ function ssa
 %                               {'X'},{'k' 1e2 'nu' 2e1});
 %     umod.N = N;
 %     umod.G = G;
-%     umod.solverargs = {'K' K 'I' I};
+%     umod.inline_propensities = struct('K',K,'I',I);
 %
 %     % subdomain
 %     umod.sd = ones(size(umod.vol));
@@ -47,7 +47,8 @@ function ssa
 %     [1] D. T. Gillespie: "A general method for numerically
 %     simulating the stochastic time evolution of coupled chemical
 %     reactions", J. Comput. Phys. 22(4):403--434 (1976).
-                
+
+% S. Engblom 2019-11-27 (Revision, inline propensities)
 % S. Engblom 2017-02-22
 
 error('This file should not be called directly.');

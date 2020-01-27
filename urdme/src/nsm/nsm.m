@@ -9,13 +9,10 @@ function nsm
 %   The NSM solver supports three report levels: 0 (no report), 1
 %   (progress report), 2 (progress report + event count).
 %
-%   Property    Value/{Default}           Description
-%   -----------------------------------------------------------------------
-%   K, I, S     Matrices                  Inline propensities.
-%
 %   The NSM solver supports the 'inline' propensity syntax, where
-%   UMOD.solverargs = {'K' K 'I' I 'S' S}. This is an efficient way of
-%   defining elementary reactions and is parsed as follows:
+%   umod.inline_propensities is a structure containing the fields K,
+%   I, and (optionally) S. This is an efficient way of defining
+%   elementary reactions and is parsed as follows:
 %
 %   -K, the inline propensity coefficient matrix. K(:,i) gives the
 %   coefficients to reaction #i. Where i is in [1,M1]. The size of K
@@ -70,7 +67,7 @@ function nsm
 %          0  2  0]';   % decay
 %     I = [1 2 1; ...
 %          1 1 3]';
-%     umod.solverargs = {'K' K 'I' I};
+%     umod.inline_propensities = struct('K',K,'I',I);
 %
 %     % dependency graph
 %     umod.G = sparse([1 1 0 1 1; ...
@@ -97,6 +94,7 @@ function nsm
 %     [1] D. Fange and J. Elf: "Noise-Induced Min Phenotypes in
 %     E. coli", PLoS Comput. Biol. 2(6):637--648 (2006).
                 
+% S. Engblom 2019-11-27 (Revision, inline propensities)
 % S. Engblom 2017-02-22
 
 error('This file should not be called directly.');

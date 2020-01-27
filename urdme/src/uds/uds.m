@@ -12,8 +12,6 @@ function uds
 %               {odeset('RelTol',1e-4,
 %                'AbsTol',0.1)}
 %
-%   K, I, S     Matrices                  Inline propensities, see NSM.
-%
 %   finish      {''}                      Play sound when done. Portable 
 %                                         choices include 'handel', 'gong' 
 %                                         and 'splat'. See AUDIOVIDEO.
@@ -41,7 +39,7 @@ function uds
 %                   {'X' 'Y'},{'k' 1e2 'mu' 1e-2});
 %     umod.N = N;
 %     umod.G = G;
-%     umod.solverargs = {'K' K 'I' I};
+%     umod.inline_propensities = struct('K',K,'I',I);
 %
 %     % initial state u0 and time interval
 %     umod.u0 = 50*ones(2,n);
@@ -52,7 +50,7 @@ function uds
 %     U1 = umod.U;
 %
 %     % ...solve with NSM
-%     umod.solverargs = {'K' K 'I' I};
+%     umod.inline_propensities = struct('K',K,'I',I);
 %     umod = urdme(umod,'solver','nsm');
 %     U2 = umod.U;
 %
@@ -67,6 +65,7 @@ function uds
 %     Solutions of the Master Equation", 
 %     Appl. Math. Comput. 18(2):498--515 (2006).
 
+% S. Engblom 2019-11-27 (Revision, inline propensities)
 % S. Engblom 2017-02-28
 
 error('This file should not be called directly.');

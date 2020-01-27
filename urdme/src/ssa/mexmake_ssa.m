@@ -10,7 +10,13 @@ function mexmake_ssa(propensity_file,varargin)
 %   -----------------------------------------------------------------
 %   OpenMP       Boolean {false}     Turns OpenMP-compilation
 %                                    on/off.
+%   define       string              Defines on the mex-format 
+%                                    '-D<define>', see MEX.
+%   source       string              Source filename(s).
+%   include      string              Include path.
+%   link         string              Linker path.
 
+% S. Engblom 2019-11-29 (Revision, make arguments)
 % S. Engblom 2017-02-22
 
 % global defines, if any
@@ -32,6 +38,10 @@ end
 
 % default options
 optdef.openmp = false;
+optdef.define = '';
+optdef.include = '';
+optdef.link = '';
+optdef.source = '';
 
 % merge defaults with actual inputs
 if nargin > 1
@@ -54,13 +64,27 @@ end
 
 % include and source directories
 include = {['-I' path] ['-I' path '../../include']};
-link =    {omp_link ['-L' path] ['-L' path '../']};
+if ~isempty(opts.include)
+  include = [include ['-I' opts.include]];
+end
+link = {omp_link ['-L' path] ['-L' path '../']};
+if ~isempty(opts.link)
+  link = [link ['-L' opts.link]];
+end
 source = {[path 'mexssa.c'] ...
           propensity_source ...
           [path 'ssa.c'] ...
           [path '../inline.c'] ...
           [path '../report.c']};
-define = [define '-DMALLOC\(n\)=mxMalloc\(n\) -DFREE\(p\)=mxFree\(p\)'];
+if ~isempty(opts.source)
+  if ischar(opts.source)
+    source = [source {opts.source}];
+  else
+    source = [source opts.source];
+  end
+end
+define = [define '-DMALLOC\(n\)=mxMalloc\(n\) -DFREE\(p\)=mxFree\(p\) ' ...
+          opts.define];
 
 % mex extension
 mx = mexext;

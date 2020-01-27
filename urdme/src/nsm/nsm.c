@@ -1,5 +1,6 @@
 /* nsm.c - URDME NSM solver. */
 
+/* S. Engblom 2019-11-12 (multiple seeds) */
 /* S. Engblom 2018-02-10 (Nreplicas syntax) */
 /* S. Engblom 2017-02-16 (Major revision, URDME 1.3, Comsol 5) */
 /* S. Engblom 2014-06-10 (Revision) */
@@ -33,7 +34,7 @@ void nsm(const PropensityFun *rfun,
 	 const int *sd,
 	 const size_t Ncells,
 	 const size_t Mspecies,const size_t Mreactions,
-	 const size_t dsize,int report_level,
+	 const size_t dsize,int report_level,const long *seed_long,
 	 const double *K,const int *I,
 	 const size_t *jcS,const int *prS,const size_t M1
 	 )
@@ -65,6 +66,9 @@ Nreplicas
 report_level
   The desired degree of feedback during simulations. 0, 1, and 2 are
   currently supported options.
+
+seed_long
+  Vector of Nreplicas random seed values, passed to srand48.
 
 Diffusion matrix D. Double sparse (Ndofs X Ndofs). 
   Macroscopic diffusion matrix. For i ~= j, D(i,j) is the linear
@@ -143,11 +147,11 @@ The output is a matrix U (Ndofs X length(tspan)).
   double totrate;
 
   int *node,*heap,*xx;
-  long int total_reactions = 0;
-  long int total_diffusion = 0;
+  int errcode = 0;
+  long total_diffusion = 0,total_reactions = 0;
   int dof,col;
         
-  int subvol,event,re,spec,to_spec,errcode = 0;
+  int subvol,event,re,spec,to_spec;
   size_t i,j,it,k;
   size_t to_node,to_vol = 0;
   const size_t Ndofs = Ncells*Mspecies;
@@ -175,7 +179,10 @@ The output is a matrix U (Ndofs X length(tspan)).
   for (i = 0; i < Ndofs; i++) {
     Ddiag[i] = 0.0;
     for (j = jcD[i]; j < jcD[i+1]; j++)
-      if (irD[j] == i) Ddiag[i] = -prD[j];
+      if (irD[j] == i) {
+	Ddiag[i] = -prD[j];
+	break;
+      }
   }
 
   /* Binary (min)heap. */
@@ -192,6 +199,9 @@ The output is a matrix U (Ndofs X length(tspan)).
 
     /* Set xx to the initial state. */
     memcpy(xx,&u0[k*Ndofs],Ndofs*sizeof(int));
+
+    /* set new master seed */
+    srand48(seed_long[k]);
 
     /* Calculate the propensity for every reaction and every
        subvolume. Store the sum of the reaction intensities in each
@@ -233,8 +243,7 @@ The output is a matrix U (Ndofs X length(tspan)).
       tt = rtimes[0];
       subvol = node[0];
 
-      /* Store solution if the global time counter tt has passed the
-	 next time in tspan. */
+      /* report data */
       if (tt >= tspan[it] || isinf(tt)) {
 	for (; it < tlen && (tt >= tspan[it] || isinf(tt)); it++) {
 	  if (report_level)
@@ -245,9 +254,7 @@ The output is a matrix U (Ndofs X length(tspan)).
 		   report_level);
 	  memcpy(&U[k*Ndofs*tlen+Ndofs*it],xx,Ndofs*sizeof(int));
 	}
-
-	/* If the simulation has reached the final time, exit. */     
-	if (it >= tlen) break;
+	if (it >= tlen) break; /* main exit */
       }
 
       /* First check if it is a reaction or a diffusion event. */
@@ -477,9 +484,8 @@ The output is a matrix U (Ndofs X length(tspan)).
 	update(heap[to_vol],rtimes,node,heap,Ncells);
       } 
         
-      /* Check for error codes. */
       if (errcode) {
-	/* Report the error that occurred and exit. */
+	/* Report the error and exit. */
 	memcpy(&U[k*Ndofs*tlen+Ndofs*it],xx,Ndofs*sizeof(int));
 	report(tt-tspan[0]+k*(tspan[tlen-1]-tspan[0]),
 	       0.0,Nreplicas*(tspan[tlen-1]-tspan[0]),

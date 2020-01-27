@@ -1,5 +1,7 @@
 /* mexssa.c - Mex-interface SSA solver for use with URDME. */
 
+/* S. Engblom 2019-11-27 (Revision, inline propensities) */
+/* S. Engblom 2019-11-15 (Nreplicas, multiple seeds syntax) */
 /* S. Engblom 2017-02-22 */
 
 #include <stdlib.h>
@@ -19,7 +21,7 @@
 void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
 { 
   /* check syntax */
-  if (nrhs != 12 || nlhs != 1)
+  if (nrhs != 15 || nlhs != 1)
     mexErrMsgTxt("Wrong number of arguments.");
 
   /* load arguments */
@@ -34,7 +36,10 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   const mxArray *mxSd = prhs[8];
   const mxArray *mxREPORT = prhs[9];
   const mxArray *mxSEED = prhs[10];
-  const mxArray *mxSOLVEARGS = prhs[11];
+  const mxArray *mxK = prhs[11];
+  const mxArray *mxI = prhs[12];
+  const mxArray *mxS = prhs[13];
+  const mxArray *mxSOLVEARGS = prhs[14];
 
   /* get dimensions */
   const size_t tlen = mxGetNumberOfElements(mxTspan);
@@ -47,10 +52,13 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   /* Get pointers to non-sparse objects. */
   const double *tspan = mxGetPr(mxTspan);
   const double *u0_double = mxGetPr(mxU0);
+  const size_t Nreplicas = mxGetNumberOfDimensions(mxU0) == 3
+    ? mxGetDimensions(mxU0)[2] : 1;
   const double *vol = mxGetPr(mxVol);
   const double *ldata = mxGetPr(mxLData);
   const double *gdata = mxGetPr(mxGData);
   const double *sd_double = mxGetPr(mxSd);
+  const double *seed_double = mxGetPr(mxSEED);
 
   /* Get sparse matrix D. */
   if (mxGetJc(mxD)[mxGetN(mxD)] != 0)
@@ -66,92 +74,64 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   const mwIndex *jcG = (const mwIndex *)mxGetJc(mxG);
   const mwIndex *irG = (const mwIndex *)mxGetIr(mxG);
 
-  /* Parse solver arguments (K,I,S), if any */
-  double *K;
-  int *I = NULL,*prS;
-  mwIndex *jcS;
-  bool emptyS = true;
+  /* Parse inline propensities (K,I,S) - assume empty to begin with */
+  double *K = NULL;
+  int *I = NULL,*prS = NULL;
+  mwIndex *jcS = NULL;
+  const bool emptyS = mxIsEmpty(mxS);
   size_t M1 = 0;
-  if (!mxIsEmpty(mxSOLVEARGS)) {
-    mxArray *mxK = NULL,*mxI = NULL,*mxS = NULL;
-    const size_t nsolveargs = mxGetNumberOfElements(mxSOLVEARGS);
-    if (nsolveargs&1 || !mxIsCell(mxSOLVEARGS))
-      mexErrMsgTxt("Solver arguments must be an even length cell-vector.");
-    for (int i = 0; i < nsolveargs; i += 2) {
-      /* read property + value */
-      mxArray *Str = mxGetCell(mxSOLVEARGS,i);
-      char str[5];
-      mxArray *Val = mxGetCell(mxSOLVEARGS,i+1);
-      if (Str == NULL || Val == NULL)
-	mexErrMsgTxt("Could not read property/value.");
-      if (mxGetString(Str,str,2))
-	mexErrMsgTxt("Could not parse property.");
-      switch (str[0]) {
-      case 'K':
-	mxK = Val;
-	M1 = mxGetN(mxK);
-	break;
-      case 'I':
-	mxI = Val;
-	break;
-      case 'S':
-	mxS = Val;
-	emptyS = false;
-	break;
-      default:
-	mexErrMsgTxt("Unrecognized property.");
-      }
-    }
-    if (mxK == NULL || mxI == NULL)
-      mexErrMsgTxt("One of (K,I) not parsed.");
-    if (mxIsSparse(mxK) || !mxIsDouble(mxK) || mxGetM(mxK) != 3 || M1 > Mreactions ||
-	mxIsSparse(mxI) || !mxIsDouble(mxI) || mxGetM(mxI) != 3 || mxGetN(mxI) != M1 || 
-	(mxS != NULL && (!mxIsSparse(mxS) || !mxIsDouble(mxS) || mxGetN(mxS) != M1)))
-      mexErrMsgTxt("Format mismatch in one of (K,I,S).");
 
+  /* both of {K,I} empty is a common case */
+  if (!mxIsEmpty(mxK) || !mxIsEmpty(mxI)) {
     /* get pointer to K */
     K = mxGetPr(mxK);
-    const double *I_double = mxGetPr(mxI);
+    M1 = mxGetN(mxK);
 
     /* typecast I */
+    const double *I_double = mxGetPr(mxI);
     I = mxMalloc(3*M1*sizeof(int));
-    for (int i = 0; i < 3*M1; i++) {
+    for (int i = 0; i < 3*M1; i++)
       I[i] = (int)I_double[i]-1;
-      if (I[i] < 0 || Mspecies <= I[i])
-	mexErrMsgTxt("Index out of bounds in inline propensity.");
-    }
-
-    /* get sparse matrix S, if any */
-    if (mxS != NULL) {
-      jcS = mxGetJc(mxS);
-      const double *prS_double = mxGetPr(mxS);
-      const size_t nnzS = jcS[mxGetN(mxS)];
-      /* typecast */
-      prS = mxMalloc(nnzS*sizeof(int));
-      for (int i = 0; i < nnzS; i++) prS[i] = (int)prS_double[i];
-    }
-    else
-      /* empty S allowed */
-      jcS = mxCalloc(M1+1,sizeof(mwIndex));
   }
 
+  /* get sparse matrix S, if any */
+  if (!emptyS) {
+    jcS = mxGetJc(mxS);
+    const double *prS_double = mxGetPr(mxS);
+    const size_t nnzS = jcS[mxGetN(mxS)];
+    /* typecast */
+    prS = mxMalloc(nnzS*sizeof(int));
+    for (int i = 0; i < nnzS; i++) prS[i] = (int)prS_double[i];
+  }
+  else
+    /* empty S allowed */
+    jcS = mxCalloc(M1+1,sizeof(mwIndex));
+
+  /* Parse solver arguments */
+  if (!mxIsEmpty(mxSOLVEARGS))
+    mexErrMsgTxt("SSA does not accept any solver arguments");
+
   /* Typecast from double to int. */
-  int *u0 = mxMalloc(Ndofs*sizeof(int));
+  int *u0 = mxMalloc(Ndofs*Nreplicas*sizeof(int));
   int *sd = mxMalloc(Ncells*sizeof(int));
   int *prN = mxMalloc(nnzN*sizeof(int));
 
-  for (int i = 0; i < Ndofs; i++) u0[i] = (int)u0_double[i];
+  for (int i = 0; i < Ndofs*Nreplicas; i++) u0[i] = (int)u0_double[i];
   for (int i = 0; i < Ncells; i++) sd[i] = (int)sd_double[i];
   for (int i = 0; i < nnzN; i++) prN[i] = (int)prN_double[i];
 
   /* Set up result matrix U. */
-  int *U = mxMalloc(Ndofs*tlen*sizeof(int));
+  int *U = mxMalloc(Ndofs*tlen*Nreplicas*sizeof(int));
 
   /* report */
   const int report_level = (int)*mxGetPr(mxREPORT);
 
   /* seed */
-  if (!mxIsNaN(*mxGetPr(mxSEED))) srand48((long)*mxGetPr(mxSEED));
+  long *seed_long = mxMalloc(Nreplicas*sizeof(long));
+  for (int i = 0,j = 0,
+	 jinc = mxGetNumberOfElements(mxSEED) == Nreplicas;
+       i < Nreplicas; i++, j += jinc)
+    seed_long[i] = (long)seed_double[j];
 
   /* fetch the propensities, execute the Master call to ssa(), and
      next get rid of the propensities */
@@ -161,31 +141,35 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
       u0,
       (const size_t *)irN,(const size_t *)jcN,prN,
       (const size_t *)irG,(const size_t  *)jcG,
-      tspan,tlen,
+      tspan,tlen,Nreplicas,
       U,vol,ldata,gdata,sd,
       Ncells,Mspecies,Mreactions,
       dsize,
-      report_level,
+      report_level,seed_long,
       K,I,(const size_t *)jcS,prS,M1
       );
   FREE_propensities(rfun);
 
   /* Deallocate. */
   if (M1 > 0) {
-    if (!emptyS)
-      mxFree(prS);
-    else
-      mxFree(jcS);
     mxFree(I);
+    mxFree(prS);
+    if (emptyS) mxFree(jcS);
   }
+  mxFree(seed_long);
   mxFree(prN);
   mxFree(sd);
   mxFree(u0);
 
   /* Put result in plhs[0] and typecast from int to double. */
-  plhs[0] = mxCreateDoubleMatrix(Ndofs,tlen,mxREAL);
+  if (Nreplicas == 1)
+    plhs[0] = mxCreateDoubleMatrix(Ndofs,tlen,mxREAL);
+  else {
+    const mwSize dims[] = {Ndofs,tlen,Nreplicas};
+    plhs[0] = mxCreateNumericArray(3,dims,mxDOUBLE_CLASS,mxREAL);
+  }
   double *U_out = mxGetPr(plhs[0]);
-  for (int i = 0; i < Ndofs*tlen; i++) U_out[i] = (double)U[i];
+  for (int i = 0; i < Ndofs*tlen*Nreplicas; i++) U_out[i] = (double)U[i];
   mxFree(U);
 }
 /*----------------------------------------------------------------------*/

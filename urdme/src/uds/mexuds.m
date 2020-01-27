@@ -1,19 +1,18 @@
-function U = mexuds(tspan,u0,D,N,G,vol,ldata,gdata,sd,reportl,seed,solverargs)
+function U = mexuds(tspan,u0,D,N,G,vol,ldata,gdata,sd,reportl,seed,K,I,S,solverargs)
 
 % (for help, type 'help uds')
 
+% S. Engblom 2019-11-27 (Revision, inline propensities)
+% S. Engblom 2019-11-17 (Revision, Nreplicas)
 % S. Engblom 2017-02-24 (mexuds)
 % S. Engblom 2016-01-07 (rt_solve, extension to linear transport models)
 % S. Engblom 2007-04-05 (rrsolve)
 
 % default solver options
 optdef.odesolv = @ode23s;
-optdef.odeopts = odeset('RelTol',1e-4,'AbsTol',0.1);
+optdef.odeopts = odeset('RelTol',1e-4,'AbsTol',1e-1);
 optdef.report = 0;
 optdef.finish = '';
-optdef.K = zeros(3,0);
-optdef.I = zeros(3,0);
-optdef.S = sparse(0,0);
 
 % input options
 try
@@ -34,14 +33,17 @@ if opts.report
 end
 
 % solve
-[foo,U] = opts.odesolv(@l_rhs,tspan,u0(:),opts.odeopts,N,D,vol, ...
-                       ldata,gdata,sd,opts.K,opts.I,opts.S);
-
-% fix for singular behaviour
-if numel(tspan) == 2
-  U = U([1 end],:);
+U = zeros(numel(u0(:,:,1)),numel(tspan),size(u0,3));
+for k = 1:size(u0,3)
+  l_report(0,[k size(u0,3)],'init_replica');
+  [foo,U_] = opts.odesolv(@l_rhs,tspan,u0(:,:,k),opts.odeopts,N,D,vol, ...
+                          ldata,gdata,sd,K,I,S);
+  % fix for singular behaviour
+  if numel(tspan) == 2
+    U_ = U_([1 end],:);
+  end
+  U(:,:,k) = U_';
 end
-U = U';
 
 % play sound, if any
 if ~isempty(opts.finish)
@@ -62,25 +64,33 @@ dy = reshape(N*mexrhs(t,y,size(N,2),vol,ldata,gdata,sd,K,I,S),[],1)+D*y;
 function status = l_report(t,y,s,varargin)
 %L_REPORT Simple reporter. Adapted from stenglib, see www.stenglib.org.
 
-persistent T0 Tend percent t0 hwait;
+persistent T0 Tend percent t0 hwait kreplica Nreplicas;
 
 if isempty(s) && ~isempty(hwait)
   % main use
-  now = round((t(end)-T0)/(Tend-T0)*100);
+  now = round(((kreplica-1)/Nreplicas+(t(end)-T0)/(Tend-T0)/Nreplicas)*100);
   if now > percent
     percent = now;
     if isempty(t0) || percent < eps
       waitbar(percent/100,hwait);
     end
   end
+elseif strcmp(s,'init_replica')
+  % init of each replica (must be performed before use)
+  kreplica = y(1);
+  Nreplicas = y(2);
 elseif strcmp(s,'init')
+  % main init of reporter (must be performed before use)
   T0 = t(1);
   Tend = t(end);
   percent = 0;
   t0 = [];
   try, close(hwait); catch, end
   hwait = waitbar(0.0,'Solution progress');
-else % 'none' and 'done' empties hwait
+else
+  % 'none' and 'done' clears the reporter
+  Nreplicas = [];
+  kreplica = [];
   try, close(hwait); catch, end
   hwait = [];
   t0 = [];
