@@ -1,6 +1,7 @@
 %Basic example script.
 %   Reaction X+Y <--> Z in a 3D sphere.
 
+% S. Engblom 2019-11-27 (Revision, augment model using rparse)
 % S. Engblom 2017-05-09 (Revision, rparse)
 % S. Engblom 2017-02-19 (Revision)
 
@@ -16,7 +17,7 @@ else
 end
   
 %% (2) reactions
-[~,umod.N,umod.G] = rparse( ...
+umod = rparse(umod, ...
     {'X+Y > X*Y/vol > Z' ...
      'Z > Z > X+Y'}, ...
     {'X' 'Y' 'Z'},{},'basic.c');
@@ -36,7 +37,7 @@ umod.u0(2,:) = full(sparse(1,cell,1,1,Ncells));
 %% (3) simulate
 
 % diffusion is set to 0.1
-umod = urdme(umod,'tspan',0:.1:100,'seed',123,'propensities','basic');
+umod = urdme(umod,'tspan',0:.1:100,'seed',123);
 
 %% (4) postprocessing using Comsol
 if exist('mli','dir') && (~exist('plotting_off','var') || ~plotting_off)

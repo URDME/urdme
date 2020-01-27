@@ -97,10 +97,10 @@ r5 = 'MinDcytADP > kp*MinDcytADP > MinDcytATP';
 species = {'MinDcytATP' 'MinDmem' 'MinE' 'MinDE' 'MinDcytADP'};
 rates = {'NA' 6.022e23 'kd' 1.25e-8 'kdD' 9.0e6 'kde' 5.56e7 ...
          'ke' 0.7 'kp' 0.5};
-[~,umod.N,umod.G] = rparse({r1 r2 r3 r4 r5},species,rates,'fange.c');
+umod = rparse(umod,{r1 r2 r3 r4 r5},species,rates,'fange.c');
 
 % run model
-umod = urdme(umod,'propensities','fange','report',0);
+umod = urdme(umod,'report',0);
 
 %% (4) postprocessing, temporal average
 U = umod.U;

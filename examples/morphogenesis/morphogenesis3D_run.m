@@ -30,7 +30,7 @@ end
 umod.vol = 50/mean(umod.vol)*umod.vol;
 
 % solve
-umod = urdme(umod,'propensities','schnakenberg','report',0);
+umod = urdme(umod,'report',0);
 
 return;
 

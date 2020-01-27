@@ -45,7 +45,7 @@ umod = schnakenberg(umod);
 umod.vol = 50/mean(umod.vol)*umod.vol;
 
 % solve
-umod = urdme(umod,'seed',17,'propensities','schnakenberg','report',0);
+umod = urdme(umod,'seed',17,'report',0);
 
 % visualize using PDE Toolbox
 umod = urdme2pde(umod);
@@ -88,7 +88,7 @@ vmod = brusselator(vmod);
 vmod.vol = 100/mean(vmod.vol)*vmod.vol;
 
 % solve
-vmod = urdme(vmod,'seed',17,'propensities','brusselator','report',0);
+vmod = urdme(vmod,'seed',17,'report',0);
 
 % visualize using PDE Toolbox
 vmod = urdme2pde(vmod);

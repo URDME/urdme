@@ -3,6 +3,7 @@
 %   when they meet. This example shows how one can set up a simple 2D
 %   simulation using the URDME interface to PDE Toolbox.
 
+% S. Engblom 2019-11-27 (Revision, model augmentation using rparse_inline)
 % S. Engblom 2017-05-09 (Revision, rparse_inline)
 % S. Engblom 2017-02-21
 
@@ -39,7 +40,7 @@ umod.sd = round(umod.sd);
 % @ --> A (sd == 1), @ --> B (sd == 3), A+B --> @ (everywhere)
 k_creat = R_const*200.0;
 k_react = R_const*1.0;
-[K,I,umod.N,umod.G] = rparse_inline( ...
+umod = rparse_inline(umod, ...
     {'@ > k_creat > A', ...
      '@ > k_creat > B', ...
      'A+B > k_react > @'}, ...
@@ -49,7 +50,7 @@ k_react = R_const*1.0;
 S = [2 1 0; ...
      3 2 0];
 S = sparse(S);
-umod.solverargs = {'K' K 'I' I 'S' S};
+umod.inline_propensities.S = S;
 
 %% (3) run the model
 

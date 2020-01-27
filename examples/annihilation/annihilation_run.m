@@ -4,6 +4,7 @@
 %   propensities are used, and how one can set up a simple 1D
 %   simulation.
 
+% S. Engblom 2019-11-27 (Revision, model creation using rparse_inline)
 % S. Engblom 2017-05-09 (Revision, rparse_inline)
 % S. Engblom 2017-02-18 (Major revision, URDME 1.3, Comsol 5)
 % B. Drawert 2012
@@ -18,7 +19,7 @@ D_const = 1;
 clear umod
 k_creat = R_const*200.0;
 k_react = R_const*1.0;
-[K,I,umod.N,umod.G] = rparse_inline( ...
+umod = rparse_inline([], ...
     {'@ > k_creat > A', ...
      '@ > k_creat > B', ...
      'A+B > k_react > @'}, ...
@@ -28,7 +29,7 @@ k_react = R_const*1.0;
 S = [1 1 0; ...
      3 2 0];
 S = sparse(S);
-umod.solverargs = {'K' K 'I' I 'S' S};
+umod.inline_propensities.S = S; 
 
 %% (2) diffusion
 
@@ -39,7 +40,7 @@ L = 10;
 Ncells = 20;
 x = linspace(0,L,Ncells);
 dx = x(2)-x(1);
-umod.private.mesh = x; % (used to plot)
+umod.private.mesh = x; % (later used to plot)
 umod.vol = dx^3*ones(Ncells,1);
 
 % 1D diffusion operator
