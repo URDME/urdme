@@ -445,13 +445,14 @@ elseif strcmp(mx,'mexs64')
   mex('-largeArrayDims','-outdir',s,[s '/source/spreplace.c']);
 elseif strcmp(mx,'mexw64')
   if opts.openmp, warning('OpenMP not implemented for this platform.'); end
-  mex('-outdir',s,[s '/source/clenshaw.c']);
-  mex('-outdir',s,[s '/source/fsetop.c']);
-  mex('-outdir',s,[s '/source/mexfrepmat.c']);
-  mex(FSPARSEDEF,'-outdir',s,[s '/source/fsparse.c']);
-  mex('-outdir',s,[s '/source/powerseries.c']);
-  mex('-outdir',s,[s '/source/sppmul.c']);
-  mex('-largeArrayDims','-outdir',s,[s '/source/spreplace.c']);
+  cflags = 'CFLAGS=-fPIC -fno-omit-frame-pointer -std=c99 -D_GNU_SOURCE -pthread -fexceptions ';
+  mex(cflags, '-outdir',s,[s '/source/clenshaw.c']);
+  mex(cflags, '-outdir',s,[s '/source/fsetop.c']);
+  mex(cflags, '-outdir',s,[s '/source/mexfrepmat.c']);
+  mex([cflags FSPARSEDEF],'-outdir',s,[s '/source/fsparse.c']);
+  mex(cflags, '-outdir',s,[s '/source/powerseries.c']);
+  mex(cflags, '-outdir',s,[s '/source/sppmul.c']);
+  mex(cflags, '-largeArrayDims','-outdir',s,[s '/source/spreplace.c']);
 else
   warning('New platform. Trying default make.');
   if opts.openmp, warning('OpenMP not implemented for this platform.'); end

@@ -20,7 +20,7 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-Tend = 1001;
+Tend = 149;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -270,27 +270,27 @@ report(tt,U,'done');
 
 % create a GIF animation
 
-% % population appearance
-% M = struct('cdata',{},'colormap',{});
-% figure(3), clf,
-% for i = 1:numel(Usave)
-%   patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-%         'EdgeColor','none');
-%   hold on,
-%   axis([-1 1 -1 1]); axis square, axis off
-%   ii = find(Usave{i} == 1);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',graphics_color('bluish green'));
-%   ii = find(Usave{i} == 2);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',graphics_color('vermillion'));
-%   ii = find(Usave{i} == -1);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 0 0]);
-%   title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
-%   drawnow;
-%   M(i) = getframe(gcf);
-% end
+% population appearance
+M = struct('cdata',{},'colormap',{});
+figure(3), clf,
+for i = 1:numel(Usave)
+  patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+        'EdgeColor','none');
+  hold on,
+  axis([-1 1 -1 1]); axis square, axis off
+  ii = find(Usave{i} == 1);
+  patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',graphics_color('bluish green'));
+  ii = find(Usave{i} == 2);
+  patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',graphics_color('vermillion'));
+  ii = find(Usave{i} == -1);
+  patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 0 0]);
+  title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
+  drawnow;
+  M(i) = getframe(gcf);
+end
 
 % investigate the time evolution of the different cell numbers
 figure(4), clf
