@@ -20,7 +20,7 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-Tend = 501;
+Tend = 101;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -28,10 +28,11 @@ report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 % death, degradation and consumption rules.
 cons = 0.0015;        % consumption of oxygen by cells
 cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-r_prol = 0.125;       % rate of proliferation of singly occupied voxels
+r_prol = 0;       % rate of proliferation of singly occupied voxels
 cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-r_die = 0.125;        % rate of death
+r_die = 0;        % rate of death
 r_degrade = 0.01;     % rate of degradation for already dead cells
+
 
 % Permeability parameters.
 Drate1 = 0.01;     % into free matrix
@@ -62,10 +63,18 @@ xc(irem) = [];
 yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
-% initial population: circular blob of cells
-r = sqrt(P(1,:).^2+P(2,:).^2);
-ii = find(r < 0.05); % radius of the initial blob
-U = fsparse(ii(:),1,1,[Nvoxels^2 1]);
+init = 2;
+if init == 1
+    % initial population: circular blob of cells
+    r = sqrt(P(1,:).^2+P(2,:).^2);
+    ii = find(r < 0.05); % radius of the initial blob
+    U = fsparse(ii(:),1,1,[Nvoxels^2 1]);
+else 
+    % initial population: circular blob of dead cells
+    r = sqrt(P(1,:).^2+P(2,:).^2);
+    ii = find(r < 0.05); % radius of the initial blob
+    U = fsparse(ii(:),1,-1,[Nvoxels^2 1]);
+end
    
 % visit marker matrix: 1 for voxels who have been occupied
 VU = (U ~= 0);
@@ -96,6 +105,7 @@ while tt <= tspan(end)
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
   idof = find(Idof);
+  ddof = find(U == -1);   %degradation 
 
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof];
@@ -167,16 +177,17 @@ while tt <= tspan(end)
   death = full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die));
   degrade = full(r_degrade*(U(Adof) == -1));
   
+  %Gillespies algorithm
   intens = [moveb; moves; birth; death; degrade];
   lambda = sum(intens);
-  dt = -reallog(rand)/lambda; 
+  dt = 1/lambda; 
   rnd = rand*lambda;
   cum = intens(1);
-  ix_ = 1;
-  while rnd > cum
-    ix_ = ix_+1;
-    cum = cum+intens(ix_);
-  end
+%  ix_ = 1;
+%   while rnd > cum
+%     ix_ = ix_+1;
+%     cum = cum+intens(ix_);
+%   end
   % (now ix_ points to the intensity which fired first)
 
   % report back
@@ -196,68 +207,77 @@ while tt <= tspan(end)
                      sum(birth) sum(death) sum(degrade)];
   end
 
-  if ix_ <= numel(moveb)
-    Ne.moveb = Ne.moveb+1;
-    % movement of a boundary (singly occupied) voxel
-    ix_ = bdof_m_(ix_);
-    ix = Adof(ix_);
+  %if ix_ <= numel(moveb)
+  %moveb
+%     Ne.moveb = Ne.moveb+1;
+%     % movement of a boundary (singly occupied) voxel
+%     ix_ = bdof_m_(ix_);
+%     ix = Adof(ix_);
+% 
+%     jx_ = find(N(ix,Adof));
+%     % (will only move into an empty voxel:)
+%     jx_ = jx_(U(Adof(jx_)) == 0);
+%     rates = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
+%     m = find(cumsum(rates) > rand*sum(rates),1,'first');
+%     n = Adof(jx_(m));
+% 
+%     % execute event: move from ix to n
+%     U(n) = U(ix);
+%     U(ix) = 0;
+%     updLU = true; % boundary has changed
+  %elseif ix_ <= numel(moveb)+numel(moves)
+%     Ne.moves = Ne.moves+1;
+%     % movement of a cell in a doubly occupied voxel
+%     ix_ = ix_-numel(moveb);
+%     ix_ = sdof_m_(ix_);
+%     ix = Adof(ix_);
+% 
+%     jx_ = find(N(ix,Adof));
+%     % (won't move into a voxel containing a dead -1 cell:)
+%     jx_ = jx_(-1 < U(Adof(jx_)) & U(Adof(jx_)) < 2);
+%     rates = Drate_(2*VU(Adof(jx_))+abs(U(Adof(jx_)))+1).* ...
+%             max(Pr(ix_)-Pr(jx_),0);
+%     m = find(cumsum(rates) > rand*sum(rates),1,'first');
+%     n = Adof(jx_(m));
+% 
+%     % execute event: move from ix to n
+%     if U(n) == 0, updLU = true; end % boundary has changed
+%     U(n) = U(n)+1;
+%     U(ix) = U(ix)-1;
+%   elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)
+%     Ne.birth = Ne.birth+1;
+%     % proliferation
+%     birth_count = birth_count+1;
+%     ix_ = ix_-numel(moveb)-numel(moves);
+%     ix = Adof(ix_);
+%     U(ix) = U(ix)+1;
+% % elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)+numel(death)
+%     Ne.death = Ne.death+1;
+%     % death
+%     ix_ = ix_-numel(moveb)-numel(moves)-numel(birth);
+%     ix = Adof(ix_);
+%     if U(ix) == 2
+%       U(ix) = 1; % (removed directly)
+%       Ne.degrade = Ne.degrade+1;
+%     else
+%       U(ix) = -1;
+%     end
+%  else
 
-    jx_ = find(N(ix,Adof));
-    % (will only move into an empty voxel:)
-    jx_ = jx_(U(Adof(jx_)) == 0);
-    rates = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-    m = find(cumsum(rates) > rand*sum(rates),1,'first');
-    n = Adof(jx_(m));
+%death
+%     Ne.death = Ne.death+1;
 
-    % execute event: move from ix to n
-    U(n) = U(ix);
-    U(ix) = 0;
-    updLU = true; % boundary has changed
-  elseif ix_ <= numel(moveb)+numel(moves)
-    Ne.moves = Ne.moves+1;
-    % movement of a cell in a doubly occupied voxel
-    ix_ = ix_-numel(moveb);
-    ix_ = sdof_m_(ix_);
-    ix = Adof(ix_);
-
-    jx_ = find(N(ix,Adof));
-    % (won't move into a voxel containing a dead -1 cell:)
-    jx_ = jx_(-1 < U(Adof(jx_)) & U(Adof(jx_)) < 2);
-    rates = Drate_(2*VU(Adof(jx_))+abs(U(Adof(jx_)))+1).* ...
-            max(Pr(ix_)-Pr(jx_),0);
-    m = find(cumsum(rates) > rand*sum(rates),1,'first');
-    n = Adof(jx_(m));
-
-    % execute event: move from ix to n
-    if U(n) == 0, updLU = true; end % boundary has changed
-    U(n) = U(n)+1;
-    U(ix) = U(ix)-1;
-  elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)
-    Ne.birth = Ne.birth+1;
-    % proliferation
-    birth_count = birth_count+1;
-    ix_ = ix_-numel(moveb)-numel(moves);
-    ix = Adof(ix_);
-    U(ix) = U(ix)+1;
-  elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)+numel(death)
-    Ne.death = Ne.death+1;
-    % death
-    ix_ = ix_-numel(moveb)-numel(moves)-numel(birth);
-    ix = Adof(ix_);
-    if U(ix) == 2
-      U(ix) = 1; % (removed directly)
-      Ne.degrade = Ne.degrade+1;
-    else
-      U(ix) = -1;
-    end
-  else
+%degradation--------------------------------
     Ne.degrade = Ne.degrade+1;
     % degradation
-    ix_ = ix_-numel(moveb)-numel(moves)-numel(birth)-numel(death);
-    ix = Adof(ix_);
-    U(ix) = 0;
+%     ix_ = ix_-numel(moveb)-numel(moves)-numel(birth)-numel(death);
+%     ix = Adof(ix_);
+%     U(ix) = 0;
+    
+    U(ddof)= r_degrade*U(ddof)*dt; 
+    
     updLU = true; % boundary has changed
-  end
+  %end
   tt = tt+dt;
   report(tt,U,'');
 

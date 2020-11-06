@@ -12,6 +12,8 @@ Nvoxels = 40;
 % diffusive pressure rate
 Drate = 1;
 
+mesh_type = 1;
+
 % fetch discretization (mesh_type = 1 or 2)
 if ~exist('mesh_type','var'), error('Must define mesh_type.'); end
 [P,E,T,gradquotient] = basic_mesh(mesh_type,Nvoxels);
@@ -42,6 +44,7 @@ patch('Faces',R(jj,:),'Vertices',V, ...
       'FaceColor',graphics_color('vermillion'));
 
 % "The Method"
+neigh = full(sum(N,2));
 adof = find(U);
 bdof_m = find(N*(U > 0) < neigh & U == 1);
 sdof = find(U > 1);
