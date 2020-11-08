@@ -31,7 +31,7 @@ cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
 r_prol = 0.125;       % rate of proliferation of singly occupied voxels
 cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
 r_die = -0.125;        % rate of death
-r_degrade = -0.1;     % rate of degradation for already dead cells
+r_degrade = -0.01;     % rate of degradation for already dead cells
 
 
 % Permeability parameters.
@@ -183,7 +183,7 @@ while tt <= tspan(end)
   %Gillespies algorithm
   intens = [moveb; moves; birth; abs(death); abs(degrade)];
   lambda = sum(intens);
-  dt = 10;%/lambda; 
+  dt = 1/lambda; 
 %   rnd = rand*lambda;
 %   cum = intens(1);
 %  ix_ = 1;
@@ -277,8 +277,8 @@ while tt <= tspan(end)
 %     ix = Adof(ix_);
 %     U(ix) = 0;
     
-    U_dead(ddof) = U_dead(ddof)+r_degrade*U_dead(ddof)*dt;
-    U_dead(U_dead < 0) = 0;
+    U_dead(ddof) = U_dead(ddof)+r_degrade*U(ddof)*dt; %ändra r<0
+    UU_dead < 0 = 0;
     U(U_dead<=0) = 0; % remove degraded cells
      
     updLU = true; % boundary has changed
