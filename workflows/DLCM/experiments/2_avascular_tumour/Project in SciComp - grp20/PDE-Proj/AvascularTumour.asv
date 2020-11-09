@@ -20,18 +20,18 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-Tend = 101;
+Tend = 51;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 % The user specified cutoff and rate parameters for the proliferation,  
 % death, degradation and consumption rules.
-cons = 0.0015;        % consumption of oxygen by cells
+cons = 0.0005;        % consumption of oxygen by cells
 cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
 r_prol = 0.125;       % rate of proliferation of singly occupied voxels
 cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-r_die = -0.125;        % rate of death
-r_degrade = -0.01;     % rate of degradation for already dead cells
+r_die = -0.025;        % rate of death
+r_degrade = -0.1;     % rate of degradation for already dead cells
 
 
 % Permeability parameters.
@@ -68,7 +68,7 @@ if init == 1
     % initial population: circular blob of living cells
     r = sqrt(P(1,:).^2+P(2,:).^2);
     ii = find(r < 0.05); % radius of the initial blob
-    U = fsparse(ii(:),1,1,[Nvoxels^2 1]);
+    U = fsparse(ii(:),1,2,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera 
 else 
     % initial population: circular blob of dead cells
@@ -77,6 +77,27 @@ else
     U = fsparse(ii(:),1,-1,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,1,[Nvoxels^2 1]);
 end
+
+% M = struct('cdata',{},'colormap',{});
+% figure(25), clf,
+% for i = 1:numel(Usave)
+%   patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+%         'EdgeColor','none');
+%   hold on,
+%   axis([-1 1 -1 1]); axis square, axis off
+%   ii = find(Usave{i} > 0 & Usave{i} < 1);
+%   patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',graphics_color('bluish green'));
+%   ii = find(Usave{i} > 1);
+%   patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',graphics_color('vermillion'));
+%   ii = find(Usave{i} == -1);
+%   patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[0 0 0]);
+%   title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
+%   drawnow;
+%   M(i) = getframe(gcf);
+% end
    
 % visit marker matrix: 1 for voxels who have been occupied
 VU = (U ~= 0);
@@ -95,10 +116,15 @@ OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % event counter
 Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
 while tt <= tspan(end)
+  Ncells=full(sum(Usave{i}~=0))
+  Ndead=full(sum(Usave{i}==-1))
+  Nalive=full(sum(Usave{i}>0))
+  N2=full(sum(Usave{i}==2))
+  oxygen=Oxy(Adof)
   % classify the DOFs
   adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
   % singularly occupied voxels on the boundary: (will not be a source of moving cells)
-  bdof_m = find(N*(U ~= 0) < neigh & ((U >0 & U <= 1) | U_dead > 0));
+  bdof_m = find(N*(U ~= 0) < neigh & ((U > 0 & U <= 1) | U_dead > 0));
   sdof = find(U > 1); % voxels with 2 cells
   % voxels with 2 cells in them _which may move_, with a voxel
   % containing less number of cells next to it (actually 1 or 0):
@@ -125,7 +151,7 @@ while tt <= tspan(end)
     Lai = fsparse(idof_,idof_,1,size(La.X));
     La.X = La.X-Lai*La.X+Lai;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
-
+    
     % oxygen Laplacian
     OLa.X = L;
     OLai = fsparse(extdof,extdof,1,size(OLa.X));
@@ -143,7 +169,7 @@ while tt <= tspan(end)
   % RHS source term proportional to the over-occupancy and BCs
   Oxy = full(fsparse([extdof; adof],1, ...
                      [ones(size(extdof)); ... 
-                      -cons*full(max(U(adof),0)./dM(adof))], ...
+                      -cons*full(max(U(adof),0)./dM(adof))], ... 
                      [size(OLa.X,1) 1]));
   Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
 
@@ -183,7 +209,7 @@ while tt <= tspan(end)
   %Gillespies algorithm
   intens = [moveb; moves; birth; abs(death); abs(degrade)];
   lambda = sum(intens);
-  dt = 1/lambda; 
+  dt = 0.02;%/lambda; 
 %   rnd = rand*lambda;
 %   cum = intens(1);
 %  ix_ = 1;
@@ -254,9 +280,15 @@ while tt <= tspan(end)
 %     ix_ = ix_-numel(moveb)-numel(moves);
 %     ix = Adof(ix_);
 %     U(ix) = U(ix)+1;
-% % elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)+numel(death)
+%death--------------------------------------
+% full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die))
+ind_die = find(U(Adof)>0 & Oxy(Adof) < cutoff_die);
+dead_conc = r_die*U(ind_die)*dt;
+U(ind_die) = U(ind_die) + dead_conc;
+U_dead(ind_die) = U_dead(ind_die) - dead_conc;
+U(U(ind_die)<=0) = -1;
+% elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)+numel(death)
 %     Ne.death = Ne.death+1;
-%     % death
 %     ix_ = ix_-numel(moveb)-numel(moves)-numel(birth);
 %     ix = Adof(ix_);
 %     if U(ix) == 2
@@ -267,19 +299,19 @@ while tt <= tspan(end)
 %     end
 %  else
 
-%death
 %     Ne.death = Ne.death+1;
 
 %degradation--------------------------------
-    Ne.degrade = Ne.degrade+1;
+%     Ne.degrade = Ne.degrade+1;
     % degradation
 %     ix_ = ix_-numel(moveb)-numel(moves)-numel(birth)-numel(death);
 %     ix = Adof(ix_);
 %     U(ix) = 0;
     
-    U_dead(ddof) = U_dead(ddof)+r_degrade*U(ddof)*dt; %ändra r<0
-    UU_dead < 0 = 0;
-    U(U_dead<=0) = 0; % remove degraded cells
+    U_dead(ddof) = U_dead(ddof) + r_degrade*U_dead(ddof)*dt;
+    % remove degraded cells
+    U_dead(U_dead < 0) = 0;
+    U(U_dead<=0) = 0; 
      
     updLU = true; % boundary has changed
   %end
@@ -295,7 +327,7 @@ report(tt,U,'done');
 % return;
 
 % create a GIF animation
-
+figure(56)
 % population appearance
 M = struct('cdata',{},'colormap',{});
 figure(3), clf,
@@ -304,10 +336,10 @@ for i = 1:numel(Usave)
         'EdgeColor','none');
   hold on,
   axis([-1 1 -1 1]); axis square, axis off
-  ii = find(Usave{i} == 1);
+  ii = find(Usave{i} > 0 & Usave{i} < 1);
   patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',graphics_color('bluish green'));
-  ii = find(Usave{i} == 2);
+  ii = find(Usave{i} > 1);
   patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',graphics_color('vermillion'));
   ii = find(Usave{i} == -1);
