@@ -13,7 +13,6 @@ figrows = ceil(sqrt(length(DirList)));
 for k = 1:length(DirList)
     load(['saveData/' DirList(k).name]);
     loadSaveData;
-%     t_show = find(tspan > 680 & tspan < 720);
     t_show = length(Usave);
     if(tspan(end) > 1000)
 %         subplot(figrows, ceil(length(DirList)/figrows),k);
@@ -22,17 +21,17 @@ for k = 1:length(DirList)
                     'EdgeColor','none');
         hold on,
         axis([-1 1 -1 1]); axis square, axis off
-        ii = find(Usave{t_show(1)} == 1);
+        ii = find(Usave{t_show} == 1);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',graphics_color('bluish green'));
-        ii = find(Usave{t_show(1)} == 2);
+        ii = find(Usave{t_show} == 2);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',graphics_color('vermillion'));
-        ii = find(Usave{t_show(1)} == -1);
+        ii = find(Usave{t_show} == -1);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',[0 0 0]);
         title(sprintf('Time = %d, Ncells = %d,\n BC1 = %d, BC2 = %d', ...
-            tspan(end),full(sum(abs(Usave{t_show(1)}))), BC1, BC2));
+            tspan(t_show),full(sum(abs(Usave{t_show}))), BC1, BC2));
         drawnow;
     end
 end

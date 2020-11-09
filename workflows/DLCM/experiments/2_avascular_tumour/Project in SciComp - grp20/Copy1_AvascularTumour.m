@@ -296,9 +296,7 @@ report(tt,U,'done');
 % create a GIF animation
 
 % population appearance
-load(['saveData/' DirList(12).name]);
-loadSaveData;
-if true
+if doGif
     M = struct('cdata',{},'colormap',{});
     figure(3), clf,
     for i = 1:2:numel(Usave)
