@@ -20,7 +20,9 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-Tend = 149;
+doGif = false;
+doRadiusBC = true;
+Tend = 1500;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -40,6 +42,8 @@ Drate3 = 0.01;     % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 
 % boundary conditions
+%         BC1 = 100; % BC for the pressure equation for unvisited boundary
+%         BC2 = 0; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
 
@@ -66,7 +70,7 @@ extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 r = sqrt(P(1,:).^2+P(2,:).^2);
 ii = find(r < 0.05); % radius of the initial blob
 U = fsparse(ii(:),1,1,[Nvoxels^2 1]);
-   
+
 % visit marker matrix: 1 for voxels who have been occupied
 VU = (U ~= 0);
 
@@ -83,8 +87,17 @@ La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % event counter
 Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
+timing_vec = zeros(6,length(tspan)+1);
+
+% oxygen Laplacian
+OLa.X = L;
+OLai = fsparse(extdof,extdof,1,size(OLa.X));
+OLa.X = OLa.X-OLai*OLa.X+OLai;
+[OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
+
+tic
 while tt <= tspan(end)
-  % classify the DOFs
+  %% classify the DOFs
   adof = find(U); % all filled voxels
   % singularly occupied voxels on the boundary:
   bdof_m = find(N*(U ~= 0) < neigh & abs(U) == 1);
@@ -106,26 +119,32 @@ while tt <= tspan(end)
   Adof_ = (1:numel(Adof))';  
   [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof);
-
+  %% Update LU
   if updLU
+
     % pressure Laplacian
     La.X = L(Adof,Adof);
     Lai = fsparse(idof_,idof_,1,size(La.X));
     La.X = La.X-Lai*La.X+Lai;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
 
-    % oxygen Laplacian
-    OLa.X = L;
-    OLai = fsparse(extdof,extdof,1,size(OLa.X));
-    OLa.X = OLa.X-OLai*OLa.X+OLai;
-    [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
-
     updLU = false; % assume we can reuse
   end
 
+  %% Caculate laplacians
+  if doRadiusBC
+    idof1_distFromOrigo = sqrt(P(1,idof1).^2+P(2,idof1).^2)';
+  else
+    idof1_distFromOrigo = ones(size(idof1_));
+  end
+
   % RHS source term proportional to the over-occupancy and BCs
-  Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
-                    [size(La.X,1) 1]));     % RHS first...
+  Pr = full(fsparse([sdof_; idof1_; idof2_],1, ... % ; 
+                  [1./dM(sdof); ...
+                   BC1*idof1_distFromOrigo; BC2*ones(size(idof2_))], ... % ; 
+                  [size(La.X,1) 1]));    % RHS first...
+%   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
+%                   [size(La.X,1) 1]));     % RHS first...
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
   % RHS source term proportional to the over-occupancy and BCs
@@ -135,6 +154,7 @@ while tt <= tspan(end)
                      [size(OLa.X,1) 1]));
   Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
 
+  %% Measure events probabilites
   % intensities of possible events
 
   % (1) moving boundary DOFs
@@ -163,10 +183,11 @@ while tt <= tspan(end)
 %   birth = total_birth/total_birth * birth;
   birth(isnan(birth)) = 0;
   % (as we get some 0/0 terms if total_birth == 0);
- 
+
   death = full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die));
   degrade = full(r_degrade*(U(Adof) == -1));
-  
+
+  %% Caclutate which is suppose to happen
   intens = [moveb; moves; birth; death; degrade];
   lambda = sum(intens);
   dt = -reallog(rand)/lambda; 
@@ -179,23 +200,7 @@ while tt <= tspan(end)
   end
   % (now ix_ points to the intensity which fired first)
 
-  % report back
-  if tspan(i+1) < tt+dt
-    iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
-    Usave(i+1:iend) = {U};
-    i = iend;
-
-    % monitor the maximum outlier cell:
-    max_radius = sqrt(max(P(1,adof).^2+P(2,adof).^2));
-
-    % the number of cells
-    num_cells = sum(abs(U));
-
-    % the rates
-    inspect_rates = [sum(moveb) sum(moves) ...
-                     sum(birth) sum(death) sum(degrade)];
-  end
-
+  %% Execute the event that happens
   if ix_ <= numel(moveb)
     Ne.moveb = Ne.moveb+1;
     % movement of a boundary (singly occupied) voxel
@@ -258,40 +263,64 @@ while tt <= tspan(end)
     U(ix) = 0;
     updLU = true; % boundary has changed
   end
+
+  %% Rest of while loop
+  % report back
+  if tspan(i+1) < tt+dt
+    iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
+    Usave(i+1:iend) = {U};
+    i = iend;
+
+    % monitor the maximum outlier cell:
+    max_radius = sqrt(max(P(1,adof).^2+P(2,adof).^2));
+
+    % the number of cells
+    num_cells = sum(abs(U));
+
+    % the rates
+    inspect_rates = [sum(moveb) sum(moves) ...
+                     sum(birth) sum(death) sum(degrade)];
+  end
+
   tt = tt+dt;
   report(tt,U,'');
 
   % update the visited sites
   VU = VU | U;
 end
+toc
 report(tt,U,'done');
 
 % return;
-
+%%
 % create a GIF animation
 
-% % population appearance
-% M = struct('cdata',{},'colormap',{});
-% figure(3), clf,
-% for i = 1:numel(Usave)
-%   patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-%         'EdgeColor','none');
-%   hold on,
-%   axis([-1 1 -1 1]); axis square, axis off
-%   ii = find(Usave{i} == 1);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',graphics_color('bluish green'));
-%   ii = find(Usave{i} == 2);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',graphics_color('vermillion'));
-%   ii = find(Usave{i} == -1);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 0 0]);
-%   title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
-%   drawnow;
-%   M(i) = getframe(gcf);
-% end
-
+% population appearance
+load(['saveData/' DirList(12).name]);
+loadSaveData;
+if true
+    M = struct('cdata',{},'colormap',{});
+    figure(3), clf,
+    for i = 1:2:numel(Usave)
+      patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+            'EdgeColor','none');
+      hold on,
+      axis([-1 1 -1 1]); axis square, axis off
+      ii = find(Usave{i} == 1);
+      patch('Faces',R(ii,:),'Vertices',V, ...
+            'FaceColor',graphics_color('bluish green'));
+      ii = find(Usave{i} == 2);
+      patch('Faces',R(ii,:),'Vertices',V, ...
+            'FaceColor',graphics_color('vermillion'));
+      ii = find(Usave{i} == -1);
+      patch('Faces',R(ii,:),'Vertices',V, ...
+            'FaceColor',[0 0 0]);
+      title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
+      drawnow;
+      M(i) = getframe(gcf);
+    end
+end
+%%
 % investigate the time evolution of the different cell numbers
 figure(4), clf
 spsum  = @(U)(full(sum(abs(U))));
@@ -314,6 +343,11 @@ xlabel('time')
 ylabel('N cells')
 legend('total', 'dead','double','single');
 
+% Save the important data in a struct
+saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
+    'R', {R}, 'V', {V}, 'BC1', {BC1}, 'BC2', {BC2}, 'doRadiusBC', {doRadiusBC});
+filename_saveData = "saveData/saveData_T" + Tend + "_BC1-" + BC1 + "_BC2-" + BC2 + ".mat";
+save(filename_saveData, 'saveData');
 return;
 
 % saves the GIF

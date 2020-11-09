@@ -18,7 +18,8 @@ Drate2 = 1;      % into already visited matrix
 Drate3 = 0.1; % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 % (hence Drate_(U(j)+1,VU(j)+1) = Drate_(2*VU(j)+U(j)+1) is the rate
-% to move into voxel j)
+% to move into voxel j). This works due to 2*VU(j)+U(j)+1 == {1 --> Drate1, 
+% 2 --> NaN, 3 --> Drate2, 4 --> Drate3}
 
 % Drate1 <= Drate2 is the only thing that makes sense. And normalizing
 % one of them to 1 sets the unit of time for the mechanics. Drate3 is
@@ -114,10 +115,10 @@ grad = fsparse(ii,1,max(Pr(sdof_m_(ii))-Pr(jj_),0).* ...
                numel(sdof_m));
 moves = full(gradquotient*grad);
 
-% $$$ % pressure plot
-% $$$ figure(3), clf,
-% $$$ Pr_ = full(U); Pr_(Adof) = Pr;
-% $$$ trisurf(T(1:3,:)',P(1,:),P(2,:),Pr_);
+ % pressure plot
+ figure(3), clf,
+ Pr_ = full(U); Pr_(Adof) = Pr;
+ trisurf(T(1:3,:)',P(1,:),P(2,:),Pr_);
 
 % visualize rates
 figure(mesh_type), clf,
