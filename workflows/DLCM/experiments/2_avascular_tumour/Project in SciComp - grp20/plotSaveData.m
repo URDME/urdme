@@ -13,8 +13,8 @@ figrows = ceil(sqrt(length(DirList)));
 for k = 1:length(DirList)
     load(['saveData/' DirList(k).name]);
     loadSaveData;
-    t_show = length(Usave);
-    if(tspan(end) > 1000)
+    t_show = find(tspan >= 150, 1); % length(Usave);
+    if(tspan(end) >= 150)
 %         subplot(figrows, ceil(length(DirList)/figrows),k);
         figure(k)
         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -45,7 +45,8 @@ prolsum = @(U)(full(sum(U == 2)));
 
 figure(2);
 for k = 1:length(DirList)
-    subplot(figrows, ceil(length(DirList)/figrows),k);
+%     subplot(figrows, ceil(length(DirList)/figrows),k);
+    figure(k)
     load(['saveData/' DirList(k).name]);
     loadSaveData;
     

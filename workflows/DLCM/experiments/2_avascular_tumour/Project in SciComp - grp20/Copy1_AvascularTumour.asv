@@ -46,7 +46,7 @@ BC1 = 1; % BC for the pressure equation for unvisited boundary
 BC2 = 0.1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1000;
+alpha = 1;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -137,7 +137,7 @@ while tt <= tspan(end)
     La.X = La.X-Lai*La.X;
     Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
     La.X = La.X+Lai2;
-    % add derived BC to LHS?
+    add derived BC to LHS?
     La.X = La.X + fsparse(idof1_,idof1_, ...
         diag(M(idof1,idof1)), size(La.X)); % Scaling with distance from origo --> multiply sqrt(P(1,idof1).^2+P(2,idof1).^2)'
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
