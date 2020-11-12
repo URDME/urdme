@@ -22,7 +22,7 @@
 % simulation interval
 doGif = true;
 doRadiusBC = false;
-Tend = 800;
+Tend = 200;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,7 +46,7 @@ BC1 = 1; % BC for the pressure equation for unvisited boundary
 BC2 = 0.1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1000;
+alpha = 0.1;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -134,12 +134,14 @@ while tt <= tspan(end)
     % pressure Laplacian
     La.X = L(Adof,Adof);
     Lai = fsparse(idof_,idof_,1,size(La.X));
-    La.X = La.X-Lai*La.X;
-    Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-    La.X = La.X+Lai2;
+    La.X = La.X-Lai*La.X+Lai;
+%     Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
+%     La.X = La.X+Lai2;
     % add derived BC to LHS?
-    La.X = La.X + fsparse(idof1_,idof1_, ...
-        diag(M(idof1,idof1)), size(La.X)); % Scaling with distance from origo --> multiply sqrt(P(1,idof1).^2+P(2,idof1).^2)'
+    tic
+    Mgamma = assemble_Mgamma(P,T,idof1,idof1_,La.X);
+    toc
+    La.X = La.X + alpha_inv*Mgamma;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     
     updLU = false; % assume we can reuse
