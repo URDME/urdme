@@ -81,3 +81,11 @@ cont_int_points = sort(cont_int_points,1);
 cont_int_points = cont_int_points(:,inds);
 
 plot(P(1,cont_int_points),P(2,cont_int_points),'*')
+
+%%
+
+keep2 = find(ismember(Adof(jj_),idof1));
+iii = reshape(ii(keep2),[],1); jjj_ = reshape(jj_(keep2),[],1);
+idof1_moves = sort(max(Pr(sdof_m_(iii))-Pr(jjj_),0).*Drate_(2*VU(Adof(jjj_))+abs(U(Adof(jjj_)))+1))
+m = mean(max(Pr(sdof_m_(ii))-Pr(jj_),0).*Drate_(2*VU(Adof(jj_))+abs(U(Adof(jj_)))+1))
+maxmax = max(max(Pr(sdof_m_(ii))-Pr(jj_),0).*Drate_(2*VU(Adof(jj_))+abs(U(Adof(jj_)))+1))

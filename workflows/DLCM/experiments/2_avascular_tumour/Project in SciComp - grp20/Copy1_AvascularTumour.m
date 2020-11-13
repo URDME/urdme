@@ -22,7 +22,7 @@
 % simulation interval
 doGif = true;
 doRadiusBC = false;
-Tend = 200;
+Tend = 800;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -42,11 +42,11 @@ Drate3 = 0.01;     % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 
 % boundary conditions
-BC1 = 1; % BC for the pressure equation for unvisited boundary
-BC2 = 0.1; % BC for the visited boundary
+BC1 = 10; % BC for the pressure equation for unvisited boundary
+BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 0.1;
+alpha = 1;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -60,8 +60,8 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
-[L,dM,N,M] = dt_operators_ext(P,T);
-M = full(M);
+[L,dM,N] = dt_operators(P,T);
+Mgamma = assemble_Mgamma2(P,T);
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -104,7 +104,7 @@ OLai = fsparse(extdof,extdof,1,size(OLa.X));
 OLa.X = OLa.X-OLai*OLa.X+OLai;
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
 
-tic
+% tic
 while tt <= tspan(end)
   %% classify the DOFs
   adof = find(U); % all filled voxels
@@ -117,33 +117,45 @@ while tt <= tspan(end)
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
+%   idof3 = find(VU & N*VU > 0 & U == 0);
+  idof3 = find(~VU & N*VU > 0);
+%   idof3 = setdiff(idof3,idof2);
+  idof3 = setdiff(idof3,idof1);
   idof = find(Idof);
+%   if(size(idof3,2) == 0)
+%     idof3 = idof3';
+%   end
+%   if(~isempty(idof3))
+%     disp('HALP!');
+%   end
 
   % "All DOFs" = adof + idof, like the "hull of adof"
-  Adof = [adof; idof];
+  Adof = [adof; idof; idof3];
 
   % The above will be enumerated within U, a Nvoxels^2-by-1 sparse
   % matrix. Determine also a local enumeration, eg. [1 2 3
   % ... numel(Adof)].
   Adof_ = (1:numel(Adof))';  
-  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
-      map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof);
+  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_,idof3_] = ...
+      map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,idof3);
   %% Update LU
   if updLU
-
+    
     % pressure Laplacian
     La.X = L(Adof,Adof);
-    Lai = fsparse(idof_,idof_,1,size(La.X));
-    La.X = La.X-Lai*La.X+Lai;
-%     Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-%     La.X = La.X+Lai2;
+    Lai = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
+    La.X = La.X-Lai*La.X;
+    Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
+    La.X = La.X+Lai2;
     % add derived BC to LHS?
-    tic
-    Mgamma = assemble_Mgamma(P,T,idof1,idof1_,La.X);
-    toc
-    La.X = La.X + alpha_inv*Mgamma;
+%     Mgamma = assemble_Mgamma(P,T,[idof1; idof3],[idof1_; idof3_],La.X);
+%     La.X = La.X + alpha_inv*Mgamma;
+      Mgamma_b = Mgamma(Adof,Adof);
+      Lai2 = fsparse([idof1_;idof3_],[idof1_;idof3_],1,size(La.X));
+%     Mgamma_b = fsparse([idof1_;idof3_],[idof1_;idof3_], ...
+%         full(Mgamma([idof1;idof3],[idof1;idof3])),size(La.X));
+    La.X = La.X + alpha_inv*Lai2*Mgamma_b;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
-    
     updLU = false; % assume we can reuse
   end
 
@@ -301,6 +313,7 @@ while tt <= tspan(end)
     % the rates
     inspect_rates(:,i) = [sum(moveb) sum(moves) ...
                      sum(birth) sum(death) sum(degrade)];
+                 
     i = iend;
   end
 
@@ -310,7 +323,7 @@ while tt <= tspan(end)
   % update the visited sites
   VU = VU | U;
 end
-toc
+% toc
 report(tt,U,'done');
 
 % return;

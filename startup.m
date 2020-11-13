@@ -1,4 +1,4 @@
-nodes = [X';Y'];%STARTUP Startup for URDME.
+%STARTUP Startup for URDME.
 
 % S. Engblom 2017-02-14
 

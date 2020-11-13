@@ -31,6 +31,7 @@ function Mgamma = assemble_Mgamma(P,T,idof1,idof1_,LaX)
           norm_val = norm(P(:,loc(1)) - P(:,loc(2)));
           MK = [2,1;1,2]/6*norm_val;
           [ind,~] = find(idof1 == loc');
+          ind = idof1_(ind);
           Mgamma(ind,ind) = Mgamma(ind,ind)+ MK; % add element masses to M
     end
 end
