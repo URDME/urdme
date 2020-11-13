@@ -24,7 +24,7 @@ clc;
 close all;
 
 % simulation interval
-Tend =400;
+Tend =50;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -40,7 +40,7 @@ if rates_type == 1
     r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
 else 
-    cons = 0.0050;        % consumption of oxygen by cells
+    cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
     r_prol = 0.125;       % rate of proliferation of singly occupied voxels
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
@@ -222,6 +222,7 @@ while tt <= tspan(end)
 %     dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda; 
 
     dt =1/lambda;
+    %dt=1;
 
   % report back håll some koll
   if tspan(i+1) < tt+dt
@@ -276,12 +277,22 @@ while tt <= tspan(end)
 %             max(Pr(ix_)-Pr(jx_),0);
 %     m = find(cumsum(rates) > rand*sum(rates),1,'first');
 %     n = Adof(jx_(m));
-% 
+
+      D = 1; %Fix later, permeability etc D_rate
+      N_sdof = N;
+      N_sdof(sdof_m,:)=2;
+      s_mat = N_sdof-N;
+      
+      %s_mat(sdof_m,:) = 0;
+      Pr_mat = s_mat(Adof,Adof).*Pr - s_mat(Adof,Adof).*Pr';
+      Pr_diff = sum(Pr_mat,2);
+      U(Adof) = U(Adof) + D*Pr_diff*dt;  
 %     % execute event: move from ix to n
 %     if U(n) == 0, updLU = true; end % boundary has changed
 %     U(n) = U(n)+1;
 %     U(ix) = U(ix)-1;
 
+      
 %   elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)
 
     %Ne.birth = Ne.birth+1;
@@ -297,9 +308,9 @@ while tt <= tspan(end)
 
     %death--------------------------------------
     % full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die))
-    ind_die = find(Oxy < cutoff_die) %index for dying cells
+    ind_die = find(Oxy < cutoff_die); %index for dying cells
 
-    Oxy(ind_die)
+    Oxy(ind_die);
     dead_conc = r_die*U(ind_die);
     U(ind_die) = U(ind_die) - dead_conc*dt;
     U_dead(ind_die) = U_dead(ind_die) + dead_conc*dt;
