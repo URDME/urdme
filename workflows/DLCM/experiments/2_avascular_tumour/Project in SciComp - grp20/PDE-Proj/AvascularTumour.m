@@ -62,7 +62,7 @@ OBC2 = 0; % BC for the visited boundary
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
-[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
+[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);  %gradquotient=1 for Cartesian mesh
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
@@ -133,7 +133,7 @@ while tt <= tspan(end)
   sdof = find(U > 1); % voxels with 2 cells
   % voxels with 2 cells in them _which may move_, with a voxel
   % containing less number of cells next to it (actually 1 or 0):
-  sdof_m = find(N*(U > 1) < neigh & U > 1); %kanske större än 1
+  sdof_m = find(N*(U > 1 & U_dead >1)<neigh & U > 1); %kanske större än 1
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
@@ -160,7 +160,7 @@ while tt <= tspan(end)
   end
 
   % RHS source term proportional to the over-occupancy and BCs
-  Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
+  Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
                     [size(La.X,1) 1]));     % RHS first...
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
@@ -189,28 +189,39 @@ while tt <= tspan(end)
 % 
 %   % (2) also certain sources may move by the same physics
 %   [ii,jj_] = find(N(sdof_m,Adof)); % neighbours...
-%   keep = find(U(Adof(jj_)) < 2);   % ...to move to
+%   keep = find(U(Adof(jj_)) < 1);   % ...to move to
 %   ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);
 %   % remove any possibly remaining negative rates
 %   grad = fsparse(ii,1,max(Pr(sdof_m_(ii))-Pr(jj_),0).* ...
 %                Drate_(2*VU(Adof(jj_))+abs(U(Adof(jj_)))+1), ...
 %                  numel(sdof_m)); % (abs as U could be -1)
 %   moves = full(gradquotient*grad);
-% 
-%   % (3) proliferation/death/degradation rates
-%   birth = full(r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)); %U(Adof) < 2 sätter gräns för när den får proliferate, 1? 
-%   total_birth = sum(birth);
-%   birth = total_birth/total_birth * birth;
-%   birth(isnan(birth)) = 0;
-%   % (as we get some 0/0 terms if total_birth == 0);
-%  
-%   death = full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die));
-%   degrade = full(r_degrade*(U_dead > 0));
+
+%     moves=moveb;
+  % (3) proliferation/death/degradation rates
+  birth = full(r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)); %U(Adof) < 2 sätter gräns för när den får proliferate, 1? 
+  total_birth = sum(birth);
+  birth = total_birth/total_birth * birth;
+  birth(isnan(birth)) = 0;
+  % (as we get some 0/0 terms if total_birth == 0);
+ 
+  death = full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die));
+  degrade = full(r_degrade*(U_dead > 0));
 %   
 %   %Gillespies algorithm
-%   intens = [moveb; moves; birth; abs(death); abs(degrade)];
-%   lambda = sum(intens);
-  dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda; 
+%    intens = [moveb; moves; birth; abs(death); abs(degrade)];
+   intens = [birth; death; degrade];
+   lambda = sum(intens);
+%     if i==1
+%         dt=1;
+%     else 
+%         lambda = (sum(dead_conc) + sum(prol_conc))/(length(dead_conc)+length(prol_conc)); 
+%         lambda(isnan(lambda)) = 1;
+%         
+%     end
+%     dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda; 
+
+    dt =1/lambda;
 
   % report back håll some koll
   if tspan(i+1) < tt+dt
@@ -317,7 +328,7 @@ while tt <= tspan(end)
   report(tt,U,'');
 
   % update the visited sites
-  VU = VU | U;
+  %VU = VU | U;
 end
 report(tt,U,'done');
 
