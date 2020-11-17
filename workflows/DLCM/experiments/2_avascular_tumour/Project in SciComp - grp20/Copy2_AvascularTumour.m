@@ -45,7 +45,7 @@ BC1 = 1; % BC for the pressure equation for unvisited boundary
 BC2 = 0.1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 10;
+alpha = 1;
 alpha_inv = 1/alpha;
 
 % Cells live in a square of Nvoxels-by-Nvoxels
@@ -59,7 +59,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
 neigh = full(sum(N,2));
-MB = alpha_inv*assemble_Mgamma(P,T); % Boundary matrix
+Mgamma = assemble_Mgamma(P,T); % Boundary matrix
 
 % dofs for the sources at the extreme outer circular boundary
 [xc,yc] = getmidpointcircle(1/2*(Nvoxels+1),1/2*(Nvoxels+1),1/2*(Nvoxels-1));
@@ -125,7 +125,6 @@ while tt <= tspan(end)
 
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof; idof3];
-  Adof = [adof; idof];
 
   % The above will be enumerated within U, a Nvoxels^2-by-1 sparse
   % matrix. Determine also a local enumeration, eg. [1 2 3
@@ -136,35 +135,15 @@ while tt <= tspan(end)
   
   % -- Update LU --
   if updLU
-    
-%     dB = zeros(size(Adof,1),1);
-%     % do ugly loop bc stupid
-%     for j=1:size(Adof,1)
-%         for k=1:size(idof1_,1)
-%             if j == idof1_(k)
-%                 dB(j) = 1;
-%             end
-%         end
-%     end
-    
-    idof_ext = union(idof1_, idof3_);
-    dB_smart = double(max(idof1_ == 1:numel(Adof))); % motivation ...
-    F = diag(dB_smart);
-    MB_active = MB(Adof,Adof);
-    MB_true = F.*MB_active;
-    
     % pressure Laplacian
     La.X = L(Adof,Adof);
-%     Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
-    Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-%     Lai3 = fsparse(idof3_,idof3_,1,size(La.X));
-    Lai = fsparse([idof1_;idof3_],[idof1_;idof3_],1,size(La.X));
-%     La.X = La.X-Lai*La.X+Lai;
-    Mgamma = assemble_Mgamma(P,T,idof1,idof1_,La.X);
-%     La.X = La.X + alpha_inv*Mgamma;
-    La.X = La.X - Lai*La.X + Lai2 + MB_true;
+    Lai = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
+    La.X = La.X-Lai*La.X;
+    % add derived BC to LHS
+    Mgamma_b = Mgamma(Adof,Adof);
+    Lai2 = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
+    La.X = La.X + alpha_inv*Lai2*Mgamma_b;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
-    
     updLU = false; % assume we can reuse
   end
 

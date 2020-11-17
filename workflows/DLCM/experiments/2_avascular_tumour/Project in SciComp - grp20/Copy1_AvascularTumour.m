@@ -62,10 +62,6 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
 Mgamma = assemble_Mgamma(P,T);
-[Lioi,Lioj,Lios] = find(L);
-[Maii,Maij,Mios] = find(Mgamma);
-Lio = fsparse(Lioi,Lioj,1,size(L));
-Mai = fsparse(Maii,Maij,1,size(Mgamma));
 % robinVec = RobinLoadVector2D(P,T);
 neigh = full(sum(N,2));
 
@@ -137,17 +133,14 @@ while tt <= tspan(end)
       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,idof3);
   %% Update LU
   if updLU
-
     % pressure Laplacian
     La.X = L(Adof,Adof);
     Lai = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
     La.X = La.X-Lai*La.X;
-%     Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-%     La.X = La.X+Lai2;
     % add derived BC to LHS
     Mgamma_b = Mgamma(Adof,Adof);
-    Lai3 = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
-    La.X = La.X + alpha_inv*Lai3*Mgamma_b;
+    Lai2 = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
+    La.X = La.X + alpha_inv*Lai2*Mgamma_b;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
   end

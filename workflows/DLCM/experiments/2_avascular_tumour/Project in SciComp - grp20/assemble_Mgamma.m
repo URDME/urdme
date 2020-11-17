@@ -7,7 +7,7 @@ function Mgamma = assemble_Mgamma(p,t)
     Mgamma = sparse(np,np); % Allocate mass matrix 
     
     inds = [1,2;2,3;3,1];
-    len = [0.0167, 0.0167, 0.0167];
+    len = ones(1,3)*sqrt((p(1,1) - p(1,2))^2 + (p(2,1) - p(2,2))^2);
     for K = 1:nt
     loc2glb = t(1:3,K); 
     x = p(1,loc2glb); % x-coordinates of triangle nodes
