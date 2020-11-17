@@ -6,4 +6,6 @@ hold on,
 axis([-1 1 -1 1]); axis square, axis off
 patch('Faces',R(bdof_m,:),'Vertices',V, ...
     'FaceColor',graphics_color('bluish green'));
+patch('Faces',R(sdof_m,:),'Vertices',V, ...
+    'FaceColor',graphics_color('vermillion'));
 drawnow;

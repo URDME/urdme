@@ -21,8 +21,8 @@
 
 % simulation interval
 doGif = true;
-doSave = false;
-Tend = 200;
+doRadiusBC = false;
+Tend = 500;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -408,7 +408,8 @@ map_start = graphics_color('bluish green');
 map_stop = graphics_color('vermillion');
 xx = linspace(0,1,10);
 map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
+mymap = [0 0 1; ...
+        map_matrix'];
 colormap(mymap)
 colorbar;
 freezeColors;
@@ -422,18 +423,16 @@ surf(x_Pr_,y_Pr_,Pr_reshape,...
     'AlphaData',Pr_reshape,...
     'EdgeColor','none');
 hold off;
-colormap([0,0,1]);
+
 %% Save the important data in a struct
-if doSave
-    saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
-        'R', {R}, 'V', {V}, 'BC1', {BC1}, 'BC2', {BC2}, ...
-        'max_radius', {max_radius}, 'Ne', {Ne}, ...
-        'inspect_rates', {inspect_rates}, 'alpha', {alpha}, 'Pr', {Pr}, ...
-        'Adof', {Adof}, 'Nvoxels',{Nvoxels});
-    filename_saveData = "saveData/saveData_T" + Tend + ...
-        "_" + strjoin(string(fix(clock)),'-') + ".mat";
-    save(filename_saveData, 'saveData');
-end
+saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
+    'R', {R}, 'V', {V}, 'BC1', {BC1}, 'BC2', {BC2}, ...
+    'doRadiusBC', {doRadiusBC}, 'max_radius', {max_radius}, 'Ne', {Ne}, ...
+    'inspect_rates', {inspect_rates}, 'alpha', {alpha}, 'Pr', {Pr}, ...
+    'Adof', {Adof}, 'Nvoxels',{Nvoxels});
+filename_saveData = "saveData/saveData_T" + Tend + ...
+    "_" + strjoin(string(fix(clock)),'-') + ".mat";
+save(filename_saveData, 'saveData');
 
 return;
 

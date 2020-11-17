@@ -1,5 +1,5 @@
 % Patch image of current cells
-figure(10), clf,
+figure;
 patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
     'EdgeColor','none');
 hold on,
@@ -15,5 +15,5 @@ patch('Faces',R(ii,:),'Vertices',V, ...
     'FaceColor',[0 0 0]);
 title(sprintf('Time = %d, Ncells = %d',tt,full(sum(abs(U)))));
 drawnow;
-P(1,idof2)
-P(2,idof2)
+% P(1,idof2)
+% P(2,idof2)

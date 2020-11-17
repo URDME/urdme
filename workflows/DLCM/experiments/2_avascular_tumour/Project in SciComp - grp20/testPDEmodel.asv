@@ -96,8 +96,17 @@ R = RobinMassMatrix2D(P,E);
 figure; spy(R);
 
 %%
+kk = 0;
+kkk = 0;
+kkkk = 0;
 for i = 1:size(Mgamma,1)
-    nnz(Mgamma(i,:))
+    if nnz(Mgamma(i,:)) > 5
+        kk = kk + 1;
+    elseif nnz(Mgamma(i,:)) < 4
+        kkk = kkk + 1;
+    else
+        kkkk = kkkk + 1;
+    end
 end
 
 %%
