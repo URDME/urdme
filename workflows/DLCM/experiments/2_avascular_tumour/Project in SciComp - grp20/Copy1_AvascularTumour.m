@@ -61,7 +61,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
-Mgamma = assemble_Mgamma2(P,T);
+Mgamma = assemble_Mgamma(P,T);
 [Lioi,Lioj,Lios] = find(L);
 [Maii,Maij,Mios] = find(Mgamma);
 Lio = fsparse(Lioi,Lioj,1,size(L));

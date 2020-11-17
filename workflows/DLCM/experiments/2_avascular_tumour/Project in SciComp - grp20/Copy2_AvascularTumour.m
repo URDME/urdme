@@ -59,7 +59,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
 neigh = full(sum(N,2));
-MB = alpha_inv*assemble_Mgamma2(P,T); % Boundary matrix
+MB = alpha_inv*assemble_Mgamma(P,T); % Boundary matrix
 
 % dofs for the sources at the extreme outer circular boundary
 [xc,yc] = getmidpointcircle(1/2*(Nvoxels+1),1/2*(Nvoxels+1),1/2*(Nvoxels-1));
