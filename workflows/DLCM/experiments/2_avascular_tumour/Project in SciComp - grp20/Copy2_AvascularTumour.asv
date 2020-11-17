@@ -21,7 +21,6 @@
 
 % simulation interval
 doGif = true;
-doRadiusBC = false;
 Tend = 200;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
@@ -41,15 +40,15 @@ Drate2 = 25;       % into already visited matrix
 Drate3 = 0.01;     % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 
-% boundary conditions
-BC1 = 10; % BC for the pressure equation for unvisited boundary
-BC2 = 1; % BC for the visited boundary
+% Boundary conditions
+BC1 = 1; % BC for the pressure equation for unvisited boundary
+BC2 = 0.1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1;
+alpha = 10;
 alpha_inv = 1/alpha;
 
-% cells live in a square of Nvoxels-by-Nvoxels
+% Cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
@@ -61,8 +60,8 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
-Mgamma = assemble_Mgamma2(P,T);
 neigh = full(sum(N,2));
+MB = alpha_inv*assemble_Mgamma2(P,T); % Boundary matrix
 
 % dofs for the sources at the extreme outer circular boundary
 [xc,yc] = getmidpointcircle(1/2*(Nvoxels+1),1/2*(Nvoxels+1),1/2*(Nvoxels-1));
@@ -71,10 +70,22 @@ xc(irem) = [];
 yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
-% initial population: circular blob of cells
+% Initial population
+IC = 1; % Choose initial condition (1,2,3)
 r = sqrt(P(1,:).^2+P(2,:).^2);
-ii = find(r < 0.05); % radius of the initial blob
-U = fsparse(ii(:),1,1,[Nvoxels^2 1]);
+
+if IC == 1 % circular blob of cells
+    ii = find(r < 0.05); % radius of the initial blob
+    U = fsparse(ii(:),1,1,[Nvoxels^2 1]);
+    
+elseif IC == 2 % doubly occupied voxels in center
+    U = fsparse([find(r < 0.1); find(r < 0.05)],1,[1;2],[Nvoxels^2 1]);
+    
+else % IC == 3; dead cells in center
+    
+end
+        
+        
 
 % visit marker matrix: 1 for voxels who have been occupied
 VU = (U ~= 0);
@@ -104,9 +115,10 @@ OLai = fsparse(extdof,extdof,1,size(OLa.X));
 OLa.X = OLa.X-OLai*OLa.X+OLai;
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
 
-% tic
+tic
+
 while tt <= tspan(end)
-  %% classify the DOFs
+  % -- classify the DOFs
   adof = find(U); % all filled voxels
   % singularly occupied voxels on the boundary:
   bdof_m = find(N*(U ~= 0) < neigh & abs(U) == 1);
@@ -117,65 +129,62 @@ while tt <= tspan(end)
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
-%   idof3 = find(VU & N*VU > 0 & U == 0);
-  idof3 = find(~VU & N*VU > 0);
-%   idof3 = setdiff(idof3,idof2);
-  idof3 = setdiff(idof3,idof1);
+  idof3 = find(N*VU > 0 & ~VU); % extra external BC
+  idof3 = setdiff(idof1,idof3);
   idof = find(Idof);
-%   if(size(idof3,2) == 0)
-%     idof3 = idof3';
-%   end
-%   if(~isempty(idof3))
-%     disp('HALP!');
-%   end
 
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof; idof3];
+  Adof = [adof; idof];
 
   % The above will be enumerated within U, a Nvoxels^2-by-1 sparse
   % matrix. Determine also a local enumeration, eg. [1 2 3
   % ... numel(Adof)].
   Adof_ = (1:numel(Adof))';  
-  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_,idof3_] = ...
-      map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,idof3);
-  %% Update LU
+  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof3_,idof_,adof_] = ...
+      map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof3,idof,adof);
+  
+  % -- Update LU --
   if updLU
+    
+%     dB = zeros(size(Adof,1),1);
+%     % do ugly loop bc stupid
+%     for j=1:size(Adof,1)
+%         for k=1:size(idof1_,1)
+%             if j == idof1_(k)
+%                 dB(j) = 1;
+%             end
+%         end
+%     end
+    
+    idof_ext = union(idof1_, idof3_);
+    dB_smart = double(max(idof1_ == 1:numel(Adof))); % motivation ...
+    F = diag(dB_smart);
+    MB_active = MB(Adof,Adof);
+    MB_true = F.*MB_active;
     
     % pressure Laplacian
     La.X = L(Adof,Adof);
-    Lai = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
-    La.X = La.X-Lai*La.X;
+%     Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
     Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-    La.X = La.X+Lai2;
-    % add derived BC to LHS?
-%     Mgamma = assemble_Mgamma(P,T,[idof1; idof3],[idof1_; idof3_],La.X);
+%     Lai3 = fsparse(idof3_,idof3_,1,size(La.X));
+    Lai = fsparse([idof1_;idof3_],[idof1_;idof3_],1,size(La.X));
+%     La.X = La.X-Lai*La.X+Lai;
+    Mgamma = assemble_Mgamma(P,T,idof1,idof1_,La.X);
 %     La.X = La.X + alpha_inv*Mgamma;
-      Mgamma_b = Mgamma(Adof,Adof);
-      Lai2 = fsparse([idof1_;idof3_],[idof1_;idof3_],1,size(La.X));
-%     Mgamma_b = fsparse([idof1_;idof3_],[idof1_;idof3_], ...
-%         full(Mgamma([idof1;idof3],[idof1;idof3])),size(La.X));
-    La.X = La.X + alpha_inv*Lai2*Mgamma_b;
+    La.X = La.X - Lai*La.X + Lai2 + MB_true;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
+    
     updLU = false; % assume we can reuse
   end
 
-  %% Caculate laplacians
+  % -- Caculate laplacians --
   
   % Calculate total pressure in the enclosed tumour to calculate the
   % pressure on the surface (idof1) and scale it with the surface distance
   % from origo
-  Pr_idof1 = ones(size(idof1_)); %*sum(1./dM(sdof))/size(idof1_,1);
-%   if doRadiusBC
-%     bc1_vector = Pr_idof1.*sqrt(P(1,idof1).^2+P(2,idof1).^2)';
-%   else
-    bc1_vector = Pr_idof1;
-%   end
 
   % RHS source term proportional to the over-occupancy and BCs
-%   Pr = full(fsparse([sdof_; idof1_; idof2_],1, ... % ; 
-%                   [1./dM(sdof); ...
-%                    BC1*bc1_vector; BC2*ones(size(idof2_))], ... % ; 
-%                   [size(La.X,1) 1]));    % RHS first...
   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
                   [size(La.X,1) 1]));     % RHS first...
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
@@ -187,7 +196,7 @@ while tt <= tspan(end)
                      [size(OLa.X,1) 1]));
   Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
 
-  %% Measure events probabilites
+  % -- Measure events probabilites --
   % intensities of possible events
 
   % (1) moving boundary DOFs
@@ -220,7 +229,7 @@ while tt <= tspan(end)
   death = full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die));
   degrade = full(r_degrade*(U(Adof) == -1));
 
-  %% Caclutate which is suppose to happen
+  % -- Caclutate which is suppose to happen --
   intens = [moveb; moves; birth; death; degrade];
   lambda = sum(intens);
   dt = -reallog(rand)/lambda; 
@@ -233,7 +242,7 @@ while tt <= tspan(end)
   end
   % (now ix_ points to the intensity which fired first)
 
-  %% Execute the event that happens
+  % -- Execute the event that happens --
   if ix_ <= numel(moveb)
     Ne.moveb = Ne.moveb+1;
     % movement of a boundary (singly occupied) voxel
@@ -297,7 +306,7 @@ while tt <= tspan(end)
     updLU = true; % boundary has changed
   end
 
-  %% Rest of while loop
+  % -- Rest of while loop --
   % report back
   if tspan(i+1) < tt+dt
     iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
@@ -313,7 +322,6 @@ while tt <= tspan(end)
     % the rates
     inspect_rates(:,i) = [sum(moveb) sum(moves) ...
                      sum(birth) sum(death) sum(degrade)];
-                 
     i = iend;
   end
 
@@ -323,11 +331,11 @@ while tt <= tspan(end)
   % update the visited sites
   VU = VU | U;
 end
-% toc
+toc
 report(tt,U,'done');
 
 % return;
-%%
+
 % create a GIF animation
 
 % population appearance
@@ -353,7 +361,7 @@ if doGif
       M(i) = getframe(gcf);
     end
 end
-%%
+
 % investigate the time evolution of the different cell numbers
 figure(4), clf
 spsum  = @(U)(full(sum(abs(U))));
@@ -377,29 +385,29 @@ ylabel('N cells')
 legend('total', 'dead','double','single');
 
 
-%% Plot the maxium radius through time
-figure(5), clf
-plot(tspan,max_radius);
-xlabel('time')
-ylabel('max radius')
+% % -- Plot the maxium radius through time --
+% figure(5), clf
+% plot(tspan,max_radius);
+% xlabel('time')
+% ylabel('max radius')
 
-%% Plot the rates through time
-figure(6), clf
-rate_names = fieldnames(Ne);
-hold on;
-for kk = 1:2 % size(inspect_rates,1)
-    plot(tspan,inspect_rates(kk,:),'DisplayName',rate_names{kk});
-end
-grid on;
-hold off;
-xlabel('time')
-ylabel('rates')
-legend;
+% % -- Plot the rates through time --
+% figure(6), clf
+% rate_names = fieldnames(Ne);
+% hold on;
+% for kk = 1:2 % size(inspect_rates,1)
+%     plot(tspan,inspect_rates(kk,:),'DisplayName',rate_names{kk});
+% end
+% grid on;
+% hold off;
+% xlabel('time')
+% ylabel('rates')
+% legend;
 
-%% Save the important data in a struct
+% -- Save the important data in a struct --
 saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
     'R', {R}, 'V', {V}, 'BC1', {BC1}, 'BC2', {BC2}, ...
-    'doRadiusBC', {doRadiusBC}, 'max_radius', {max_radius}, 'Ne', {Ne}, ...
+    'max_radius', {max_radius}, 'Ne', {Ne}, ...
     'inspect_rates', {inspect_rates});
 filename_saveData = "saveData/saveData_T" + Tend + "_BC1-" + BC1 + ...
     "_BC2-" + BC2 + "_" + round(now*1e4) + ".mat";

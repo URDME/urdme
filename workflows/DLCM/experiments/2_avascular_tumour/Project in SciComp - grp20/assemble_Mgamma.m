@@ -25,7 +25,6 @@ function Mgamma = assemble_Mgamma(P,T,idof1,idof1_,LaX)
     
     % allocate Mgamma matrix
     Mgamma = sparse(size(LaX,1),size(LaX,2));
-    
     for K = 1:size(cip,2)
           loc = cip(:,K);
           norm_val = norm(P(:,loc(1)) - P(:,loc(2)));
