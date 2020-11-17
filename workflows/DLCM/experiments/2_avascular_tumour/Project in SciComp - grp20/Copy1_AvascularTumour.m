@@ -73,7 +73,7 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 4; % Choose initial condition (1,2,3,4,5)
+IC = 5; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.3; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
