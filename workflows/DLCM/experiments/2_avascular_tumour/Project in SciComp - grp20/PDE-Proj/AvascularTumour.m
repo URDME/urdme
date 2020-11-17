@@ -24,13 +24,14 @@ clc;
 close all;
 
 % simulation interval
-Tend =50;
+Tend =100;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
 
+cutoff = 0.1;
 rates_type = 2;
 if rates_type == 1
     cons = 0.0015;        % consumption of oxygen by cells
@@ -41,9 +42,9 @@ if rates_type == 1
     r_degrade = 0.01;     % rate of degradation for already dead cells
 else
     cons = 0.0015;        % consumption of oxygen by cells
-    cutoff_prol = 0.45;   % the minimum amount of oxygen for proliferation
+    cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
     r_prol = 0.125;       % rate of proliferation of singly occupied voxels
-    cutoff_die = 0.35;    % the maximum amount of oxygen where cells can die
+    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
     r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
 end
@@ -130,7 +131,7 @@ while tt <= tspan(end)
     adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
     % singularly occupied voxels on the boundary: (will not be a source of
     % moving cells)?
-    bdof_m = find(N*(U ~= 0) < neigh & (U > 0 & U <= 1));
+    bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 0 & U <= 1));
     sdof = find(U > 1); % voxels with 2 cells
     % voxels with 2 cells in them _which may move_, with a voxel
     % containing less number of cells next to it (actually 1 or 0):
@@ -161,7 +162,9 @@ while tt <= tspan(end)
     end
     
     % RHS source term proportional to the over-occupancy and BCs
-    Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
+%     Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
+%         [size(La.X,1) 1]));     % RHS first...
+    Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
         [size(La.X,1) 1]));     % RHS first...
     Pr_RHS = Pr;
     Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
@@ -214,16 +217,16 @@ while tt <= tspan(end)
     %    intens = [moveb; moves; birth; abs(death); abs(degrade)];
     intens = [birth; death; degrade; moves];
     lambda = sum(intens);
-    %     if i==1
-    %         dt=1;
-    %     else
-    %         lambda = (sum(dead_conc) + sum(prol_conc))/(length(dead_conc)+length(prol_conc));
-    %         lambda(isnan(lambda)) = 1;
-    %
-    %     end
-    %     dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda;
-    
-    dt = 1/lambda;
+%     if i==1
+%         dt=1;
+%     else
+%         lambda = (sum(dead_conc) + sum(prol_conc))/(length(dead_conc)+length(prol_conc));
+%         lambda(isnan(lambda)) = 1;
+% 
+%     end
+    dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda;
+
+    %dt = 1/lambda;
     %dt=1;
     
     % report back håll some koll
@@ -247,23 +250,67 @@ while tt <= tspan(end)
         %                      sum(birth) sum(death) sum(degrade)];
     end
     
-    rates = zeros(Adof,bdof_m_); 
-    for i=1:length(bdof_m_)
+    %bdof
+    D = 1; 
+    rates = zeros(length(Adof),1);
+    action_vec =zeros(length(Adof),1);
+    
+    for ix_=1:length(bdof_m_)
         Ne.moveb = Ne.moveb+1;
         % movement of a boundary (singly occupied) voxel
-        ix = Adof(i);
+        ix = bdof_m_(ix_);
 
         jx_ = find(N(ix,Adof));
         % (will only move into an empty voxel:)
         jx_ = jx_(U(Adof(jx_)) == 0);
-        rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-%         n = Adof(jx_(m));
+        %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
+        rates(jx_) = rates(jx_) + D.*max(Pr(ix)-Pr(jx_),0);
+        rates(ix) = sum(D.*max(Pr(ix)-Pr(jx_),0));
+        
+        action_vec(jx_)=1;
+        action_vec(ix)= -1;
+
     end
-    % execute event: move from ix to n
-    U(n) = U(ix);
-    U(ix) = 0;
+    
+    %Euler for bdof_m
+    rates.*action_vec.*dt
+    U(Adof) = U(Adof) + rates.*action_vec*dt;
+        
+    U_temp = U(bdof_m);
+    U_temp(U_temp<cutoff) = 0;
+    U(bdof_m) = U_temp;
+
+    
+
     updLU = true; % boundary has changed
 
+    %sdof_m
+    rates = zeros(length(Adof),1);
+    action_vec =zeros(length(Adof),1);
+    
+    for ix_=1:length(sdof_m_)
+        Ne.moves = Ne.moves+1;
+        % movement of a boundary (singly occupied) voxel
+        ix = sdof_m_(ix_);
+
+        jx_ = find(N(ix,Adof));
+        rates(jx_) = rates(jx_) + D.*max(Pr(ix)-Pr(jx_),0);
+        rates(ix) = sum(D.*max(Pr(ix)-Pr(jx_),0));
+        
+        action_vec(jx_)=1;
+        action_vec(ix)= -1;
+    end
+
+    
+    %Euler for sdof_m
+    rates.*action_vec*dt
+    U(Adof) = U(Adof) + rates.*action_vec*dt;
+
+    U_temp = U(sdof_m);
+    U_temp(U_temp<cutoff) = 0;
+    U(sdof_m) = U_temp;
+
+    
     %elseif ix_ <= numel(moveb)+numel(moves)
     %     Ne.moves = Ne.moves+1;
     %     % movement of a cell in a doubly occupied voxel
@@ -286,8 +333,8 @@ while tt <= tspan(end)
     %       %s_mat(sdof_m,:) = 0;
     %       Pr_mat = s_mat(Adof,Adof).*Pr - s_mat(Adof,Adof).*Pr';
     %       Pr_diff = sum(Pr_mat,2);
-    D = 1; %Fix later, permeability etc D_rate
-    U(Adof) = U(Adof) - D*grad*dt;
+%     D = 1; %Fix later, permeability etc D_rate
+%     U(Adof) = U(Adof) - D*grad*dt;
     %     % execute event: move from ix to n
     %     if U(n) == 0, updLU = true; end % boundary has changed
     %     U(n) = U(n)+1;
@@ -305,6 +352,7 @@ while tt <= tspan(end)
     U(ind_prol)=U(ind_prol)+prol_conc*dt;
     %     ind_test =  find(U>4.1);
     %     U(ind_test) = 4;
+    
     
     
     %death--------------------------------------
