@@ -46,7 +46,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 0.5;
+alpha = 0.1;
 alpha_inv = 1./alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -73,9 +73,9 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 1; % Choose initial condition (1,2,3,4,5)
+IC = 4; % Choose initial condition (1,2,3,4,5)
 R1 = 0.3; % Radius of whole initial tumour
-R2 = 0.05; % Radius of inner initial setup (doubly occupied, dead etc.)
+R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
 
 % visit marker matrix: 1 for voxels who have been occupied
@@ -404,18 +404,26 @@ xx = linspace(0,1,10);
 map_matrix = map_start' + xx.*(map_stop' - map_start');
 mymap = map_matrix';
 colormap(mymap)
-colorbar;
+% colorbar;
 freezeColors;
 hold on;
 Pr_(adof) = 0;
 Pr_(idof) = Pr(idof_);
 Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
 surf(x_Pr_,y_Pr_,Pr_reshape,...
-    'FaceAlpha',0.5,...
+    'FaceAlpha','flat',...
     'AlphaDataMapping','scaled',...
     'AlphaData',Pr_reshape,...
     'EdgeColor','none');
 hold off;
+title('Pressure in adof(green/orange) and idof(blue)')
+map_start = [0,0,0];
+map_stop = [0,0,1];
+xx = linspace(0,1,10);
+map_matrix = map_start' + xx.*(map_stop' - map_start');
+mymap = map_matrix';
+caxis([-0.5 0]);
+colormap(mymap)
 %% Save the important data in a struct
 if doSave
     saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...

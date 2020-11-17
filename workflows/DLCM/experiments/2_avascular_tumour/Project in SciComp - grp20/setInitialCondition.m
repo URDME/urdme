@@ -33,7 +33,7 @@ elseif IC == 3 % dead cells in center
                 [Nvoxels^2 1]); 
     
 elseif IC == 4 % random cell 
-    r1 = find(r < 0.4);
+    r1 = find(r < R1);
     r2 = find(r < R2);
     r1 = setdiff(r1,r2);
     
