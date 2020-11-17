@@ -21,6 +21,7 @@
 
 % simulation interval
 doGif = true;
+doSave = false;
 Tend = 500;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)

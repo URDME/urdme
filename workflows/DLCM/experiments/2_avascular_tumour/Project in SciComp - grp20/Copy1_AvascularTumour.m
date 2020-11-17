@@ -72,10 +72,11 @@ xc(irem) = [];
 yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
-% initial population: circular blob of cells
-r = sqrt(P(1,:).^2+P(2,:).^2);
-ii = find(r < 0.05); % radius of the initial blob
-U = fsparse(ii(:),1,1,[Nvoxels^2 1]);
+% Initial population
+IC = 1; % Choose initial condition (1,2,3,4,5)
+R1 = 0.3; % Radius of whole initial tumour
+R2 = 0.05; % Radius of inner initial setup (doubly occupied, dead etc.)
+U = setInitialCondition(IC,R1,R2,P,Nvoxels);
 
 % visit marker matrix: 1 for voxels who have been occupied
 VU = (U ~= 0);
@@ -410,12 +411,11 @@ Pr_(adof) = 0;
 Pr_(idof) = Pr(idof_);
 Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
 surf(x_Pr_,y_Pr_,Pr_reshape,...
-    'FaceAlpha',0.3,...
+    'FaceAlpha',0.5,...
     'AlphaDataMapping','scaled',...
     'AlphaData',Pr_reshape,...
     'EdgeColor','none');
 hold off;
-colormap([0,0,1]);
 %% Save the important data in a struct
 if doSave
     saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
