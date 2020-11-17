@@ -22,7 +22,7 @@
 % simulation interval
 doGif = true;
 doSave = false;
-Tend = 500;
+Tend = 200;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -71,7 +71,7 @@ extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
 IC = 5; % Choose initial condition (1,2,3,4,5)
-R1 = 0.3; % Radius of whole initial tumour
+R1 = 0.1; % Radius of whole initial tumour
 R2 = 0.05; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
 

@@ -8,7 +8,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % Initial population
-IC = 4; % Choose initial condition (1,2,3)
+IC = 5; % Choose initial condition (1,2,3)
 r = sqrt(P(1,:).^2+P(2,:).^2);
 R1 = 0.2; % Radius of whole initial tumour
 R2 = 0.08; % Radius of inner initial setup (doubly occupied, dead etc.)
@@ -33,14 +33,19 @@ elseif IC == 3 % dead cells in center
                 [ones(size(r1,2),1); -1*ones(size(r2,2),1)], ...
                 [Nvoxels^2 1]); 
     
-else % random cell 
-    r1 = find(r < 0.5);
+elseif IC == 4 % random cell 
+    r1 = find(r < R1);
     r2 = find(r < R2);
+    r3 = find(r < R
     r1 = setdiff(r1,r2);
     
     U = fsparse([r1(:); r2(:)],1, ...
                 [randi([1,2],size(r1,2),1); randi([-1,0],size(r2,2),1)], ...
                 [Nvoxels^2 1]); 
+            
+else % "random" from previous run
+    U = load('U_random.mat','U').U;
+   
 end
 
 % Patch image of current cells
