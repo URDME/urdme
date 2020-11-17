@@ -133,7 +133,9 @@ while tt <= tspan(end)
   sdof = find(U > 1); % voxels with 2 cells
   % voxels with 2 cells in them _which may move_, with a voxel
   % containing less number of cells next to it (actually 1 or 0):
-  sdof_m = find(N*(U > 1 & U_dead >1)<neigh & U > 1); %kanske större än 1
+  sdof_m = find(N*(U > 1 | U_dead >1)<neigh & U > 1); %kanske större än 1
+  %sdof_m = find(N*(U > 1 & U_dead >1)<neigh & U > 1); %kanske större än 1
+
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
@@ -162,6 +164,8 @@ while tt <= tspan(end)
   % RHS source term proportional to the over-occupancy and BCs
   Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
                     [size(La.X,1) 1]));     % RHS first...
+  
+  Pr_RHS = Pr; 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
   % RHS source term proportional to the over-occupancy and BCs
@@ -179,7 +183,6 @@ while tt <= tspan(end)
 %   % (1) moving boundary DOFs
 %   [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
 %   keep = find(U(Adof(jj_)) == 0);  % ...to move to
-%   ikeep= ii(keep);
 %   ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1); %???varför??
 %   % remove any possibly remaining negative rates
 %   grad = fsparse(ii,1,max(Pr(bdof_m_(ii))-Pr(jj_),0).* ...
@@ -280,12 +283,14 @@ while tt <= tspan(end)
 
       D = 1; %Fix later, permeability etc D_rate
       N_sdof = N;
-      N_sdof(sdof_m,:)=1;
-      s_mat = N+-ones(Adof,Adof);
+      N_sdof(sdof_m,:)=2;
+      s_mat = N_sdof-N;
       
       %s_mat(sdof_m,:) = 0;
-      Pr_mat = s_mat.*Pr - s_mat.*Pr';
+      Pr_mat = s_mat(Adof,Adof).*Pr - s_mat(Adof,Adof).*Pr';
       Pr_diff = sum(Pr_mat,2);
+      Pr_diff
+      Pr_RHS
       U(Adof) = U(Adof) + D*Pr_diff*dt;  
 %     % execute event: move from ix to n
 %     if U(n) == 0, updLU = true; end % boundary has changed
