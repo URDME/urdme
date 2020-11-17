@@ -20,9 +20,9 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-doGif = true;
+doGif = false;
 doSave = false;
-Tend = 200;
+Tend = 20;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -73,8 +73,8 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 5; % Choose initial condition (1,2,3,4,5,6)
-R1 = 0.3; % Radius of whole initial tumour
+IC = 3; % Choose initial condition (1,2,3,4,5,6)
+R1 = 0.35; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
 
@@ -390,40 +390,73 @@ legend(rate_names);
 
 %% Plot Pressure
 figure(7), clf,
-Pr_ = full(U); Pr_(adof) = Pr(adof_);
-[x_Pr_,y_Pr_] = meshgrid(linspace(-1,1,Nvoxels));
-Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
-surf(x_Pr_,y_Pr_,Pr_reshape,...
-    'FaceAlpha','flat',...
-    'AlphaDataMapping','scaled',...
-    'AlphaData',Pr_reshape,...
-    'EdgeColor','none');
-map_start = graphics_color('bluish green');
-map_stop = graphics_color('vermillion');
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-colormap(mymap)
-% colorbar;
-freezeColors;
-hold on;
-Pr_(adof) = 0;
-Pr_(idof) = Pr(idof_);
-Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
-surf(x_Pr_,y_Pr_,Pr_reshape,...
-    'FaceAlpha','flat',...
-    'AlphaDataMapping','scaled',...
-    'AlphaData',Pr_reshape,...
-    'EdgeColor','none');
-hold off;
-title('Pressure in adof(green/orange) and idof(blue)')
-map_start = [0,0,0];
-map_stop = [0,0,1];
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-caxis([-0.5 0]);
-colormap(mymap)
+if 1
+    Pr_ = full(U); Pr_(adof) = Pr(adof_);
+    [x_Pr_,y_Pr_] = meshgrid(linspace(-1,1,Nvoxels));
+    Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
+    surf(x_Pr_,y_Pr_,Pr_reshape,...
+        'FaceAlpha','flat',...
+        'AlphaDataMapping','scaled',...
+        'AlphaData',Pr_reshape,...
+        'EdgeColor','none');
+    map_start = graphics_color('bluish green');
+    map_stop = graphics_color('vermillion');
+    xx = linspace(0,1,10);
+    map_matrix = map_start' + xx.*(map_stop' - map_start');
+    mymap = map_matrix';
+    colormap(mymap)
+    % colorbar;
+    freezeColors;
+    hold on;
+    Pr_(adof) = 0;
+    Pr_(idof) = Pr(idof_);
+    Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
+    surf(x_Pr_,y_Pr_,Pr_reshape,...
+        'FaceAlpha','flat',...
+        'AlphaDataMapping','scaled',...
+        'AlphaData',Pr_reshape,...
+        'EdgeColor','none');
+    hold off;
+    title('Pressure in adof(green/orange) and idof(blue)')
+    map_start = [0,0,0];
+    map_stop = [0,0,1];
+    xx = linspace(0,1,10);
+    map_matrix = map_start' + xx.*(map_stop' - map_start');
+    mymap = map_matrix';
+    caxis([-0.5 0]);
+    colormap(mymap) 
+else % Here is some weird try on a 3D bar plot
+    Pr_ = full(U); Pr_(adof) = Pr(adof_);
+    Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
+    Pr_reshape = imresize(Pr_reshape, 0.25, 'bilinear');
+    [x_Pr_,y_Pr_] = meshgrid(linspace(-1,1,size(Pr_reshape,1)));
+    width = 2*sqrt((P(  1,1) - P(1,2))^2 + (P(2,1) - P(2,2))^2);
+    hold on;
+    scatterbar3(x_Pr_,y_Pr_,Pr_reshape,width);
+    grid on;
+    map_start = graphics_color('bluish green');
+    map_stop = graphics_color('vermillion');
+    xx = linspace(0,1,10);
+    map_matrix = map_start' + xx.*(map_stop' - map_start');
+    mymap = map_matrix';
+    colormap(mymap)
+    freezeColors;
+    Pr_(adof) = 0;
+    Pr_(idof) = Pr(idof_);
+    Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
+    Pr_reshape = imresize(Pr_reshape, 0.25, 'bilinear');
+    scatterbar3(x_Pr_,y_Pr_,Pr_reshape,width);
+    hold off;
+    title('Pressure in adof(green/orange) and idof(blue)')
+    map_start = [0,0,0];
+    map_stop = [0,0,1];
+    xx = linspace(0,1,10);
+    map_matrix = map_start' + xx.*(map_stop' - map_start');
+    mymap = map_matrix';
+    caxis([-0.5 0]);
+    colormap(mymap)
+end
+    
 %% Save the important data in a struct
 if doSave
     saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
