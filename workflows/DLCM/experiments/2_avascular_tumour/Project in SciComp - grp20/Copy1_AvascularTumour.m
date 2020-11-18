@@ -21,8 +21,8 @@
 
 % simulation interval
 doGif = false;
-doSave = false;
-Tend = 20;
+doSave = true;
+Tend = 400;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,7 +46,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 0.1;
+alpha = 0.001;
 alpha_inv = 1./alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -391,51 +391,7 @@ legend(rate_names);
 %% Plot Pressure
 figure(7), clf,
 if 1
-    % Get the pressure for the active dofs
-    Pr_ = full(U); Pr_(adof) = Pr(adof_);
-    
-    % Patch and plot bars
-    hold on;
-    ii = find(Pr_);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-             'FaceVertexCData',Pr_(ii), 'FaceColor','flat');
-    grid on;
-    
-    % Set colormap for the active dofs
-    map_start = graphics_color('bluish green');
-    map_stop = graphics_color('vermillion');
-    xx = linspace(0,1,10);
-    map_matrix = map_start' + xx.*(map_stop' - map_start');
-    mymap = map_matrix';
-    caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
-    colormap(mymap)
-    
-    % Freeze this colormap (in order to apply another one to the boundary
-    % dof)
-    freezeColors;
-    
-    % Get the pressure for the boundary dofs
-    Pr_(adof) = 0;
-    Pr_(idof) = Pr(idof_);
-    
-    % Patch and plot bars
-    ii = find(Pr_);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-             'FaceVertexCData',Pr_(ii), 'FaceColor','flat');
-    hold off;
-    
-    % Set colormap for the boundary dofs
-    map_start = [0,0,1];
-    map_stop = [0.7,0.7,1];
-    xx = linspace(0,1,10);
-    map_matrix = map_start' + xx.*(map_stop' - map_start');
-    mymap = map_matrix';
-    caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
-    colormap(mymap)
-    
-    title('Pressure in adof(green/orange) and idof(blue)')
-%     axis([-1 1 -1 1])
-    hold off;
+    plotPressure;
 else
     % Here is some weird try on a 3D bar plot
     % OBSERVE: takes a long time to plot
@@ -444,14 +400,18 @@ end
     
 %% Save the important data in a struct
 if doSave
-    saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
-        'R', {R}, 'V', {V}, 'BC1', {BC1}, 'BC2', {BC2}, ...
-        'max_radius', {max_radius}, 'Ne', {Ne}, ...
-        'inspect_rates', {inspect_rates}, 'alpha', {alpha}, 'Pr', {Pr}, ...
-        'Adof', {Adof}, 'Nvoxels',{Nvoxels});
-    filename_saveData = "saveData/saveData_T" + Tend + ...
-        "_" + strjoin(string(fix(clock)),'-') + ".mat";
-    save(filename_saveData, 'saveData');
+    saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
+        'R', {R}, 'V', {V}, 'N', {N}, 'BC1', {BC1}, 'BC2', {BC2}, ...
+        'max_radius', {max_radius}, 'Ne', {Ne}, 'inspect_rates', {inspect_rates}, ...
+        'alpha', {alpha}, 'Pr', {Pr}, 'Adof', {Adof},  ...
+        'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
+        'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
+        'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
+        'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient});
+    filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.') + "_" + strjoin(string(fix(clock)),'-');
+    filename_saveData = "saveData/saveData_" + filename_ + ".mat";
+    save(filename_saveData,'-struct','saveData');
+    % print('-f7', "images/pressurePlot_" + filename_, '-depsc');
 end
 
 return;

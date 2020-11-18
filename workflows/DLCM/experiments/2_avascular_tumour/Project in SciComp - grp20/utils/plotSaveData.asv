@@ -75,10 +75,6 @@ for k = 1:length(DirList)
 %     subplot(figrows, ceil(length(DirList)/figrows),k);
     figure;
     load(['saveData/' DirList(k).name]);
+    loadSaveData;
     plotPressure;
-    
-%     figure;
-%     arrows = sqrt((x-u).^2 + (y-v).^2);
-%     plot(arrows);
-%     title(sprintf('alpha = %d', alpha))
 end

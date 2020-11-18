@@ -1,5 +1,6 @@
 % Load save data
 U = saveData.U;
+VU = saveData.VU;
 Usave = saveData.Usave;
 tspan = saveData.tspan;
 R = saveData.R;
@@ -12,4 +13,16 @@ inspect_rates = saveData.inspect_rates;
 alpha = saveData.alpha;
 Pr = saveData.Pr;
 Adof = saveData.Adof;
+adof = saveData.adof;
+adof_ = saveData.adof_;
+idof = saveData.idof;
+idof_ = saveData.idof_;
 Nvoxels = saveData.Nvoxels;
+IC = saveData.IC;
+R1 = saveData.R1;
+R2 = saveData.R2;
+P = saveData.P;
+bdof_m = saveData.bdof_m;
+bdof_m_ = saveData.bdof_m_;
+sdof_m = saveData.sdof_m;
+sdof_m_ = saveData.sdof_m_;
