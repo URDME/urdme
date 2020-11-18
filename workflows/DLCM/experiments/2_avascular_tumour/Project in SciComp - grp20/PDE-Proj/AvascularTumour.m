@@ -135,6 +135,9 @@ while tt <= tspan(end)
     % singularly occupied voxels on the boundary: (will not be a source of
     % moving cells)?
     bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 0 & U <= 1));
+    
+    sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
+
     sdof = find(U > 1); % voxels with 2 cells
     % voxels with 2 cells in them _which may move_, with a voxel
     % containing less number of cells next to it (actually 1 or 0):
@@ -151,8 +154,8 @@ while tt <= tspan(end)
     % matrix. Determine also a local enumeration, eg. [1 2 3
     % ... numel(Adof)].
     Adof_ = (1:numel(Adof))';
-    [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
-        map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof);
+    [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_,sdof_b_] = ...
+        map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,sdof_b);
     
     if updLU
         % pressure Laplacian
@@ -208,8 +211,8 @@ while tt <= tspan(end)
     
     %     moves=moveb;
     % (3) proliferation/death/degradation rates
-    r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)
-    birth = full(r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)) %U(Adof) < 2 sätter gräns för när den får proliferate, 1?
+    r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol);
+    birth = full(r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)); %U(Adof) < 2 sätter gräns för när den får proliferate, 1?
     total_birth = sum(birth);
     birth = total_birth/total_birth * birth;
     birth(isnan(birth)) = 0;
@@ -239,6 +242,7 @@ while tt <= tspan(end)
         iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
         Usave(i+1:iend) = {U};
         Udsave(i+1:iend) = {U_dead};
+        Idofsave(i+1:iend) = {U(Idof)};
         
         Oxysave(i+1:iend) = {Oxy(Adof)};
         
@@ -269,7 +273,7 @@ while tt <= tspan(end)
         % (will only move into an empty voxel:)
         jx_ = jx_(U(Adof(jx_)) == 0);
         %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-        rates(jx_) = rates(jx_) + D.*max(Pr(ix)-Pr(jx_),0);
+        rates(jx_) = rates(jx_) + D.*max(Pr(ix)-Pr(jx_),0)
         rates(ix) = sum(D.*max(Pr(ix)-Pr(jx_),0));
         
         action_vec(jx_)=1;
@@ -309,7 +313,9 @@ while tt <= tspan(end)
     
     %Euler for sdof_m
     rates.*action_vec*dt;
+    rates(sdof_b_)
     U(Adof) = U(Adof) + rates.*action_vec*dt;
+    
 
     U_temp = U(sdof_m);
     U_temp(U_temp<cutoff) = 0;
