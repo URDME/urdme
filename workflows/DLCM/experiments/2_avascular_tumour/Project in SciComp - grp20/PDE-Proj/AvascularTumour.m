@@ -137,6 +137,8 @@ while tt <= tspan(end)
     bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 0 & U <= 1));
     
     sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
+    
+    sdof_mnew = find((N.*U'>U) & (U > 1));
 
     sdof = find(U > 1); % voxels with 2 cells
     % voxels with 2 cells in them _which may move_, with a voxel
