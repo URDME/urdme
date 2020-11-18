@@ -81,15 +81,18 @@ extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 init = 1;
 if init == 1
     start_value = 1;
+    radie = 0.1;
     % initial population: circular blob of living cells
     r = sqrt(P(1,:).^2+P(2,:).^2);
-    ii = find(r < 0.09); % radius of the initial blob
+    ii = find(r < radie); % radius of the initial blob
     U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
 else
+    start_value = 1;
+    radie = 0.05;
     % initial population: circular blob of dead cells
     r = sqrt(P(1,:).^2+P(2,:).^2);
-    ii = find(r < 0.05); % radius of the initial blob
+    ii = find(r < radie); % radius of the initial blob
     U = fsparse(ii(:),1,0,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,1,[Nvoxels^2 1]);
 end
@@ -175,6 +178,7 @@ while tt <= tspan(end)
         -cons*full(U(adof)./dM(adof))], ... %change for dependence of U, original -cons*full(max(U(adof),0)./dM(adof))],
         [size(OLa.X,1) 1]));
     Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
+    
     if i==1
         Oxysave{1} = Oxy(Adof);
     end
@@ -204,7 +208,8 @@ while tt <= tspan(end)
     
     %     moves=moveb;
     % (3) proliferation/death/degradation rates
-    birth = full(r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)); %U(Adof) < 2 sätter gräns för när den får proliferate, 1?
+    r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)
+    birth = full(r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)) %U(Adof) < 2 sätter gräns för när den får proliferate, 1?
     total_birth = sum(birth);
     birth = total_birth/total_birth * birth;
     birth(isnan(birth)) = 0;
@@ -224,10 +229,10 @@ while tt <= tspan(end)
 %         lambda(isnan(lambda)) = 1;
 % 
 %     end
-    dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda;
+    %dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda;
 
     %dt = 1/lambda;
-    %dt=1;
+    dt=Tend/50;
     
     % report back håll some koll
     if tspan(i+1) < tt+dt
@@ -273,7 +278,7 @@ while tt <= tspan(end)
     end
     
     %Euler for bdof_m
-    rates.*action_vec.*dt
+    rates.*action_vec.*dt;
     U(Adof) = U(Adof) + rates.*action_vec*dt;
         
     U_temp = U(bdof_m);
@@ -303,7 +308,7 @@ while tt <= tspan(end)
 
     
     %Euler for sdof_m
-    rates.*action_vec*dt
+    rates.*action_vec*dt;
     U(Adof) = U(Adof) + rates.*action_vec*dt;
 
     U_temp = U(sdof_m);
@@ -394,6 +399,9 @@ report(tt,U,'done');
 
 % return;
 
+%% 
+
+
 % create a GIF animation
 % figure(6)
 % population appearance
@@ -406,12 +414,31 @@ for i = 1:numel(Usave)
         'EdgeColor','none');
     hold on,
     axis([-1 1 -1 1]); axis square, axis off
-    ii = find(Usave{i} > 0 & Usave{i} <= 1);
+    
+    ii = find(Usave{i} > 0 & Usave{i} <=0.5);
     patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',graphics_color('bluish green')); %; [0 1 Usave{i}/max(Usave{i})]
-    ii = find(Usave{i} > 1);
+        'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
     patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',graphics_color('vermillion')); %[1 0 Usave{i}/max(Usave{i})]
+        'FaceColor',[0 0.2 1]); %; [0 1 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 0.5 0.7]); %; [0 1 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 0.8 0.4]); %[1 0 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} > 2 );
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
+        
+    ii = find(Usave{i} > 3 );
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[1 0 0]); %[1 0 Usave{i}/max(Usave{i})]
+    
     ii = find(Usave{i} == 0 & Udsave{i} >0);
     %   test=Udsave{i}(7320)
     %   color = full(Udsave{i}(ii))/max(Udsave{i}(ii));
@@ -446,6 +473,158 @@ legend('total', 'dead','double','single');
 
 return;
 
-% saves the GIF
+
+%%%%%%%%%%%%%%%Extra plots
+
+%% Plot the maxium radius through time
+figure(5), clf
+plot(tspan,max_radius);
+xlabel('time')
+ylabel('max radius')
+grid on;
+
+%% Plot the rates through time
+figure(6), clf
+rate_names = fieldnames(Ne);
+inspect_rates_norm = inspect_rates./sum(inspect_rates,1);
+bar(inspect_rates_norm','stacked','LineStyle','none') %'DisplayName',rate_names{kk});
+grid on;
+title('Relative and normalized rates')
+xlabel('time')
+ylabel('rates')
+% ticks = 
+set(gca, 'XTick', linspace(1,length(tspan),7))
+set(gca, 'XTickLabel', round(linspace(1,tspan(end),7)))
+ylim([0 1.5]);
+legend(rate_names);
+
+
+%% Plot Pressure
+figure(7), clf,
+Pr_ = full(U); Pr_(adof) = Pr(adof_);
+[x_Pr_,y_Pr_] = meshgrid(linspace(-1,1,Nvoxels));
+Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
+surf(x_Pr_,y_Pr_,Pr_reshape,...
+    'FaceAlpha','flat',...
+    'AlphaDataMapping','scaled',...
+    'AlphaData',Pr_reshape,...
+    'EdgeColor','none');
+map_start = graphics_color('bluish green');
+map_stop = graphics_color('vermillion');
+xx = linspace(0,1,10);
+map_matrix = map_start' + xx.*(map_stop' - map_start');
+mymap = map_matrix';
+colormap(mymap)
+% colorbar;
+freezeColors;
+hold on;
+Pr_(adof) = 0;
+Pr_(idof) = Pr(idof_);
+Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
+surf(x_Pr_,y_Pr_,Pr_reshape,...
+    'FaceAlpha','flat',...
+    'AlphaDataMapping','scaled',...
+    'AlphaData',Pr_reshape,...
+    'EdgeColor','none');
+hold off;
+title('Pressure in adof(green/orange) and idof(blue)')
+map_start = [0,0,0];
+map_stop = [0,0,1];
+xx = linspace(0,1,10);
+map_matrix = map_start' + xx.*(map_stop' - map_start');
+mymap = map_matrix';
+caxis([-0.5 0]);
+colormap(mymap)
+%% Save the important data in a struct
+if doSave
+    saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
+        'R', {R}, 'V', {V}, 'BC1', {BC1}, 'BC2', {BC2}, ...
+        'max_radius', {max_radius}, 'Ne', {Ne}, ...
+        'inspect_rates', {inspect_rates}, 'alpha', {alpha}, 'Pr', {Pr}, ...
+        'Adof', {Adof}, 'Nvoxels',{Nvoxels});
+    filename_saveData = "saveData/saveData_T" + Tend + ...
+        "_" + strjoin(string(fix(clock)),'-') + ".mat";
+    save(filename_saveData, 'saveData');
+end
+
+return;
+
+%% %% Plot U
+figure(9), clf,
+U_plt = full(U); U_plt(adof) = U(adof);
+[x_U_plt,y_U_plt] = meshgrid(linspace(-1,1,Nvoxels));
+U_pltreshape = reshape(U_plt, Nvoxels, Nvoxels);
+surf(x_U_plt,y_U_plt,U_pltreshape,...
+    'FaceAlpha','flat',...
+    'AlphaDataMapping','scaled',...
+    'AlphaData',U_pltreshape,...
+    'EdgeColor','none');
+map_start = graphics_color('bluish green');
+map_stop = graphics_color('vermillion');
+xx = linspace(0,1,10);
+map_matrix = map_start' + xx.*(map_stop' - map_start');
+mymap = map_matrix';
+colormap(mymap)
+% colorbar;
+freezeColors;
+hold on;
+%U_plt(adof) = 0;
+U_plt(idof) = U(idof_);
+U_pltreshape = reshape(U_plt, Nvoxels, Nvoxels);
+surf(x_U_plt,y_U_plt,U_pltreshape,...
+    'FaceAlpha','flat',...
+    'AlphaDataMapping','scaled',...
+    'AlphaData',U_pltreshape,...
+    'EdgeColor','none');
+hold off;
+title('Pressure in adof(green/orange) and idof(blue)')
+map_start = [0,0,0];
+map_stop = [0,0,1];
+xx = linspace(0,1,10);
+map_matrix = map_start' + xx.*(map_stop' - map_start');
+mymap = map_matrix';
+caxis([-0.5 0]);
+colormap(mymap)
+
+%% %% Plot Oxygen
+figure(10), clf,
+Oxy_ = full(U); Oxy_(adof) = Oxy(adof);
+[x_Oxy_,y_Oxy_] = meshgrid(linspace(-1,1,Nvoxels));
+Oxy_reshape = reshape(Oxy_, Nvoxels, Nvoxels);
+surf(x_Oxy_,y_Oxy_,Oxy_reshape,...
+    'FaceAlpha','flat',...
+    'AlphaDataMapping','scaled',...
+    'AlphaData',Oxy_reshape,...
+    'EdgeColor','none');
+map_start = graphics_color('bluish green');
+map_stop = graphics_color('vermillion');
+xx = linspace(0,1,10);
+map_matrix = map_start' + xx.*(map_stop' - map_start');
+mymap = map_matrix';
+colormap(mymap)
+% colorbar;
+freezeColors;
+hold on;
+Oxy_(adof) = 0;
+Oxy_(idof) = Oxy(idof_);
+Oxy_reshape = reshape(Oxy_, Nvoxels, Nvoxels);
+surf(x_Oxy_,y_Oxy_,Oxy_reshape,...
+    'FaceAlpha','flat',...
+    'AlphaDataMapping','scaled',...
+    'AlphaData',Oxy_reshape,...
+    'EdgeColor','none');
+hold off;
+title('Pressure in adof(green/orange) and idof(blue)')
+map_start = [0,0,0];
+map_stop = [0,0,1];
+xx = linspace(0,1,10);
+map_matrix = map_start' + xx.*(map_stop' - map_start');
+mymap = map_matrix';
+caxis([-0.5 0]);
+colormap(mymap)
+
+
+
+% % saves the GIF
 % movie2gif(M,{M([1:2 end]).cdata},'animations/Tumour.gif', ...
 %           'delaytime',0.1,'loopcount',0);
