@@ -44,7 +44,7 @@ else
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
     r_prol = 0.125;       % rate of proliferation of singly occupied voxels
-    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
+    cutoff_die = 0.59;    % the maximum amount of oxygen where cells can die
     r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
 end
@@ -138,12 +138,12 @@ while tt <= tspan(end)
     
     sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
     
-    sdof_mnew = find((N.*U'>U) & (U > 1));
+    sdof_m = intersect(find(sum(N.*U'>U)), find(U > 1));
 
     sdof = find(U > 1); % voxels with 2 cells
     % voxels with 2 cells in them _which may move_, with a voxel
     % containing less number of cells next to it (actually 1 or 0):
-    sdof_m = find(N*(U > 1 | U_dead >1)<neigh & U > 1); %kanske större än 1
+    sdof_mold = find(N*(U > 1 | U_dead >1)<neigh & U > 1); %kanske större än 1
     Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
     idof1 = find(Idof & ~VU); % "external" OBC1
     idof2 = find(Idof & VU);  % "internal" OBC2
@@ -266,25 +266,26 @@ while tt <= tspan(end)
     rates = zeros(length(Adof),1);
     action_vec =zeros(length(Adof),1);
     
-    for ix_=1:length(bdof_m_)
+    for ind=1:length(bdof_m_)
         Ne.moveb = Ne.moveb+1;
         % movement of a boundary (singly occupied) voxel
-        ix = bdof_m_(ix_);
+        ix = bdof_m(ind);
+        ix_ = bdof_m_(ind);
 
         jx_ = find(N(ix,Adof));
         % (will only move into an empty voxel:)
         jx_ = jx_(U(Adof(jx_)) == 0);
         %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-        rates(jx_) = rates(jx_) + D.*max(Pr(ix)-Pr(jx_),0)
-        rates(ix) = sum(D.*max(Pr(ix)-Pr(jx_),0));
+        rates(jx_) = rates(jx_) + D.*max(Pr(ix_)-Pr(jx_),0)
+        rates(ix_) = sum(D.*max(Pr(ix_)-Pr(jx_),0));
         
         action_vec(jx_)=1;
-        action_vec(ix)= -1;
+        action_vec(ix_)= -1;
 
     end
     
     %Euler for bdof_m
-    rates.*action_vec.*dt;
+    rates.*action_vec*dt;
     U(Adof) = U(Adof) + rates.*action_vec*dt;
         
     U_temp = U(bdof_m);
@@ -299,22 +300,23 @@ while tt <= tspan(end)
     rates = zeros(length(Adof),1);
     action_vec =zeros(length(Adof),1);
     
-    for ix_=1:length(sdof_m_)
+    for ind=1:length(sdof_m_)
         Ne.moves = Ne.moves+1;
         % movement of a boundary (singly occupied) voxel
-        ix = sdof_m_(ix_);
+        ix = sdof_m(ind);
+        ix_ = sdof_m_(ind); %index i Adof
 
-        jx_ = find(N(ix,Adof));
-        rates(jx_) = rates(jx_) + D.*max(Pr(ix)-Pr(jx_),0);
-        rates(ix) = sum(D.*max(Pr(ix)-Pr(jx_),0));
+        jx_ = find(N(ix,Adof)); %index i Adof
+        rates(jx_) = rates(jx_) + D*max(Pr(ix_)-Pr(jx_),0);
+        rates(ix_) = sum(D*max(Pr(ix_)-Pr(jx_),0));
         
         action_vec(jx_)=1;
-        action_vec(ix)= -1;
+        action_vec(ix_)= -1;
     end
 
     
     %Euler for sdof_m
-    rates.*action_vec*dt;
+    rates.*action_vec*dt
     rates(sdof_b_)
     U(Adof) = U(Adof) + rates.*action_vec*dt;
     
