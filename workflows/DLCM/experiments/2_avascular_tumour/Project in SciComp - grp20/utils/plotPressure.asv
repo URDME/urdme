@@ -34,8 +34,7 @@ map_stop = [0.7,0.7,1];
 xx = linspace(0,1,10);
 map_matrix = map_start' + xx.*(map_stop' - map_start');
 mymap = map_matrix';
-% caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
-caxis([-1 0.5]);
+caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
 colormap(ax2, mymap)
 
 % Add quivers to the moving boundary and source dofs
@@ -75,7 +74,7 @@ for i = sdof_m'
   end
 end
 ax3 = axes;
-q = quiver(ax3, x,y,u,v,'AutoScale','off');
+q = quiver(ax3, x,y,u,v);
 q.Color = 'yellow';
 
 %%Link them together and hide them
@@ -90,4 +89,4 @@ ax1.Visible = 'on';
 %Then add colorbars and get everything lined up
 cb1 = colorbar(ax1,'Position',[.09 .11 .02 .815]);
 cb2 = colorbar(ax2,'Position',[.91 .11 .02 .815]);
-title(ax1, sprintf('Time = %d, alpha = %d', tspan(end), alpha))
+title(ax1, sprintf('alpha = %d', alpha))

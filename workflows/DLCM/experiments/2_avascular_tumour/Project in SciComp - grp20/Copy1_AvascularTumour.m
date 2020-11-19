@@ -22,7 +22,7 @@
 % simulation interval
 doGif = false;
 doSave = true;
-Tend = 100;
+Tend = 0;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -120,28 +120,29 @@ while tt <= tspan(end)
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
-  idof3 = find(~VU & N*VU > 0); % boundary around "visited voxels"
-  idof3 = setdiff(idof3,idof1);
+%   idof3 = find(~VU & N*VU > 0); % boundary around "visited voxels"
+%   idof3 = setdiff(idof3,idof1);
   idof = find(Idof);
+%   idof = find(Idof & ~VU);
 
   % "All DOFs" = adof + idof, like the "hull of adof"
-  Adof = [adof; idof; idof3];
+  Adof = [adof; idof];
 
   % The above will be enumerated within U, a Nvoxels^2-by-1 sparse
   % matrix. Determine also a local enumeration, eg. [1 2 3
   % ... numel(Adof)].
   Adof_ = (1:numel(Adof))';  
-  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_,idof3_] = ...
-      map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,idof3);
+  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
+      map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof);
   %% Update LU
   if updLU
     % pressure Laplacian
     La.X = L(Adof,Adof);
-    Lai = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
+    Lai = fsparse([idof_],[idof_],1,size(La.X));
     La.X = La.X-Lai*La.X;
     % add derived BC to LHS
     Mgamma_b = Mgamma(Adof,Adof);
-    Lai2 = fsparse([idof_;idof3_],[idof_;idof3_],1,size(La.X));
+    Lai2 = fsparse([idof_],[idof_],1,size(La.X));
     La.X = La.X + alpha_inv*Lai2*Mgamma_b;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
@@ -391,7 +392,7 @@ legend(rate_names);
 
 %% Plot Pressure
 figure(7), clf,
-if 0
+if 1
     plotPressure;
 else
     % Here is some weird try on a 3D bar plot

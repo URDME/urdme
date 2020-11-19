@@ -17,7 +17,6 @@ for k = 1:length(DirList)
                     'EdgeColor','none');
         hold on,
 %         axis([-1 1 -1 1]); axis square, axis off
-        axis([-1 1 -1 1]*0.55); axis square, %axis off
         ii = find(Usave{t_show} == 1);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',graphics_color('bluish green'));
@@ -80,6 +79,7 @@ end
 %% Print all open figures
 
 openFigures = findobj('Type', 'figure');
+
 for k = 1:length(openFigures)
     figNumb = openFigures(k).Number;
     figHandle = "-f" + figNumb;
