@@ -7,16 +7,13 @@ Data = cell(1, length(DirList));
 figrows = ceil(sqrt(length(DirList)));
 
 %% Plot population appearance
-
-% figure(1);
-
+%close all;
 for k = 1:length(DirList)
     load(['saveData/' DirList(k).name]);
-    loadSaveData;
-    t_show = find(tspan >= 150, 1); % length(Usave);
-    if(tspan(end) >= 150)
+    t_show = length(tspan);
+    if(tspan(end) == 200)
 %         subplot(figrows, ceil(length(DirList)/figrows),k);
-        figure(k)
+        figure;
         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
                     'EdgeColor','none');
         hold on,
@@ -70,7 +67,7 @@ for k = 1:length(DirList)
 end
 
 %% Plot pressure
-close all;
+%close all;
 for k = 1:length(DirList)
 %     subplot(figrows, ceil(length(DirList)/figrows),k);
     figure;

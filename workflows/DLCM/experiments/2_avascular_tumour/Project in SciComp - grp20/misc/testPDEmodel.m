@@ -19,9 +19,12 @@ Nvoxels = 121;
 TR = triangulation(T(1:3,:)',P');
 geometryFromMesh(model,TR.Points',TR.ConnectivityList');
 specifyCoefficients(model,'m',0,'d',0,'c',1,'a',1,'f',0);
-% figure;
-% pdemPesh(model)
-% axis equal
+figure;
+pdemesh(model)
+axis equal
+figure;
+pdegplot(model.Geometry,'EdgeLabels','on')
+axis equal
 % state.time = 0;
 FEM = assembleFEMatrices(model);
 % applyBoundaryCondition(model,'edge',1:model.Geometry.NumEdges,'u',0);

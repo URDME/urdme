@@ -22,7 +22,7 @@
 % simulation interval
 doGif = false;
 doSave = true;
-Tend = 400;
+Tend = 100;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,7 +46,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 0.001;
+alpha = 1;
 alpha_inv = 1./alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -61,7 +61,8 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
-Mgamma = assemble_Mgamma(P,T);
+[r,c] = find(L);
+Mgamma = assemble_Mgamma(P,T,r,c,size(L),0);
 % robinVec = RobinLoadVector2D(P,T);
 neigh = full(sum(N,2));
 
@@ -390,12 +391,12 @@ legend(rate_names);
 
 %% Plot Pressure
 figure(7), clf,
-if 1
+if 0
     plotPressure;
 else
     % Here is some weird try on a 3D bar plot
     % OBSERVE: takes a long time to plot
-    plotPressureBars(P,U,Pr,adof,adof_,idof,idof_,Nvoxels, 1);
+    plotPressureBars;
 end
     
 %% Save the important data in a struct

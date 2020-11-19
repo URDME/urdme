@@ -1,7 +1,8 @@
 % Function that allocates the boundary matrix Mgamma.
 % Output: M the allocated mass matrix
 % Input: p the point matrix, t the connectivity matrix 
-function Mgamma = assemble_Mgamma(p,t)
+function Mgamma = assemble_Mgamma(p,t,r,c,sz,orr)
+if orr
     np = size(p,2); % Number of nodes 
     nt = size(t,2); % Number of boundary edges
     Mgamma = sparse(np,np); % Allocate mass matrix 
@@ -17,8 +18,15 @@ function Mgamma = assemble_Mgamma(p,t)
            zeroInd = inds(ii,:);
        end
     end
-    MK = [2 1 1; 1 2 1; 1 1 2]/(4*6).*len; % element mass matrix
+    MK = [2 1 1; 1 2 1; 1 1 2]/(6).*len; % element mass matrix
     MK(zeroInd(1),zeroInd(2)) = 0; MK(zeroInd(2),zeroInd(1)) = 0;
     Mgamma(loc2glb,loc2glb) = Mgamma(loc2glb,loc2glb)+ MK; % add element masses to M
     end
+
+else
+    len = sqrt((p(1,1) - p(1,2))^2 + (p(2,1) - p(2,2))^2);
+    dimVec_sz = 1:sz(1); 
+    Mgamma = (fsparse(r,c,1,sz) + fsparse(dimVec_sz,dimVec_sz,1,sz))*(len/6);
+end
+
 end
