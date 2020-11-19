@@ -24,14 +24,14 @@ clc;
 close all;
 
 % simulation interval
-Tend =100;
+Tend =20;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
 
-cutoff = 0.1;
+cutoff = 0.05;
 rates_type = 2;
 if rates_type == 1
     cons = 0.0015;        % consumption of oxygen by cells
@@ -81,7 +81,7 @@ extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 init = 1;
 if init == 1
     start_value = 1;
-    radie = 0.1;
+    radie = 0.09;
     % initial population: circular blob of living cells
     r = sqrt(P(1,:).^2+P(2,:).^2);
     ii = find(r < radie); % radius of the initial blob
@@ -132,18 +132,17 @@ while tt <= tspan(end)
     
     % classify the DOFs
     adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
-    % singularly occupied voxels on the boundary: (will not be a source of
-    % moving cells)?
+    % singularly occupied voxels on the boundary: 
     bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 0 & U <= 1));
     
     sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
     
-    sdof_m = intersect(find(sum(N.*U'>U)), find(U > 1));
+    sdof_m = find(sum(N.*U'<U,2));%intersect(find(sum(N.*U'<U,2)), find(U > 1));
 
     sdof = find(U > 1); % voxels with 2 cells
     % voxels with 2 cells in them _which may move_, with a voxel
     % containing less number of cells next to it (actually 1 or 0):
-    sdof_mold = find(N*(U > 1 | U_dead >1)<neigh & U > 1); %kanske större än 1
+    sdof_m_old = find(N*(U > 1 | U_dead >1)<neigh & U > 1); %kanske större än 1
     Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
     idof1 = find(Idof & ~VU); % "external" OBC1
     idof2 = find(Idof & VU);  % "internal" OBC2
@@ -156,8 +155,8 @@ while tt <= tspan(end)
     % matrix. Determine also a local enumeration, eg. [1 2 3
     % ... numel(Adof)].
     Adof_ = (1:numel(Adof))';
-    [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_,sdof_b_] = ...
-        map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,sdof_b);
+    [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_,sdof_b_,ddof_] = ...
+        map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,sdof_b,ddof);
     
     if updLU
         % pressure Laplacian
@@ -191,15 +190,15 @@ while tt <= tspan(end)
     % intensities of possible events
     
     %   % (1) moving boundary DOFs
-    %   [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
-    %   keep = find(U(Adof(jj_)) == 0);  % ...to move to
-    %   ikeep= ii(keep);
-    %   ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1); %???varför??
-    %   % remove any possibly remaining negative rates
-    %   grad = fsparse(ii,1,max(Pr(bdof_m_(ii))-Pr(jj_),0).* ...
-    %                  Drate_(2*VU(Adof(jj_))+1), ... % (U(Adof(jj_)) = 0)
-    %                  numel(bdof_m));
-    %   moveb = full(gradquotient*grad);
+      [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
+      keep = find(U(Adof(jj_)) == 0);  % ...to move to
+      ikeep= ii(keep);
+      ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1); %???varför??
+      % remove any possibly remaining negative rates
+      grad = fsparse(ii,1,max(Pr(bdof_m_(ii))-Pr(jj_),0).* ...
+                     1,...%Drate_(2*VU(Adof(jj_))+1), ... % (U(Adof(jj_)) = 0)
+                     numel(bdof_m));
+      moveb = full(gradquotient*grad);
     %
     % (2) also certain sources may move by the same physics
     [ii,jj_] = find(N(sdof_m,Adof)); % neighbours...
@@ -225,7 +224,7 @@ while tt <= tspan(end)
     %
     %   %Gillespies algorithm
     %    intens = [moveb; moves; birth; abs(death); abs(degrade)];
-    intens = [birth; death; degrade; moves];
+    intens = [birth; death; degrade; moves; moveb];
     lambda = sum(intens);
 %     if i==1
 %         dt=1;
@@ -236,8 +235,8 @@ while tt <= tspan(end)
 %     end
     %dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda;
 
-    %dt = 1/lambda;
-    dt=Tend/50;
+    dt = 1/lambda;
+%     dt=Tend/50;
     
     % report back håll some koll
     if tspan(i+1) < tt+dt
@@ -265,7 +264,7 @@ while tt <= tspan(end)
     D = 1; 
     rates = zeros(length(Adof),1);
     action_vec =zeros(length(Adof),1);
-    
+%     
     for ind=1:length(bdof_m_)
         Ne.moveb = Ne.moveb+1;
         % movement of a boundary (singly occupied) voxel
@@ -274,25 +273,23 @@ while tt <= tspan(end)
 
         jx_ = find(N(ix,Adof));
         % (will only move into an empty voxel:)
-        jx_ = jx_(U(Adof(jx_)) == 0);
+        jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
         %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-        rates(jx_) = rates(jx_) + D.*max(Pr(ix_)-Pr(jx_),0)
-        rates(ix_) = sum(D.*max(Pr(ix_)-Pr(jx_),0));
+        rates(jx_) = rates(jx_) + 0.001*max(Pr(ix_)-Pr(jx_),0);
+        rates(ix_) = -sum(0.001*max(Pr(ix_)-Pr(jx_),0));
         
-        action_vec(jx_)=1;
-        action_vec(ix_)= -1;
+%         action_vec(jx_)=1;
+%         action_vec(ix_)= -1;
 
     end
     
     %Euler for bdof_m
     rates.*action_vec*dt;
-    U(Adof) = U(Adof) + rates.*action_vec*dt;
+    U(Adof) = U(Adof) + rates*dt; %action_vec*
         
     U_temp = U(bdof_m);
     U_temp(U_temp<cutoff) = 0;
     U(bdof_m) = U_temp;
-
-    
 
     updLU = true; % boundary has changed
 
@@ -302,65 +299,62 @@ while tt <= tspan(end)
     
     for ind=1:length(sdof_m_)
         Ne.moves = Ne.moves+1;
-        % movement of a boundary (singly occupied) voxel
         ix = sdof_m(ind);
         ix_ = sdof_m_(ind); %index i Adof
 
         jx_ = find(N(ix,Adof)); %index i Adof
         rates(jx_) = rates(jx_) + D*max(Pr(ix_)-Pr(jx_),0);
-        rates(ix_) = sum(D*max(Pr(ix_)-Pr(jx_),0));
+        rates(ix_) = -sum(D*max(Pr(ix_)-Pr(jx_),0));
         
-        action_vec(jx_)=1;
-        action_vec(ix_)= -1;
+%         action_vec(jx_)=1;
+%         action_vec(ix_)= -1;
     end
 
     
     %Euler for sdof_m
-    rates.*action_vec*dt
-    rates(sdof_b_)
-    U(Adof) = U(Adof) + rates.*action_vec*dt;
+%     rates.*action_vec*dt
+    ratessdof=rates(sdof_b_);
+    U(Adof) = U(Adof) + rates.*dt; %action_vec*
     
-
     U_temp = U(sdof_m);
     U_temp(U_temp<cutoff) = 0;
     U(sdof_m) = U_temp;
 
-    
-    %elseif ix_ <= numel(moveb)+numel(moves)
-    %     Ne.moves = Ne.moves+1;
-    %     % movement of a cell in a doubly occupied voxel
-    %     ix_ = ix_-numel(moveb);
-    %     ix_ = sdof_m_(ix_);
-    %     ix = Adof(ix_);
-    %
-    %     jx_ = find(N(ix,Adof));
-    %     % (won't move into a voxel containing a dead -1 cell:)
-    %     jx_ = jx_(-1 < U(Adof(jx_)) & U(Adof(jx_)) < 2);
-    %     rates = Drate_(2*VU(Adof(jx_))+abs(U(Adof(jx_)))+1).* ...
-    %             max(Pr(ix_)-Pr(jx_),0);
-    %     m = find(cumsum(rates) > rand*sum(rates),1,'first');
-    %     n = Adof(jx_(m));
-    
-    %       N_sdof = N;
-    %       N_sdof(sdof_m,:)=2;
-    %       s_mat = N_sdof-N;
-    %
-    %       %s_mat(sdof_m,:) = 0;
-    %       Pr_mat = s_mat(Adof,Adof).*Pr - s_mat(Adof,Adof).*Pr';
-    %       Pr_diff = sum(Pr_mat,2);
+%     elseif ix_ <= numel(moveb)+numel(moves)
+%         Ne.moves = Ne.moves+1;
+%         % movement of a cell in a doubly occupied voxel
+%         ix_ = ix_-numel(moveb);
+%         ix_ = sdof_m_(ix_);
+%         ix = Adof(ix_);
+%     
+%         jx_ = find(N(ix,Adof));
+%         % (won't move into a voxel containing a dead -1 cell:)
+%         jx_ = jx_(-1 < U(Adof(jx_)) & U(Adof(jx_)) < 2);
+%         rates = Drate_(2*VU(Adof(jx_))+abs(U(Adof(jx_)))+1).* ...
+%                 max(Pr(ix_)-Pr(jx_),0);
+%         m = find(cumsum(rates) > rand*sum(rates),1,'first');
+%         n = Adof(jx_(m));
+%     
+%           N_sdof = N;
+%           N_sdof(sdof_m,:)=2;
+%           s_mat = N_sdof-N;
+%     
+%           %s_mat(sdof_m,:) = 0;
+%           Pr_mat = s_mat(Adof,Adof).*Pr - s_mat(Adof,Adof).*Pr';
+%           Pr_diff = sum(Pr_mat,2);
 %     D = 1; %Fix later, permeability etc D_rate
 %     U(Adof) = U(Adof) - D*grad*dt;
-    %     % execute event: move from ix to n
-    %     if U(n) == 0, updLU = true; end % boundary has changed
-    %     U(n) = U(n)+1;
-    %     U(ix) = U(ix)-1;
+%         % execute event: move from ix to n
+%         if U(n) == 0, updLU = true; end % boundary has changed
+%         U(n) = U(n)+1;
+%         U(ix) = U(ix)-1;
     
     
-    %   elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)
+%       elseif ix_ <= numel(moveb)+numel(moves)+numel(birth)
     
-    %Ne.birth = Ne.birth+1;
-    % proliferation
-    %birth_count = birth_count+1;
+    Ne.birth = Ne.birth+1;
+%     proliferation
+    birth_count = birth_count+1;
     
     ind_prol = find((Oxy > cutoff_prol));
     prol_conc = r_prol*U(ind_prol);
