@@ -24,14 +24,14 @@ clc;
 close all;
 
 % simulation interval
-Tend =20;
-tspan = linspace(0,Tend,101);
+Tend = 100;
+tspan = linspace(0,Tend,1001);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
 
-cutoff = 0.05;
+cutoff = 0.0005;
 rates_type = 2;
 if rates_type == 1
     cons = 0.0015;        % consumption of oxygen by cells
@@ -41,11 +41,11 @@ if rates_type == 1
     r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
 else
-    cons = 0.0015;        % consumption of oxygen by cells
+    cons = 0.005;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0.125;       % rate of proliferation of singly occupied voxels
-    cutoff_die = 0.59;    % the maximum amount of oxygen where cells can die
-    r_die = 0.125;        % rate of death
+    r_prol = 0.3;       % rate of proliferation of singly occupied voxels
+    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
+    r_die = 0.3;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
 end
 
@@ -107,7 +107,8 @@ Udsave = cell(1,numel(tspan));
 Udsave{1} = U_dead;
 
 Oxysave = cell(1,numel(tspan));
-
+bdofsave = cell(1,numel(tspan));
+sdofsave = cell(1,numel(tspan));
 
 birth_count = 0;
 tt = tspan(1);
@@ -134,11 +135,8 @@ while tt <= tspan(end)
     adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
     % singularly occupied voxels on the boundary: 
     bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 0 & U <= 1));
-    
     sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
-    
-    sdof_m = intersect(find(sum(N.*U'<U,2)), find(U > 1)); %find(sum(N.*U'<U,2));
-    hej=U(sdof_m);
+    sdof_m = intersect(find(sum(N.*U'<U & boolean(N),2)), find(U > 1)); 
     
     sdof = find(U > 1); % voxels with 2 cells
     % voxels with 2 cells in them _which may move_, with a voxel
@@ -170,10 +168,10 @@ while tt <= tspan(end)
     end
     
     % RHS source term proportional to the over-occupancy and BCs
-%     Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
-%         [size(La.X,1) 1]));     % RHS first...
-    Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
+    Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
         [size(La.X,1) 1]));     % RHS first...
+%     Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
+%         [size(La.X,1) 1]));     % RHS first...
     Pr_RHS = Pr;
     Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
     
@@ -247,6 +245,8 @@ while tt <= tspan(end)
         Idofsave(i+1:iend) = {U(Idof)};
         
         Oxysave(i+1:iend) = {Oxy(Adof)};
+        bdofsave(i+1:iend) = {bdof_m};
+        sdofsave(i+1:iend) = {sdof_m};
         
         i = iend;
         
@@ -262,42 +262,10 @@ while tt <= tspan(end)
     end
     
     %movements-----------------------------------
-    %bdof
     D = 1; 
-%     rates = zeros(length(Adof),1);
-%     action_vec =zeros(length(Adof),1);
-% %     
-%     for ind=1:length(bdof_m_)
-%         Ne.moveb = Ne.moveb+1;
-%         % movement of a boundary (singly occupied) voxel
-%         ix = bdof_m(ind);
-%         ix_ = bdof_m_(ind);
-% 
-%         jx_ = find(N(ix,Adof));
-%         % (will only move into an empty voxel:)
-%         jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
-%         %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-%         rates(jx_) = rates(jx_) + 0.001*max(Pr(ix_)-Pr(jx_),0);
-%         rates(ix_) = -sum(0.001*max(Pr(ix_)-Pr(jx_),0));
-%         
-% %         action_vec(jx_)=1;
-% %         action_vec(ix_)= -1;
-% 
-%     end
-%     
-%     %Euler for bdof_m
-%     rates.*action_vec*dt;
-%     U(Adof) = U(Adof) + rates*dt; %action_vec*
-%         
-%     U_temp = U(bdof_m);
-%     U_temp(U_temp<cutoff) = 0;
-%     U(bdof_m) = U_temp;
-
-    updLU = true; % boundary has changed
-
     %sdof_m
     rates = zeros(length(Adof),1);
-    action_vec =zeros(length(Adof),1);
+%     action_vec =zeros(length(Adof),1);
     
     for ind=1:length(sdof_m_)
         Ne.moves = Ne.moves+1;
@@ -321,6 +289,38 @@ while tt <= tspan(end)
     U_temp(U_temp<cutoff) = 0;
     U(sdof_m) = U_temp;
     
+    %bdof
+    rates = zeros(length(Adof),1);
+%     action_vec =zeros(length(Adof),1);
+%     
+    for ind=1:length(bdof_m_)
+        Ne.moveb = Ne.moveb+1;
+        % movement of a boundary (singly occupied) voxel
+        ix = bdof_m(ind);
+        ix_ = bdof_m_(ind);
+
+        jx_ = find(N(ix,Adof));
+        % (will only move into an empty voxel:)
+        jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
+        %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
+        rates(jx_) = rates(jx_) + D*max(Pr(ix_)-Pr(jx_),0);
+        rates(ix_) = -sum(D*max(Pr(ix_)-Pr(jx_),0));
+        
+%         action_vec(jx_)=1;
+%         action_vec(ix_)= -1;
+
+    end
+    
+    %Euler for bdof_m
+%     rates.*action_vec*dt;
+    U(Adof) = U(Adof) + rates*dt; %action_vec*
+        
+    U_temp = U(bdof_m);
+    U_temp(U_temp<cutoff) = 0;
+    U(bdof_m) = U_temp;
+
+    updLU = true; % boundary has changed
+    
     %proliferation------------------------------
     Ne.birth = Ne.birth+1;
     birth_count = birth_count+1;
@@ -330,8 +330,6 @@ while tt <= tspan(end)
     U(ind_prol)=U(ind_prol)+prol_conc*dt;
     %     ind_test =  find(U>4.1);
     %     U(ind_test) = 4;
-    
-    
     
     %death--------------------------------------
     % full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die))
@@ -349,9 +347,7 @@ while tt <= tspan(end)
     
     
     %degradation--------------------------------
-    %Ne.degrade = Ne.degrade+1;
-    
-    
+    %Ne.degrade = Ne.degrade+1;   
     U_dead(ddof) = U_dead(ddof)*(1 - r_degrade*dt); %tidssteg litet->kan inte bli negativt
     % remove degraded cells
     U_dead(U_dead < 0.0001) = 0; %ta bort för små
@@ -378,9 +374,64 @@ report(tt,U,'done');
 
 % create a GIF animation
 % figure(6)
-% population appearance
+% population appearance sdof, bdof visualization
 M = struct('cdata',{},'colormap',{});
 figure(3), clf,
+% for i = 1:numel(Usave)
+for i = 1:numel(Usave)
+    
+    patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+        'EdgeColor','none');
+    hold on,
+    axis([-1 1 -1 1]); axis square, axis off
+    
+    ii = find(Usave{i} > 0 & Usave{i} <=0.5);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[1 0 0]); %; [0 1 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[1 0 1]); %[1 0 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} > 2 );
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
+    
+    patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
+        'FaceColor',[0 0 0]); %[1 0 Usave{i}/max(Usave{i})] 
+    
+    patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
+        'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]      
+        
+%     ii = find(Usave{i} > 3 );
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[1 0 0]); %[1 0 Usave{i}/max(Usave{i})]
+    
+    ii = find(Usave{i} == 0 & Udsave{i} >0);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
+    drawnow;
+    M(i) = getframe(gcf);
+%     pause(3)
+end
+
+
+%%
+
+% create a GIF animation
+% figure(6)
+% population appearance normal
+M = struct('cdata',{},'colormap',{});
+figure(11), clf,
 % for i = 1:numel(Usave)
 for i = 1:numel(Usave)
     
@@ -395,33 +446,30 @@ for i = 1:numel(Usave)
     
     ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
     patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0.2 1]); %; [0 1 Usave{i}/max(Usave{i})]
+        'FaceColor',[0 0.5 1]); %; [0 1 Usave{i}/max(Usave{i})]
     
     ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
     patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0.5 0.7]); %; [0 1 Usave{i}/max(Usave{i})]
+        'FaceColor',[0 1 0.5]); %; [0 1 Usave{i}/max(Usave{i})]
     
     ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
     patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0.8 0.4]); %[1 0 Usave{i}/max(Usave{i})]
+        'FaceColor',[0.5 1 0.2]); %[1 0 Usave{i}/max(Usave{i})]
     
     ii = find(Usave{i} > 2 );
     patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
-        
-    ii = find(Usave{i} > 3 );
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[1 0 0]); %[1 0 Usave{i}/max(Usave{i})]
+        'FaceColor',[1 1 0.5]); %[1 0 Usave{i}/max(Usave{i})]
     
     ii = find(Usave{i} == 0 & Udsave{i} >0);
-    %   test=Udsave{i}(7320)
-    %   color = full(Udsave{i}(ii))/max(Udsave{i}(ii));
     patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
-    title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
+    title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
     M(i) = getframe(gcf);
+%     pause(2)
 end
+
+
 
 % investigate the time evolution of the different cell numbers
 figure(4), clf
