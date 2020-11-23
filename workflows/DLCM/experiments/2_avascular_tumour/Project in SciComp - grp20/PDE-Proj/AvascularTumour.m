@@ -469,7 +469,34 @@ for i = 1:numel(Usave)
 %     pause(2)
 end
 
-
+%%
+% dead appearance
+M = struct('cdata',{},'colormap',{});
+figure(10), clf,
+% for i = 1:numel(Usave)
+for i = 1:numel(Udsave)
+    patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+        'EdgeColor','none');
+    hold on,
+    axis([-1 1 -1 1]); axis square, axis off
+    
+    
+    ii = find(Udsave{i} > 0 & Udsave{i} <=0.5);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
+    
+    ii = find(Udsave{i} > 0.5 & Udsave{i} <= 1.5);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0.5 0.5 0.5]); %; [0 1 Usave{i}/max(Usave{i})] 
+  
+    ii = find(Udsave{i} >1.5);
+    patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
+    drawnow;
+    M(i) = getframe(gcf);
+end
+%%
 
 % investigate the time evolution of the different cell numbers
 figure(4), clf
