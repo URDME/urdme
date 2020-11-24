@@ -23,9 +23,12 @@ clear;
 clc;
 close all;
 
+deadfigure=0;
+normalfigure=1;
+
 % simulation interval
-Tend = 100;
-tspan = linspace(0,Tend,1001);
+Tend = 50;
+tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
@@ -134,7 +137,7 @@ while tt <= tspan(end)
     % classify the DOFs
     adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
     % singularly occupied voxels on the boundary: 
-    bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 0 & U <= 1));
+    bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > cutoff & U <= 1));%(U > 0 & U <= 1));
     sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
     sdof_m = intersect(find(sum(N.*U'<U & boolean(N),2)), find(U > 1)); 
     
@@ -281,7 +284,6 @@ while tt <= tspan(end)
     end
     
     %Euler for sdof_m
-%     rates.*action_vec*dt
     ratessdof=rates(sdof_b_);
     U(Adof) = U(Adof) + rates.*dt; %action_vec*
     
@@ -308,11 +310,9 @@ while tt <= tspan(end)
         
 %         action_vec(jx_)=1;
 %         action_vec(ix_)= -1;
-
     end
     
     %Euler for bdof_m
-%     rates.*action_vec*dt;
     U(Adof) = U(Adof) + rates*dt; %action_vec*
         
     U_temp = U(bdof_m);
@@ -351,9 +351,9 @@ while tt <= tspan(end)
     U_dead(ddof) = U_dead(ddof)*(1 - r_degrade*dt); %tidssteg litet->kan inte bli negativt
     % remove degraded cells
     U_dead(U_dead < 0.0001) = 0; %ta bort för små
-    testU=U(7320)
-    testUd=U_dead(7320)
-    testOxy=Oxy(7320)
+%     testU=U(7320)
+%     testUd=U_dead(7320)
+%     testOxy=Oxy(7320)
     
     
     updLU = true; % boundary has changed
@@ -371,13 +371,16 @@ report(tt,U,'done');
 
 %% 
 
-
 % create a GIF animation
 % figure(6)
 % population appearance sdof, bdof visualization
-M = struct('cdata',{},'colormap',{});
+Mdof = struct('cdata',{},'colormap',{});
 figure(3), clf,
-% for i = 1:numel(Usave)
+
+Umat=cell2mat(Usave);
+cmat = full(Umat/max(max(Umat)));
+colorbar
+caxis([0 1])
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -385,31 +388,35 @@ for i = 1:numel(Usave)
     hold on,
     axis([-1 1 -1 1]); axis square, axis off
     
-    ii = find(Usave{i} > 0 & Usave{i} <=0.5);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
-    
-    ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
-    
-    ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[1 0 0]); %; [0 1 Usave{i}/max(Usave{i})]
-    
-    ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[1 0 1]); %[1 0 Usave{i}/max(Usave{i})]
-    
-    ii = find(Usave{i} > 2 );
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
+    ii = find(Usave{i}>0);
+    c = cmat(ii,i);
+    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
+        
+%     ii = find(Usave{i} > 0 & Usave{i} <=0.5);
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
+%     
+%     ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
+%     
+%     ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[1 0 0]); %; [0 1 Usave{i}/max(Usave{i})]
+%     
+%     ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[1 0 1]); %[1 0 Usave{i}/max(Usave{i})]
+%     
+%     ii = find(Usave{i} > 2 );
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
     
     patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
-        'FaceColor',[0 0 0]); %[1 0 Usave{i}/max(Usave{i})] 
+        'FaceColor','cyan'); %[1 0 Usave{i}/max(Usave{i})] 
     
     patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
-        'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]      
+        'FaceColor','magenta'); %[1 0 Usave{i}/max(Usave{i})]      
         
 %     ii = find(Usave{i} > 3 );
 %     patch('Faces',R(ii,:),'Vertices',V, ...
@@ -418,21 +425,29 @@ for i = 1:numel(Usave)
     ii = find(Usave{i} == 0 & Udsave{i} >0);
     patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
-    M(i) = getframe(gcf);
+    Mdof(i) = getframe(gcf);
 %     pause(3)
 end
 
+% saves the GIF
+movie2gif(Mdof,{Mdof([1:2 end]).cdata},'animations/TumourMdof.gif', ...
+          'delaytime',0.1,'loopcount',0);
 
 %%
-
+if normalfigure==1
 % create a GIF animation
-% figure(6)
+
 % population appearance normal
-M = struct('cdata',{},'colormap',{});
+Mnormal = struct('cdata',{},'colormap',{});
 figure(11), clf,
-% for i = 1:numel(Usave)
+
+Umat=cell2mat(Usave);
+cmat = full(Umat/max(max(Umat)));
+colorbar
+caxis([0 1])
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -440,61 +455,96 @@ for i = 1:numel(Usave)
     hold on,
     axis([-1 1 -1 1]); axis square, axis off
     
-    ii = find(Usave{i} > 0 & Usave{i} <=0.5);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
+    ii = find(Usave{i}>0);
+    c = cmat(ii,i);
+    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
     
-    ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0.5 1]); %; [0 1 Usave{i}/max(Usave{i})]
+    %     ii = find(Usave{i}>0 & Usave{i} <= 1);
+    %     cvec = full(Usave{i}(ii)/max(Usave{i}(ii)));
+    %     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData', cvec);% ...
+    %         %'FaceColor',[0 0 Usave{i}/max(Usave{i})]);    
+
+    %     ii = find(Usave{i} > 0 & Usave{i} <=0.5);
+    %     patch('Faces',R(ii,:),'Vertices',V, ...
+    %         'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
+    %     
+    %     ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
+    %     patch('Faces',R(ii,:),'Vertices',V, ...
+    %         'FaceColor',[0 0.5 1]); %; [0 1 Usave{i}/max(Usave{i})]
+
+%     ii = find(Usave{i} > 1);
+%     cvec = full(Usave{i}(ii)/max(Usave{i}(ii)));
+%     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData', cvec);% ...
+%         %'FaceColor',[0 0 Usave{i}/max(Usave{i})]);   
     
-    ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 1 0.5]); %; [0 1 Usave{i}/max(Usave{i})]
-    
-    ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0.5 1 0.2]); %[1 0 Usave{i}/max(Usave{i})]
-    
-    ii = find(Usave{i} > 2 );
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[1 1 0.5]); %[1 0 Usave{i}/max(Usave{i})]
-    
+    %     ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
+    %     patch('Faces',R(ii,:),'Vertices',V, ...
+    %         'FaceColor',[0 1 0.5]); %; [0 1 Usave{i}/max(Usave{i})]
+    %     
+    %     ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
+    %     patch('Faces',R(ii,:),'Vertices',V, ...
+    %         'FaceColor',[0.5 1 0.2]); %[1 0 Usave{i}/max(Usave{i})]
+    %     
+    %     ii = find(Usave{i} > 2 );
+    %     patch('Faces',R(ii,:),'Vertices',V, ...
+    %         'FaceColor',[1 1 0.5]); %[1 0 Usave{i}/max(Usave{i})]
+
     ii = find(Usave{i} == 0 & Udsave{i} >0);
     patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
-    M(i) = getframe(gcf);
+    Mnormal(i) = getframe(gcf);
 %     pause(2)
 end
-
+% saves the GIF
+movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'animations/TumourMnormal.gif', ...
+          'delaytime',0.1,'loopcount',0);
+end
 %%
+if deadfigure==1
 % dead appearance
-M = struct('cdata',{},'colormap',{});
+Mdead = struct('cdata',{},'colormap',{});
 figure(10), clf,
-% for i = 1:numel(Usave)
+
+Udmat=cell2mat(Udsave);
+cmat = full(Udmat/max(max(Udmat)));
+caxis([1 2])
+colorbar;
+%     set( h, 'YDir', 'reverse' );
+colormap 'gray'
+
 for i = 1:numel(Udsave)
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
         'EdgeColor','none');
     hold on,
     axis([-1 1 -1 1]); axis square, axis off
     
+    ii = find(Udsave{i}>0);
+    c = cmat(ii,i);
+    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
     
-    ii = find(Udsave{i} > 0 & Udsave{i} <=0.5);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
     
-    ii = find(Udsave{i} > 0.5 & Udsave{i} <= 1.5);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0.5 0.5 0.5]); %; [0 1 Usave{i}/max(Usave{i})] 
-  
-    ii = find(Udsave{i} >1.5);
-    patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+%     ii = find(Udsave{i} > 0 & Udsave{i} <=0.5);
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
+%     
+%     ii = find(Udsave{i} > 0.5 & Udsave{i} <= 1.5);
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[0.5 0.5 0.5]); %; [0 1 Usave{i}/max(Usave{i})] 
+%   
+%     ii = find(Udsave{i} >1.5);
+%     patch('Faces',R(ii,:),'Vertices',V, ...
+%         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    
     title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
     drawnow;
-    M(i) = getframe(gcf);
+    Mdead(i) = getframe(gcf);
+end
+% saves the GIF
+movie2gif(Mdead,{Mdead([1:2 end]).cdata},'animations/TumourMdead.gif', ...
+          'delaytime',0.1,'loopcount',0);
 end
 %%
 
@@ -671,9 +721,3 @@ map_matrix = map_start' + xx.*(map_stop' - map_start');
 mymap = map_matrix';
 caxis([-0.5 0]);
 colormap(mymap)
-
-
-
-% % saves the GIF
-% movie2gif(M,{M([1:2 end]).cdata},'animations/Tumour.gif', ...
-%           'delaytime',0.1,'loopcount',0);
