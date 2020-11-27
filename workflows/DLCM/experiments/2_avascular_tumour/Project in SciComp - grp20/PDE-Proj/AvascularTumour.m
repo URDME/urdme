@@ -27,18 +27,21 @@ deadfigure=0;
 normalfigure=0;
 
 % simulation interval
-Tend = 10;
+Tend = 50;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
 
+cutoff_bdof = 0.1;
 cutoff = 0.0005;
 cutoff_deg = 0.01;
 cutoff_remain = 0.001;
 
-rates_type = 2;
+rates_type = 1; %Relaxation
+%rates_type = 2; %
+
 if rates_type == 1
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
@@ -46,13 +49,21 @@ if rates_type == 1
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
     r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
-else
-    cons = 0.1;        % consumption of oxygen by cells
+elseif rates_type == 2
+    cons = 0;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
     r_prol = 0;       % rate of proliferation of singly occupied voxels
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
     r_die = 0.3;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
+    
+elseif rates_type == 3
+    cons = 0.1;        % consumption of oxygen by cells
+    cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
+    r_prol = 0;       % rate of proliferation of singly occupied voxels
+    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
+    r_die = 0.3;        % rate of death
+    r_degrade = 0.01;     % rate of degradation for already dead cells 
 end
 
 % Permeability parameters.
@@ -147,7 +158,7 @@ while tt <= tspan(end)
     % classify the DOFs
     adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
     % singularly occupied voxels on the boundary: 
-    bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > cutoff & U <= 1));%(U > 0 & U <= 1));
+    bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > cutoff_bdof & U <= 1));%(U > 0 & U <= 1));
     sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
     sdof_m = intersect(find(sum(N.*U'<U & boolean(N),2)), find(U > 1)); 
     
@@ -289,6 +300,7 @@ while tt <= tspan(end)
         jx_ = find(N(ix,Adof)); %index i Adof
         Pr_diff = max(Pr(ix_)-Pr(jx_),0);
         rates_sdof(jx_) = rates_sdof(jx_) + D*Pr_diff;
+        %rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
         rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
         
 %         action_vec(jx_)=1;
@@ -303,7 +315,7 @@ while tt <= tspan(end)
     
     
     %Euler for sdof_m
-    U_new(Adof) = U(Adof) + rates_sdof.*dt; %action_vec*
+    U_new(Adof) = U_new(Adof) + rates_sdof.*dt; %action_vec*
     
 %     U_temp = U_new(sdof_m);
 %     U_temp(U_temp<cutoff) = 0;
@@ -331,7 +343,7 @@ while tt <= tspan(end)
     end
     
     %Euler for bdof_m
-    U_new(Adof) = U(Adof) + rates_bdof*dt; %action_vec*
+    U_new(Adof) = U_new(Adof) + rates_bdof*dt; %action_vec*
         
     %ta inte bort, höj cutoff ist
 %     U_temp = U_new(bdof_m);
@@ -344,9 +356,10 @@ while tt <= tspan(end)
 %     Ne.birth = Ne.birth+1;
 %     birth_count = birth_count+1;
     
+
     ind_prol = find((Oxy > cutoff_prol));
     prol_conc = r_prol*U(ind_prol);
-    U_new(ind_prol)=U(ind_prol)+prol_conc*dt;
+    U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
     
     %death--------------------------------------
     % full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die))
@@ -354,8 +367,8 @@ while tt <= tspan(end)
     
 %     Oxy(ind_die);
     dead_conc = r_die*U(ind_die);
-    U_new(ind_die) = U(ind_die) - dead_conc*dt;
-    U_deadnew(ind_die) = U_dead(ind_die) + dead_conc*dt;
+    U_new(ind_die) = U_new(ind_die) - dead_conc*dt;
+    U_deadnew(ind_die) = U_deadnew(ind_die) + dead_conc*dt;
     
     ind_cutoff =  find(U_new < cutoff_remain & (Oxy < cutoff_die));%*check dead/alive instead?
     U_new(ind_cutoff) = 0;
@@ -453,6 +466,7 @@ movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof10.gif', ...
           'delaytime',0.5,'loopcount',0);
 
 %%
+normalfigure=1;
 if normalfigure==1
 % create a GIF animation
 
