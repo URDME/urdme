@@ -22,7 +22,7 @@
 % simulation interval
 doGif = 0;
 doSave = true;
-Tend = 20;
+Tend = 100;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -32,7 +32,7 @@ cons = 0.0015;        % consumption of oxygen by cells
 cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
 r_prol = 0.125;       % rate of proliferation of singly occupied voxels
 cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-r_die = 0.125;        % rate of death
+r_die = 0.125;        % rate of dea th
 r_degrade = 0.01;     % rate of degradation for already dead cells
 
 % Permeability parameters.
@@ -46,8 +46,8 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 10;
-alpha_inv = 1./alpha;
+alpha = 1e-1;
+alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
@@ -62,7 +62,10 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
 [r,c] = find(L);
-Mgamma = assemble_Mgamma(P,T,r,c,size(L),0);
+% Mgamma = assemble_Mgamma(P,T,r,c,size(L),0);
+% Mgamma = assemble_Mgamma2(P,T,2);
+% Mgamma = Mgamma./dM;
+% diag_Mgamma = spdiags(Mgamma,0);
 % robinVec = RobinLoadVector2D(P,T);
 neigh = full(sum(N,2));
 
@@ -127,46 +130,48 @@ while tt <= tspan(end)
 
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof];
+%   Adof = [adof; idof; idof2];
 
   % The above will be enumerated within U, a Nvoxels^2-by-1 sparse
   % matrix. Determine also a local enumeration, eg. [1 2 3
   % ... numel(Adof)].
   Adof_ = (1:numel(Adof))';  
-  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
+ [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof);
+%     [bdof_m_,sdof_,sdof_m_,idof1_,idof_,adof_] = ...
+%       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof,adof);
   %% Update LU
   if updLU
     % pressure Laplacian
     La.X = L(Adof,Adof);
-    Lai = fsparse([idof1_],[idof1_],1,size(La.X));
+    Lai = fsparse(idof_,idof_,1,size(La.X));
     La.X = La.X-Lai*La.X;
+%     La.X = La.X+Lai;
+    Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
+    La.X = La.X+Lai2;
     % add derived BC to LHS
     Mgamma_b = Mgamma(Adof,Adof);
-    Lai2 = fsparse([idof1_],[idof1_],1,size(La.X));
-    La.X = La.X + alpha_inv*Lai2*Mgamma_b;
+    Lai3 = fsparse(idof1_,idof1_,1,size(La.X));
+    La.X = La.X + alpha_inv*Lai3*Mgamma_b;
+
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
   end
 
   %% Caculate laplacians
 
-  % Calculate total pressure in the enclosed tumour to calculate the
-  % pressure on the surface (idof1) and scale it with the surface distance
-  % from origo
-  Pr_idof1 = ones(size(idof1_)); %*sum(1./dM(sdof))/size(idof1_,1);
-%   if doRadiusBC
-%     bc1_vector = Pr_idof1.*sqrt(P(1,idof1).^2+P(2,idof1).^2)';
-%   else
-    bc1_vector = Pr_idof1;
-%   end
-
   % RHS source term proportional to the over-occupancy and BCs
-%   Pr = full(fsparse([sdof_; idof1_; idof3_],1, ... % ; 
+%   Pr = full(fsparse([sdof_; idof1_],1, ... % ; 
 %                   [1./dM(sdof); ...
-%                    robinVec(idof1); robinVec(idof3)], ... % ; 
+%                    ones(size(idof1_))], ... % ; 
 %                   [size(La.X,1) 1]));    % RHS first...
-  Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
-                  [size(La.X,1) 1]));     % RHS first...
+%   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
+%                   [size(La.X,1) 1]));     % RHS first...
+  Pr = full(fsparse([sdof_; idof1_],1, ... % ; 
+                  [ones(size(sdof_)) + 1./dM(sdof); ...
+                   ones(size(idof1_))], ... % ; 
+                  [size(La.X,1) 1]));    % RHS first...
+
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
   % RHS source term proportional to the over-occupancy and BCs
@@ -304,6 +309,13 @@ while tt <= tspan(end)
                      sum(birth) sum(death) sum(degrade)];
 
     i = iend;
+    
+%     figure(8);
+%     plot(Pr)
+%     hold on;
+%     xxx = 1:length(Pr);
+%     plot(1:length(Pr),ones(size(xxx))*mean(Pr), 'g', 'LineWidth',1.5)
+%     legend('Pr', sprintf('Mean Pr = %0.3f',mean(Pr)));
   end
 
   tt = tt+dt;
@@ -409,7 +421,8 @@ if doSave
         'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
         'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
         'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
-        'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient});
+        'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
+        'Tend', {Tend});
     filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.') + "_" + strjoin(string(fix(clock)),'-');
     filename_saveData = "saveData/saveData_" + filename_ + ".mat";
     save(filename_saveData,'-struct','saveData');

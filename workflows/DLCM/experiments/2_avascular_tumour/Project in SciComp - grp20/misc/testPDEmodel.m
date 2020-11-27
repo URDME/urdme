@@ -98,10 +98,63 @@ maxmax = max(max(Pr(sdof_m_(ii))-Pr(jj_),0).*Drate_(2*VU(Adof(jj_))+abs(U(Adof(j
 R = RobinMassMatrix2D(P,E);
 figure; spy(R);
 
+
 %%
-for i = 1:size(Mgamma,1)
-    nnz(Mgamma(i,:))
+Nvoxels = 2;
+[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
+[L,dM,N,M] = dt_operators(P,T);
+[L_orig,M_orig] = assema(P,T,1,1,0);
+imp = 1;
+Mgamma_test1 = assemble_Mgamma2(P,T,imp);
+imp = 2;
+Mgamma_test2 = assemble_Mgamma2(P,T,imp);
+
+
+alpha = [1e-2, 1e-1, 5e-1, 1e+0, 5e+0, 1e+1, 1e+2];
+alpha_inv = 1./alpha;
+adof = 1:floor(Nvoxels^2/2);
+tdof = adof(end)+1:size(L,1);
+Lai = fsparse(tdof,tdof,1,size(L));
+Mgamma_test2 = Mgamma_test2./dM;
+diag_Mgamma = spdiags(Mgamma_test2,0);
+alpha_mat = fsparse(tdof,tdof,diag_Mgamma(tdof)',size(L));
+figure;
+i = 1;
+for a_inv = alpha_inv
+
+    % tic
+    % X_1 = (M \ (L_orig - Lai*L_orig + Lai*Mgamma_test2)) \ (1./dM);
+    % toc
+    lhs = L - Lai*L;
+%     figure;spy(lhs);
+    lhs = lhs + a_inv*Lai*Mgamma_test2;
+%     lhs = lhs + (Lai*Mgamma_test2 - alpha_mat + a_inv*alpha_mat);
+%     figure;imagesc(lhs);
+    rhs = full(fsparse([adof'],1,[1./dM(adof)],[size(L,1) 1]));
+%     rhs = full(fsparse([adof';tdof'],1,[1./dM(adof);1./dM(tdof)],[size(L,1) 1]));
+%     rhs = 1./dM;
+%     figure;imagesc(rhs);
+    X_2 = lhs \ rhs;
+
+    figure;spy(lhs);
+    figure;spy(rhs);
+    % figure;plot(X_1);
+%     figure;plot(X_2);
+    subplot(3,3,i);   
+    plot(adof, X_2(adof),'.-') %, 'DisplayName', sprintf('alpha = %d', 1/a_inv));
+    hold on;
+    plot(tdof, X_2(tdof),'.-')
+    title(sprintf('alpha = %d', 1/a_inv));
+    grid on;
+    i = i + 1;
 end
-
-%%
-
+% legend;
+% figure; spy(Mgamma_test1);
+% figure; spy(Mgamma_test2);
+% figure; spy(L);
+% figure; spy(M);
+% figure; pdemesh(P,E,T)
+% 
+% Mgamma_test1(adof(end),:)
+% Mgamma_test2(adof(end),:)
+% M(adof(end),:)

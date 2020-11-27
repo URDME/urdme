@@ -27,7 +27,7 @@ elseif IC == 2 % doubly occupied voxels in center
     
 elseif IC == 3 % dead cells in center
     r1 = find(r < R1); % radius of whole initial tumour
-    r2 = find(r < R2); % radius of doubly occupied cells
+    r2 = find(r < R2); % radius of dead cells
     r1 = setdiff(r1,r2);
     U_initial = fsparse([r1(:); r2(:)],1, ...
                 [ones(size(r1,2),1); -1*ones(size(r2,2),1)], ...
