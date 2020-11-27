@@ -27,7 +27,7 @@ deadfigure=0;
 normalfigure=0;
 
 % simulation interval
-Tend = 50;
+Tend = 10;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -35,6 +35,9 @@ tspan = linspace(0,Tend,101);
 %     death, degradation and consumption rules.
 
 cutoff = 0.0005;
+cutoff_deg = 0.01;
+cutoff_remain = 0.001;
+
 rates_type = 2;
 if rates_type == 1
     cons = 0.0015;        % consumption of oxygen by cells
@@ -44,11 +47,11 @@ if rates_type == 1
     r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
 else
-    cons = 0.005;        % consumption of oxygen by cells
+    cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0.3;       % rate of proliferation of singly occupied voxels
+    r_prol = 0.125;       % rate of proliferation of singly occupied voxels
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.3;        % rate of death
+    r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
 end
 
@@ -84,12 +87,15 @@ extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 init = 1;
 if init == 1
     start_value = 1;
-    radie = 0.09;
+    radie = 0.11;
     % initial population: circular blob of living cells
     r = sqrt(P(1,:).^2+P(2,:).^2);
     ii = find(r < radie); % radius of the initial blob
     U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
+    U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
+    U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
+
 else
     start_value = 1;
     radie = 0.05;
@@ -97,7 +103,9 @@ else
     r = sqrt(P(1,:).^2+P(2,:).^2);
     ii = find(r < radie); % radius of the initial blob
     U = fsparse(ii(:),1,0,[Nvoxels^2 1]);
+    U_new = fsparse(ii(:),1,0,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,1,[Nvoxels^2 1]);
+    U_deadnew = fsparse(ii(:),1,1,[Nvoxels^2 1]); %initiera
 end
 
 % visit marker matrix: 1 for voxels who have been occupied
@@ -121,7 +129,7 @@ updLU = true;
 La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % event counter
-Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
+% Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
 
 % oxygen Laplacian
 OLa.X = L;
@@ -130,6 +138,8 @@ OLa.X = OLa.X-OLai*OLa.X+OLai;   %add Dirichlet(?) oxygen at the oxygen source/o
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
 
 while tt <= tspan(end)
+    U = U_new;
+    U_dead = U_deadnew;
     %   Ncells=full(sum(Usave{i}~=0))
     %   Ndead=full(sum(Usave{i}==-1))
     %   Nalive=full(sum(Usave{i}>0))
@@ -214,7 +224,7 @@ while tt <= tspan(end)
     
     %     moves=moveb;
     % (3) proliferation/death/degradation rates
-    r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol);
+%     r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol);
     birth = full(r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)); %U(Adof) < 2 sätter gräns för när den får proliferate, 1?
     total_birth = sum(birth);
     birth = total_birth/total_birth * birth;
@@ -267,36 +277,43 @@ while tt <= tspan(end)
     %movements-----------------------------------
     D = 1; 
     %sdof_m
-    rates = zeros(length(Adof),1);
+    rates_sdof = zeros(length(Adof),1);
+    rates_test = zeros(length(Adof),1);
 %     action_vec =zeros(length(Adof),1);
     
     for ind=1:length(sdof_m_)
-        Ne.moves = Ne.moves+1;
+%         Ne.moves = Ne.moves+1;
         ix = sdof_m(ind);
         ix_ = sdof_m_(ind); %index i Adof
 
         jx_ = find(N(ix,Adof)); %index i Adof
-        rates(jx_) = rates(jx_) + D*max(Pr(ix_)-Pr(jx_),0);
-        rates(ix_) = -sum(D*max(Pr(ix_)-Pr(jx_),0));
+        Pr_diff = max(Pr(ix_)-Pr(jx_),0);
+        rates_sdof(jx_) = rates_sdof(jx_) + D*Pr_diff;
+        rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
         
 %         action_vec(jx_)=1;
 %         action_vec(ix_)= -1;
     end
     
-    %Euler for sdof_m
-    ratessdof=rates(sdof_b_);
-    U(Adof) = U(Adof) + rates.*dt; %action_vec*
+    %%%%%
+%     jx_ = find(N(sdof_m,Adof));
+%     rates_test(jx_) = D*max(Pr(sdof_m_)-Pr(jx_),0);
+%     rates_test(sdof_m_)= -sum(D*max(Pr(sdof_m_)-Pr(jx_),0));
     
-    U_temp = U(sdof_m);
-    U_temp(U_temp<cutoff) = 0;
-    U(sdof_m) = U_temp;
+    
+    
+    %Euler for sdof_m
+    U_new(Adof) = U(Adof) + rates_sdof.*dt; %action_vec*
+    
+%     U_temp = U_new(sdof_m);
+%     U_temp(U_temp<cutoff) = 0;
+%     U_new(sdof_m) = U_temp;
     
     %bdof
-    rates = zeros(length(Adof),1);
+    rates_bdof = zeros(length(Adof),1);
 %     action_vec =zeros(length(Adof),1);
-%     
+%     Ne.moveb = Ne.moveb+1;
     for ind=1:length(bdof_m_)
-        Ne.moveb = Ne.moveb+1;
         % movement of a boundary (singly occupied) voxel
         ix = bdof_m(ind);
         ix_ = bdof_m_(ind);
@@ -305,56 +322,55 @@ while tt <= tspan(end)
         % (will only move into an empty voxel:)
         jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
         %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-        rates(jx_) = rates(jx_) + D*max(Pr(ix_)-Pr(jx_),0);
-        rates(ix_) = -sum(D*max(Pr(ix_)-Pr(jx_),0));
+        Pr_diff = max(Pr(ix_)-Pr(jx_),0);
+        rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
+        rates_bdof(ix_) = -sum(D*Pr_diff); 
         
 %         action_vec(jx_)=1;
 %         action_vec(ix_)= -1;
     end
     
     %Euler for bdof_m
-    U(Adof) = U(Adof) + rates*dt; %action_vec*
+    U_new(Adof) = U(Adof) + rates_bdof*dt; %action_vec*
         
-    U_temp = U(bdof_m);
+    %ta inte bort, höj cutoff ist
+    U_temp = U_new(bdof_m);
     U_temp(U_temp<cutoff) = 0;
-    U(bdof_m) = U_temp;
+    U_new(bdof_m) = U_temp;
 
     updLU = true; % boundary has changed
     
     %proliferation------------------------------
-    Ne.birth = Ne.birth+1;
-    birth_count = birth_count+1;
+%     Ne.birth = Ne.birth+1;
+%     birth_count = birth_count+1;
     
     ind_prol = find((Oxy > cutoff_prol));
     prol_conc = r_prol*U(ind_prol);
-    U(ind_prol)=U(ind_prol)+prol_conc*dt;
-    %     ind_test =  find(U>4.1);
-    %     U(ind_test) = 4;
+    U_new(ind_prol)=U(ind_prol)+prol_conc*dt;
     
     %death--------------------------------------
     % full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die))
     ind_die = find(Oxy < cutoff_die); %index for dying cells
     
-    Oxy(ind_die);
+%     Oxy(ind_die);
     dead_conc = r_die*U(ind_die);
-    U(ind_die) = U(ind_die) - dead_conc*dt;
-    U_dead(ind_die) = U_dead(ind_die) + dead_conc*dt;
+    U_new(ind_die) = U(ind_die) - dead_conc*dt;
+    U_deadnew(ind_die) = U_dead(ind_die) + dead_conc*dt;
     
-    ind_cutoff =  find(U<0.2 & (Oxy < cutoff_die));
-    U(ind_cutoff) = 0;
+    ind_cutoff =  find(U_new < cutoff_remain & (Oxy < cutoff_die));%*check dead/alive instead?
+    U_new(ind_cutoff) = 0;
     
     %Ne.death = Ne.death+1;
     
-    
+   
     %degradation--------------------------------
     %Ne.degrade = Ne.degrade+1;   
-    U_dead(ddof) = U_dead(ddof)*(1 - r_degrade*dt); %tidssteg litet->kan inte bli negativt
+    U_deadnew(ddof) = U_dead(ddof)*(1 - r_degrade*dt); %tidssteg litet->kan inte bli negativt
     % remove degraded cells
-    U_dead(U_dead < 0.0001) = 0; %ta bort för små
+    U_deadnew(U_dead < cutoff_deg) = 0; %ta bort för små
 %     testU=U(7320)
 %     testUd=U_dead(7320)
 %     testOxy=Oxy(7320)
-    
     
     updLU = true; % boundary has changed
     %end
@@ -433,8 +449,8 @@ for i = 1:numel(Usave)
 end
 
 % saves the GIF
-movie2gif(Mdof,{M([1:2 end]).cdata},'animations/Tumour.gif', ...
-          'delaytime',0.1,'loopcount',0);
+movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof10.gif', ...
+          'delaytime',0.5,'loopcount',0);
 
 %%
 if normalfigure==1
@@ -498,6 +514,9 @@ for i = 1:numel(Usave)
     Mnormal(i) = getframe(gcf);
 %     pause(2)
 end
+% saves the GIF
+movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'TumourMnormal.gif', ...
+          'delaytime',0.1,'loopcount',0);
 end
 %%
 if deadfigure==1
@@ -539,6 +558,9 @@ for i = 1:numel(Udsave)
     drawnow;
     Mdead(i) = getframe(gcf);
 end
+% saves the GIF
+movie2gif(Mdead,{Mdead([1:2 end]).cdata},'animations/TumourMdead.gif', ...
+          'delaytime',0.1,'loopcount',0);
 end
 %%
 
