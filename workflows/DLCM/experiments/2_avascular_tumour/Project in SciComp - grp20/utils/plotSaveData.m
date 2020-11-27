@@ -2,16 +2,16 @@
 % Johannes Dufva 2020-11-06
 
 % Get all saved .mat files from saveData-folder
-DirList = dir(fullfile('saveData/', '*.mat'));
+DirList = dir(fullfile('saveData/2020-11-23/', '*.mat'));
 Data = cell(1, length(DirList));
 figrows = ceil(sqrt(length(DirList)));
 
 %% Plot population appearance
 %close all;
 for k = 1:length(DirList)
-    load(['saveData/' DirList(k).name]);
+    load(['saveData/2020-11-23/' DirList(k).name]);
     t_show = length(tspan);
-    if tspan(end) > 100 || tspan(end) == 0
+    if tspan(end) > 10 || tspan(end) == 0
         figure('Name',"CellPlot_" + DirList(k).name(10:end-4));
         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
                     'EdgeColor','none');
@@ -71,7 +71,7 @@ end
 for k = 1:length(DirList)
 %     subplot(figrows, ceil(length(DirList)/figrows),k);  
     load(['saveData/' DirList(k).name]);
-    if tspan(end) > 100 || tspan(end) == 0
+    if tspan(end) > 10 || tspan(end) == 0
         figure('Name',"PrPlot_" + DirList(k).name(10:end-4));
         plotPressure;
     end

@@ -14,8 +14,8 @@ map_stop = graphics_color('vermillion');
 xx = linspace(0,1,10);
 map_matrix = map_start' + xx.*(map_stop' - map_start');
 mymap = map_matrix';
-% caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
-caxis([0 3]);
+caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
+% caxis([0 3]);
 colormap(ax1, mymap)
 
 % Get the pressure for the boundary dofs
@@ -34,8 +34,8 @@ map_stop = [0.7,0.7,1];
 xx = linspace(0,1,10);
 map_matrix = map_start' + xx.*(map_stop' - map_start');
 mymap = map_matrix';
-% caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
-caxis([-1 0.5]);
+caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
+% caxis([-1 0.5]);
 colormap(ax2, mymap)
 
 % Add quivers to the moving boundary and source dofs
@@ -75,7 +75,7 @@ for i = sdof_m'
   end
 end
 ax3 = axes;
-q = quiver(ax3, x,y,u,v,'AutoScale','off');
+q = quiver(ax3, x,y,u,v,'AutoScale','on');
 q.Color = 'yellow';
 
 %%Link them together and hide them

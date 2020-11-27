@@ -8,10 +8,10 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % Initial population
-IC = 5; % Choose initial condition (1,2,3,4,5,6)
+IC = 6; % Choose initial condition (1,2,3,4,5,6)
 r = sqrt(P(1,:).^2+P(2,:).^2);
-R1 = 0.2; % Radius of whole initial tumour
-R2 = 0.08; % Radius of inner initial setup (doubly occupied, dead etc.)
+R1 = 0.35; % Radius of whole initial tumour
+R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 
 if IC == 1 % circular blob of cells
     ii = find(r < 0.05); % radius of the initial blob

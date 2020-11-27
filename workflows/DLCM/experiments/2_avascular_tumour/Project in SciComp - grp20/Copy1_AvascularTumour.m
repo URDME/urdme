@@ -20,9 +20,9 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-doGif = false;
+doGif = 0;
 doSave = true;
-Tend = 0;
+Tend = 20;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,7 +46,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1;
+alpha = 10;
 alpha_inv = 1./alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -138,11 +138,11 @@ while tt <= tspan(end)
   if updLU
     % pressure Laplacian
     La.X = L(Adof,Adof);
-    Lai = fsparse([idof_],[idof_],1,size(La.X));
+    Lai = fsparse([idof1_],[idof1_],1,size(La.X));
     La.X = La.X-Lai*La.X;
     % add derived BC to LHS
     Mgamma_b = Mgamma(Adof,Adof);
-    Lai2 = fsparse([idof_],[idof_],1,size(La.X));
+    Lai2 = fsparse([idof1_],[idof1_],1,size(La.X));
     La.X = La.X + alpha_inv*Lai2*Mgamma_b;
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
@@ -344,51 +344,51 @@ if doGif
 else
     patchCurrentCells;
 end
-%%
-% investigate the time evolution of the different cell numbers
-figure(4), clf
-spsum  = @(U)(full(sum(abs(U))));
-deadsum = @(U)(full(sum(U == -1)));
-normsum = @(U)(full(sum(U == 1)));
-prolsum = @(U)(full(sum(U == 2)));
-z = cellfun(deadsum,Usave);
-w = cellfun(prolsum,Usave);
-x = cellfun(normsum,Usave);
-y = cellfun(spsum,Usave);
-p1 = plot(tspan,y);
-hold on
-p2 = plot(tspan,z,'k');
-p3 = plot(tspan,w);
-p4 = plot(tspan,x);
-p3.Color = graphics_color('vermillion');
-p4.Color = graphics_color('bluish green');
-ylim([0 max(y)]);
-xlabel('time')
-ylabel('N cells')
-legend('total', 'dead','double','single');
+% %%
+% % investigate the time evolution of the different cell numbers
+% figure(4), clf
+% spsum  = @(U)(full(sum(abs(U))));
+% deadsum = @(U)(full(sum(U == -1)));
+% normsum = @(U)(full(sum(U == 1)));
+% prolsum = @(U)(full(sum(U == 2)));
+% z = cellfun(deadsum,Usave);
+% w = cellfun(prolsum,Usave);
+% x = cellfun(normsum,Usave);
+% y = cellfun(spsum,Usave);
+% p1 = plot(tspan,y);
+% hold on
+% p2 = plot(tspan,z,'k');
+% p3 = plot(tspan,w);
+% p4 = plot(tspan,x);
+% p3.Color = graphics_color('vermillion');
+% p4.Color = graphics_color('bluish green');
+% ylim([0 max(y)]);
+% xlabel('time')
+% ylabel('N cells')
+% legend('total', 'dead','double','single');
 
 
 %% Plot the maxium radius through time
-figure(5), clf
-plot(tspan,max_radius);
-xlabel('time')
-ylabel('max radius')
-grid on;
+% figure(5), clf
+% plot(tspan,max_radius);
+% xlabel('time')
+% ylabel('max radius')
+% grid on;
 
 %% Plot the rates through time
-figure(6), clf
-rate_names = fieldnames(Ne);
-inspect_rates_norm = inspect_rates./sum(inspect_rates,1);
-bar(inspect_rates_norm','stacked','LineStyle','none') %'DisplayName',rate_names{kk});
-grid on;
-title('Relative and normalized rates')
-xlabel('time')
-ylabel('rates')
-% ticks = 
-set(gca, 'XTick', linspace(1,length(tspan),7))
-set(gca, 'XTickLabel', round(linspace(1,tspan(end),7)))
-ylim([0 1.5]);
-legend(rate_names);
+% figure(6), clf
+% rate_names = fieldnames(Ne);
+% inspect_rates_norm = inspect_rates./sum(inspect_rates,1);
+% bar(inspect_rates_norm','stacked','LineStyle','none') %'DisplayName',rate_names{kk});
+% grid on;
+% title('Relative and normalized rates')
+% xlabel('time')
+% ylabel('rates')
+% % ticks = 
+% set(gca, 'XTick', linspace(1,length(tspan),7))
+% set(gca, 'XTickLabel', round(linspace(1,tspan(end),7)))
+% ylim([0 1.5]);
+% legend(rate_names);
 
 %% Plot Pressure
 figure(7), clf,
