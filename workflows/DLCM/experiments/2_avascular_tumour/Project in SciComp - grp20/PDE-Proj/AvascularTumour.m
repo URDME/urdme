@@ -27,7 +27,7 @@ deadfigure=0;
 normalfigure=0;
 
 % simulation interval
-Tend = 50;
+Tend = 30;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -36,10 +36,10 @@ tspan = linspace(0,Tend,101);
 
 cutoff_bdof = 0.1;
 cutoff = 0.0005;
-cutoff_deg = 0.01;
-cutoff_remain = 0.001;
+cutoff_deg = 0.0001;
+cutoff_remain = 0.0001;
 
-rates_type = 1; %Relaxation
+rates_type = 3; %Relaxation
 %rates_type = 2; %
 
 if rates_type == 1
@@ -50,11 +50,11 @@ if rates_type == 1
     r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
 elseif rates_type == 2
-    cons = 0;        % consumption of oxygen by cells
+    cons = 0.5;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0;       % rate of proliferation of singly occupied voxels
+    r_prol = 0.125;       % rate of proliferation of singly occupied voxels
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.3;        % rate of death
+    r_die = 0.35;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
     
 elseif rates_type == 3
@@ -62,15 +62,15 @@ elseif rates_type == 3
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
     r_prol = 0;       % rate of proliferation of singly occupied voxels
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.3;        % rate of death
+    r_die = 0.5;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells 
 end
 
 % Permeability parameters.
-Drate1 = 0.01;     % into free matrix
-Drate2 = 25;       % into already visited matrix
-Drate3 = 0.01;     % into already occupied voxel
-Drate_ = [Drate1 Drate2; NaN Drate3];
+% Drate1 = 0.01;     % into free matrix
+% Drate2 = 25;       % into already visited matrix
+% Drate3 = 0.01;     % into already occupied voxel
+% Drate_ = [Drate1 Drate2; NaN Drate3];
 
 % boundary conditions
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
@@ -378,9 +378,9 @@ while tt <= tspan(end)
    
     %degradation--------------------------------
     %Ne.degrade = Ne.degrade+1;   
-    U_deadnew(ddof) = U_dead(ddof)*(1 - r_degrade*dt); %tidssteg litet->kan inte bli negativt
+    U_deadnew(ddof) = U_deadnew(ddof)*(1 - r_degrade*dt); %tidssteg litet->kan inte bli negativt
     % remove degraded cells
-    U_deadnew(U_dead < cutoff_deg) = 0; %ta bort för små
+    U_deadnew(U_deadnew < cutoff_deg) = 0; %ta bort för små
 %     testU=U(7320)
 %     testUd=U_dead(7320)
 %     testOxy=Oxy(7320)
