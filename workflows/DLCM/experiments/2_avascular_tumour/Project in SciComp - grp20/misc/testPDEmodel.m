@@ -100,46 +100,56 @@ figure; spy(R);
 
 
 %%
-Nvoxels = 2;
+Nvoxels = 10;
 [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
 [L,dM,N,M] = dt_operators(P,T);
 [L_orig,M_orig] = assema(P,T,1,1,0);
-imp = 1;
-Mgamma_test1 = assemble_Mgamma2(P,T,imp);
-imp = 2;
-Mgamma_test2 = assemble_Mgamma2(P,T,imp);
+[V,R] = mesh2dual(P,E,T,'voronoi');
+Mgamma_test = assemble_Mgamma(P,T);
 
-
-alpha = [1e-2, 1e-1, 5e-1, 1e+0, 5e+0, 1e+1, 1e+2];
+alpha = [1e-3, 1e-1, 5e-1, 1e+0, 5e+0, 1e+1, 1e+3];
 alpha_inv = 1./alpha;
 adof = 1:floor(Nvoxels^2/2);
 tdof = adof(end)+1:size(L,1);
 Lai = fsparse(tdof,tdof,1,size(L));
-Mgamma_test2 = Mgamma_test2./dM;
-diag_Mgamma = spdiags(Mgamma_test2,0);
+Mgamma_test2_dM = Mgamma_test./dM;
+diag_Mgamma = spdiags(Mgamma_test,0);
 alpha_mat = fsparse(tdof,tdof,diag_Mgamma(tdof)',size(L));
-figure;
 i = 1;
 for a_inv = alpha_inv
 
     % tic
-    % X_1 = (M \ (L_orig - Lai*L_orig + Lai*Mgamma_test2)) \ (1./dM);
+    lhs_1 = (M \ (L_orig - Lai*L_orig + a_inv*Lai*Mgamma_test));
+%     rhs_1 = full(fsparse([adof'; tdof'],1, ...
+%         [ones(size(adof')) + 1./dM(adof); ones(size(tdof'))],[size(L,1) 1]));
+    rhs_1 = full(fsparse(adof',1,1./dM(adof),[size(L,1) 1]));
+    X_1 = lhs_1 \ rhs_1;
     % toc
-    lhs = L - Lai*L;
+    lhs_2 = L - Lai*L;
 %     figure;spy(lhs);
-    lhs = lhs + a_inv*Lai*Mgamma_test2;
+    lhs_2 = lhs_2 + a_inv*Lai*Mgamma_test2_dM;
 %     lhs = lhs + (Lai*Mgamma_test2 - alpha_mat + a_inv*alpha_mat);
 %     figure;imagesc(lhs);
-    rhs = full(fsparse([adof'],1,[1./dM(adof)],[size(L,1) 1]));
-%     rhs = full(fsparse([adof';tdof'],1,[1./dM(adof);1./dM(tdof)],[size(L,1) 1]));
-%     rhs = 1./dM;
+%     rhs_2 = full(fsparse([adof'; tdof'],1, ...
+%         [ones(size(adof')) + 1./dM(adof); ones(size(tdof'))],[size(L,1) 1]));
+    rhs_2 = ones(size(adof)) + full(fsparse(adof',1,1./dM(adof),[size(L,1) 1]));
 %     figure;imagesc(rhs);
-    X_2 = lhs \ rhs;
+    X_2 = lhs_2 \ rhs_2;
 
-    figure;spy(lhs);
-    figure;spy(rhs);
-    % figure;plot(X_1);
+%     figure;imagesc(lhs_1);
+%     figure;imagesc(lhs_2);
+%     figure;plot(X_1);
 %     figure;plot(X_2);
+
+    figure(1);
+    subplot(3,3,i);   
+    plot(adof, X_1(adof),'.-') %, 'DisplayName', sprintf('alpha = %d', 1/a_inv));
+    hold on;
+    plot(tdof, X_1(tdof),'.-')
+    title(sprintf('alpha = %d', 1/a_inv));
+    grid on;
+    
+    figure(2);
     subplot(3,3,i);   
     plot(adof, X_2(adof),'.-') %, 'DisplayName', sprintf('alpha = %d', 1/a_inv));
     hold on;

@@ -2,7 +2,7 @@
 % Johannes Dufva 2020-11-06
 
 % Get all saved .mat files from saveData-folder
-DirList = dir(fullfile('saveData/2020-11-23/', '*.mat'));
+DirList = dir(fullfile('saveData/', '*.mat'));
 Data = cell(1, length(DirList));
 figrows = ceil(sqrt(length(DirList)));
 

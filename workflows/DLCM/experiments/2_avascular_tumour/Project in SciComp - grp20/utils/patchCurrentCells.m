@@ -1,5 +1,5 @@
 % Patch image of current cells
-figure;
+% figure;
 patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
     'EdgeColor','none');
 hold on,

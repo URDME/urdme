@@ -22,7 +22,7 @@
 % simulation interval
 doGif = 0;
 doSave = true;
-Tend = 100;
+Tend = 300;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,7 +46,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1e-1;
+alpha = 1e+2;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -60,11 +60,11 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
-[L,dM,N] = dt_operators(P,T);
+[L,dM,N,M] = dt_operators(P,T);
 [r,c] = find(L);
 % Mgamma = assemble_Mgamma(P,T,r,c,size(L),0);
-% Mgamma = assemble_Mgamma2(P,T,2);
-% Mgamma = Mgamma./dM;
+Mgamma = assemble_Mgamma(P,T);
+Mgamma = Mgamma./dM;
 % diag_Mgamma = spdiags(Mgamma,0);
 % robinVec = RobinLoadVector2D(P,T);
 neigh = full(sum(N,2));
@@ -77,7 +77,7 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 5; % Choose initial condition (1,2,3,4,5,6)
+IC = 1; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.35; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
@@ -105,7 +105,7 @@ Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
 timing_vec = zeros(6,length(tspan)+1);
 
 % oxygen Laplacian
-OLa.X = L;
+OLa.X = L./dM;
 OLai = fsparse(extdof,extdof,1,size(OLa.X));
 OLa.X = OLa.X-OLai*OLa.X+OLai;
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
@@ -152,7 +152,7 @@ while tt <= tspan(end)
     % add derived BC to LHS
     Mgamma_b = Mgamma(Adof,Adof);
     Lai3 = fsparse(idof1_,idof1_,1,size(La.X));
-    La.X = La.X + alpha_inv*Lai3*Mgamma_b;
+    La.X = M(Adof,Adof) \ (La.X + alpha_inv*Lai3*Mgamma_b);
 
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
@@ -167,10 +167,8 @@ while tt <= tspan(end)
 %                   [size(La.X,1) 1]));    % RHS first...
 %   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
 %                   [size(La.X,1) 1]));     % RHS first...
-  Pr = full(fsparse([sdof_; idof1_],1, ... % ; 
-                  [ones(size(sdof_)) + 1./dM(sdof); ...
-                   ones(size(idof1_))], ... % ; 
-                  [size(La.X,1) 1]));    % RHS first...
+  Pr = ones(size(sdof_)) + full(fsparse(sdof_,1,1./dM(sdof), ...
+                  [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
@@ -332,9 +330,9 @@ report(tt,U,'done');
 % create a GIF animation
 
 % population appearance
+figure(3), clf,
 if doGif
     M = struct('cdata',{},'colormap',{});
-    figure(3), clf,
     for i = 1:2:numel(Usave)
       patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
             'EdgeColor','none');
@@ -356,28 +354,28 @@ if doGif
 else
     patchCurrentCells;
 end
-% %%
-% % investigate the time evolution of the different cell numbers
-% figure(4), clf
-% spsum  = @(U)(full(sum(abs(U))));
-% deadsum = @(U)(full(sum(U == -1)));
-% normsum = @(U)(full(sum(U == 1)));
-% prolsum = @(U)(full(sum(U == 2)));
-% z = cellfun(deadsum,Usave);
-% w = cellfun(prolsum,Usave);
-% x = cellfun(normsum,Usave);
-% y = cellfun(spsum,Usave);
-% p1 = plot(tspan,y);
-% hold on
-% p2 = plot(tspan,z,'k');
-% p3 = plot(tspan,w);
-% p4 = plot(tspan,x);
-% p3.Color = graphics_color('vermillion');
-% p4.Color = graphics_color('bluish green');
-% ylim([0 max(y)]);
-% xlabel('time')
-% ylabel('N cells')
-% legend('total', 'dead','double','single');
+%%
+% investigate the time evolution of the different cell numbers
+figure(4), clf
+spsum  = @(U)(full(sum(abs(U))));
+deadsum = @(U)(full(sum(U == -1)));
+normsum = @(U)(full(sum(U == 1)));
+prolsum = @(U)(full(sum(U == 2)));
+z = cellfun(deadsum,Usave);
+w = cellfun(prolsum,Usave);
+x = cellfun(normsum,Usave);
+y = cellfun(spsum,Usave);
+p1 = plot(tspan,y);
+hold on
+p2 = plot(tspan,z,'k');
+p3 = plot(tspan,w);
+p4 = plot(tspan,x);
+p3.Color = graphics_color('vermillion');
+p4.Color = graphics_color('bluish green');
+ylim([0 max(y)]);
+xlabel('time')
+ylabel('N cells')
+legend('total', 'dead','double','single');
 
 
 %% Plot the maxium radius through time
