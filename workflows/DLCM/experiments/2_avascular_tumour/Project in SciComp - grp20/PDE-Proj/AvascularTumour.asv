@@ -23,46 +23,48 @@ clear;
 clc;
 close all;
 
-deadfigure=0;
-normalfigure=0;
+doffigure = 0;
+normalfigure = 1;
+deadfigure = 0;
 
 % simulation interval
-Tend = 15;
+Tend = 20;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
 
+%initial: relaxation---------------------------
+init = 1;
+start_value = 2;
+radius = 0.5;
+rates_type = 1;
+
 cutoff_bdof = 0.1;
-cutoff = 0.0005;
-cutoff_deg = 0.1;
+cutoff_deg = 0.0001;
 cutoff_remain = 0.01;
 
-rates_type = 3; %Relaxation
-%rates_type = 2; %
-
-if rates_type == 1
+if rates_type == 0
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
     r_prol = 0.125;       % rate of proliferation of singly occupied voxels
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
     r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells
-elseif rates_type == 2
-    cons = 0.5;        % consumption of oxygen by cells
-    cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0.125;       % rate of proliferation of singly occupied voxels
-    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.35;        % rate of death
-    r_degrade = 0.01;     % rate of degradation for already dead cells
-    
-elseif rates_type == 3
-    cons = 0.1;        % consumption of oxygen by cells
+elseif rates_type == 1  %relaxation
+    cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
     r_prol = 0;       % rate of proliferation of singly occupied voxels
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.05;        % rate of death
+    r_die = 0;        % rate of death
+    r_degrade = 0;     % rate of degradation for already dead cells
+elseif rates_type == 2
+    cons = 0.1;        % consumption of oxygen by cells
+    cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
+    r_prol = 0.12;       % rate of proliferation of singly occupied voxels
+    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
+    r_die = 0.5;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells 
 end
 
@@ -95,24 +97,19 @@ xc(irem) = [];
 yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
-init = 1;
 if init == 1
-    start_value = 1;
-    radie = 0.11;
     % initial population: circular blob of living cells
     r = sqrt(P(1,:).^2+P(2,:).^2);
-    ii = find(r < radie); % radius of the initial blob
+    ii = find(r < radius); % radius of the initial blob
     U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
     U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
     U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
 
-else
-    start_value = 1;
-    radie = 0.05;
+else %all dead
     % initial population: circular blob of dead cells
     r = sqrt(P(1,:).^2+P(2,:).^2);
-    ii = find(r < radie); % radius of the initial blob
+    ii = find(r < radius); % radius of the initial blob
     U = fsparse(ii(:),1,0,[Nvoxels^2 1]);
     U_new = fsparse(ii(:),1,0,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,1,[Nvoxels^2 1]);
@@ -399,7 +396,7 @@ report(tt,U,'done');
 % return;
 
 %% 
-
+if doffigure==1
 % create a GIF animation
 % figure(6)
 % population appearance sdof, bdof visualization
@@ -464,9 +461,9 @@ end
 % saves the GIF
 movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof10.gif', ...
           'delaytime',0.5,'loopcount',0);
+end
 
 %%
-normalfigure=1;
 if normalfigure==1
 % create a GIF animation
 
@@ -474,10 +471,10 @@ if normalfigure==1
 Mnormal = struct('cdata',{},'colormap',{});
 figure(11), clf,
 
-Umat=cell2mat(Usave);
-cmat = full(Umat/max(max(Umat)));
+Umat=full(cell2mat(Usave));
+% cmat = full(Umat/max(max(Umat)));
 colorbar
-caxis([0 1])
+caxis([0 max(max(Umat))])
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -486,7 +483,7 @@ for i = 1:numel(Usave)
     axis([-1 1 -1 1]); axis square, axis off
     
     ii = find(Usave{i}>0);
-    c = cmat(ii,i);
+    c = Umat(ii,i);
     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
     
     %     ii = find(Usave{i}>0 & Usave{i} <= 1);
