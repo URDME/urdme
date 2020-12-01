@@ -1,19 +1,19 @@
 
-load('AvascularTumor_workspace.mat')
-
+doffigure = 0;  %visualizes the dead cells in every voxel 
+normalfigure = 1;   %visualizes the concentration in every voxel 
+deadfigure = 0; %visualizes the sdof's and bdof's as well as the concentration in other voxels
 
 %% 
-
+if doffigure==1
 % create a GIF animation
-% figure(6)
-% population appearance sdof, bdof visualization
 Mdof = struct('cdata',{},'colormap',{});
 figure(3), clf,
 
-Umat=cell2mat(Usave);
-cmat = full(Umat/max(max(Umat)));
+Umat=full(cell2mat(Usave));
+% cmat = full(Umat/max(max(Umat)));
 colorbar
-caxis([0 1])
+caxis([0 max(max(Umat))])
+colorlabel('Concentration [U]')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -22,65 +22,44 @@ for i = 1:numel(Usave)
     axis([-1 1 -1 1]); axis square, axis off
     
     ii = find(Usave{i}>0);
-    c = cmat(ii,i);
+    c = Umat(ii,i);
     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
         
 %     ii = find(Usave{i} > 0 & Usave{i} <=0.5);
 %     patch('Faces',R(ii,:),'Vertices',V, ...
 %         'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 0 0]); %; [0 1 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 0 1]); %[1 0 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Usave{i} > 2 );
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
     
-    patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
-        'FaceColor','cyan'); %[1 0 Usave{i}/max(Usave{i})] 
+    p_bdof = patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
+        'FaceColor','cyan'); 
     
-    patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
-        'FaceColor','magenta'); %[1 0 Usave{i}/max(Usave{i})]      
-        
-%     ii = find(Usave{i} > 3 );
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 0 0]); %[1 0 Usave{i}/max(Usave{i})]
+    p_sdof = patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
+        'FaceColor','magenta'); 
     
     ii = find(Usave{i} == 0 & Udsave{i} >0);
-    patch('Faces',R(ii,:),'Vertices',V, ...
+    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    legend([p_bdof,p_sdof,p_dead],'bdof','sdof','dead')
     
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
     Mdof(i) = getframe(gcf);
-%     pause(3)
 end
-% 
-% % saves the GIF
-% movie2gif(Mdof,{Mdof([1:2 end]).cdata},'animations/TumourMdof.gif', ...
-%           'delaytime',0.1,'loopcount',0);
+
+% saves the GIF
+movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof.gif', ...
+          'delaytime',0.1,'loopcount',0);
+end
 
 %%
 if normalfigure==1
 % create a GIF animation
-
-% population appearance normal
 Mnormal = struct('cdata',{},'colormap',{});
 figure(11), clf,
 
-Umat=cell2mat(Usave);
-cmat = full(Umat/max(max(Umat)));
+Umat=full(cell2mat(Usave));
 colorbar
-caxis([0 1])
+caxis([0 max(max(Umat))])
+colorlabel('Concentration [U]')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -89,53 +68,24 @@ for i = 1:numel(Usave)
     axis([-1 1 -1 1]); axis square, axis off
     
     ii = find(Usave{i}>0);
-    c = cmat(ii,i);
-    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
-    
-    %     ii = find(Usave{i}>0 & Usave{i} <= 1);
-    %     cvec = full(Usave{i}(ii)/max(Usave{i}(ii)));
-    %     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData', cvec);% ...
-    %         %'FaceColor',[0 0 Usave{i}/max(Usave{i})]);    
+    c = Umat(ii,i);
+    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');     
 
-    %     ii = find(Usave{i} > 0 & Usave{i} <=0.5);
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
-    %     
-    %     ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[0 0.5 1]); %; [0 1 Usave{i}/max(Usave{i})]
-
-%     ii = find(Usave{i} > 1);
-%     cvec = full(Usave{i}(ii)/max(Usave{i}(ii)));
-%     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData', cvec);% ...
-%         %'FaceColor',[0 0 Usave{i}/max(Usave{i})]);   
-    
-    %     ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[0 1 0.5]); %; [0 1 Usave{i}/max(Usave{i})]
-    %     
-    %     ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[0.5 1 0.2]); %[1 0 Usave{i}/max(Usave{i})]
-    %     
-    %     ii = find(Usave{i} > 2 );
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[1 1 0.5]); %[1 0 Usave{i}/max(Usave{i})]
-
-    ii = find(Usave{i} == 0 & Udsave{i} >0);
-    patch('Faces',R(ii,:),'Vertices',V, ...
+    ii = find(Usave{i} == 0 & Udsave{i} > 0);
+    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    legend(p_dead,'dead')
     
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
     Mnormal(i) = getframe(gcf);
-%     pause(2)
 end
-
-
+% saves the GIF
+movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'TumourMnormal.gif', ...
+          'delaytime',0.1,'loopcount',0);
+end
 %%
 if deadfigure==1
-% dead appearance
 Mdead = struct('cdata',{},'colormap',{});
 figure(10), clf,
 
@@ -143,7 +93,6 @@ Udmat=cell2mat(Udsave);
 cmat = full(Udmat/max(max(Udmat)));
 caxis([1 2])
 colorbar;
-%     set( h, 'YDir', 'reverse' );
 colormap 'gray'
 
 for i = 1:numel(Udsave)
@@ -155,33 +104,36 @@ for i = 1:numel(Udsave)
     ii = find(Udsave{i}>0);
     c = cmat(ii,i);
     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
-    
-    
-%     ii = find(Udsave{i} > 0 & Udsave{i} <=0.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Udsave{i} > 0.5 & Udsave{i} <= 1.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0.5 0.5 0.5]); %; [0 1 Usave{i}/max(Usave{i})] 
-%   
-%     ii = find(Udsave{i} >1.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
-    
+
     title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
     drawnow;
     Mdead(i) = getframe(gcf);
 end
+% saves the GIF
+movie2gif(Mdead,{Mdead([1:2 end]).cdata},'animations/TumourMdead.gif', ...
+          'delaytime',0.1,'loopcount',0);
+end
 
-%investigate the time evolution of the different cell numbers
+%% Plot the number of cells through time
+figure(5), clf
+U_tot = sum(full(cell2mat(Usave)));
+Ud_tot = sum(full(cell2mat(Udsave)));
+plot(tspan,U_tot,'r')
+hold on
+plot(tspan,Ud_tot,'k')
+xlabel('time')
+ylabel('sum of cells in all voxels')
+legend('alive','dead')
+
+return;
+%%
+% investigate the time evolution of the different cell numbers
 figure(4), clf
 spsum  = @(U)(full(sum(abs(U))));
-deadsum = @(U)(full(sum(U_dead == -1)));
+deadsum = @(U)(full(sum(U == -1)));
 normsum = @(U)(full(sum(U == 1)));
 prolsum = @(U)(full(sum(U == 2)));
-
-z = cellfun(deadsum,Udsave);
+z = cellfun(deadsum,Usave);
 w = cellfun(prolsum,Usave);
 x = cellfun(normsum,Usave);
 y = cellfun(spsum,Usave);
@@ -197,20 +149,17 @@ xlabel('time')
 ylabel('N cells')
 legend('total', 'dead','double','single');
 
-return;
-
-
 %%%%%%%%%%%%%%%Extra plots
 
 %% Plot the maxium radius through time
-figure(5), clf
+figure(6), clf
 plot(tspan,max_radius);
 xlabel('time')
 ylabel('max radius')
 grid on;
 
 %% Plot the rates through time
-figure(6), clf
+figure(7), clf
 rate_names = fieldnames(Ne);
 inspect_rates_norm = inspect_rates./sum(inspect_rates,1);
 bar(inspect_rates_norm','stacked','LineStyle','none') %'DisplayName',rate_names{kk});
@@ -226,7 +175,7 @@ legend(rate_names);
 
 
 %% Plot Pressure
-figure(7), clf,
+figure(8), clf,
 Pr_ = full(U); Pr_(adof) = Pr(adof_);
 [x_Pr_,y_Pr_] = meshgrid(linspace(-1,1,Nvoxels));
 Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
@@ -348,5 +297,3 @@ map_matrix = map_start' + xx.*(map_stop' - map_start');
 mymap = map_matrix';
 caxis([-0.5 0]);
 colormap(mymap)
-
-
