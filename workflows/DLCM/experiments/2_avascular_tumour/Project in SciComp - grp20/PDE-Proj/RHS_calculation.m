@@ -1,4 +1,3 @@
-    
 if updLU
         % pressure Laplacian
         La.X = L(Adof,Adof);
@@ -7,20 +6,19 @@ if updLU
         [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
         
         updLU = false; % assume we can reuse
-    end
-    
-    % RHS source term proportional to the over-occupancy and BCs
-    Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
-        [size(La.X,1) 1]));     % RHS first...
+end
+
+% RHS source term proportional to the over-occupancy and BCs
+Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
+    [size(La.X,1) 1]));     % RHS first...
 %     Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
 %         [size(La.X,1) 1]));     % RHS first...
-    Pr_RHS = Pr;
-    Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
-    
-    % RHS source term proportional to the over-occupancy and BCs
-    Oxy = full(fsparse([extdof; adof],1, ...
-        [ones(size(extdof)); ...
-        -cons*full(U(adof)./dM(adof))], ... %change for dependence of U, original -cons*full(max(U(adof),0)./dM(adof))],
-        [size(OLa.X,1) 1]));
-    Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
-    
+Pr_RHS = Pr;
+Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
+
+% RHS source term proportional to the over-occupancy and BCs
+Oxy = full(fsparse([extdof; adof],1, ...
+    [ones(size(extdof)); ...
+    -cons*full(U(adof)./dM(adof))], ... %change for dependence of U, original -cons*full(max(U(adof),0)./dM(adof))],
+    [size(OLa.X,1) 1]));
+Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
