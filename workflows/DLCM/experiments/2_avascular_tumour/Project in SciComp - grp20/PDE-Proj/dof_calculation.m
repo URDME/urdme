@@ -4,7 +4,7 @@
     % singularly occupied voxels on the boundary: 
     bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > cutoff_bdof & U <= 1));%(U > 0 & U <= 1));
     sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
-    sdof_m = intersect(find(sum(N.*U'<U & boolean(N),2)), find(U > 1)); 
+    sdof_m = intersect(find(sum(N.*(U'+U_dead')<(U+U_dead) & boolean(N),2)), find(U > 1));   %FIX!!!! Look at total cell-concetration in neighbour (living and dead)
     
     sdof = find(U > 1); % voxels with 2 cells
     % voxels with 2 cells in them _which may move_, with a voxel
