@@ -13,7 +13,8 @@ function Mgamma = assemble_Mgamma(p,t)
     nt = size(t,2); % Number of boundary edges
     Mgamma = sparse(np,np); % Allocate mass matrix 
     inds = [1,2;2,3;3,1]; % Indices for the points in each triangle
-    len = zeros(1,3); % Lenght vector
+%     len = zeros(1,3); % Lenght vector
+    len = ones(1,3); % Normalize all 
     
     % Loop over all triangles
     for K = 1:nt
