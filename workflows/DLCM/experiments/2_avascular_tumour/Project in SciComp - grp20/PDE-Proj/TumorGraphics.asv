@@ -127,14 +127,14 @@ legend('alive','dead')
 
 %% Plot the number of cells through time
 figure(6), clf
-sources = sum(cell2mat(Usave) > 1);
-nonsources = sum(cell2mat(Usave) <= 1);
+sources = sum(full(cell2mat(Usave))>1);
+nonsources = sum(full(cell2mat(Udsave))<=1);
 plot(tspan,sources,'r')
 hold on
-plot(tspan,nonsources,'b')
+plot(tspan,Ud_tot,'b')
 xlabel('time')
-ylabel('number of voxels')
-legend('sources','non-sources')
+ylabel('sum of cells in all voxels')
+legend('alive','dead')
 
 return;
 %%
