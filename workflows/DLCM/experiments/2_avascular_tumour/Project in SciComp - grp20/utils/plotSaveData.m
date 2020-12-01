@@ -2,16 +2,17 @@
 % Johannes Dufva 2020-11-06
 
 % Get all saved .mat files from saveData-folder
-DirList = dir(fullfile('saveData/', '*.mat'));
+folder = 'saveData/2020-11-30, basePr=1_T500_IC5/';
+DirList = dir(fullfile(folder, '*.mat'));
 Data = cell(1, length(DirList));
 figrows = ceil(sqrt(length(DirList)));
 
 %% Plot population appearance
 %close all;
 for k = 1:length(DirList)
-    load(['saveData/2020-11-23/' DirList(k).name]);
+    load([folder, DirList(k).name]);
     t_show = length(tspan);
-    if tspan(end) == 100 || tspan(end) == 0
+    if tspan(end) == 500 || tspan(end) == 0
         figure('Name',"CellPlot_" + DirList(k).name(10:end-4));
         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
                     'EdgeColor','none');
@@ -44,7 +45,7 @@ normsum = @(U)(full(sum(U == 1)));
 prolsum = @(U)(full(sum(U == 2)));
 
 for k = 1:length(DirList)
-    load(['saveData/' DirList(k).name]);
+    load([folder DirList(k).name]);
     if tspan(end) == 600 || tspan(end) == 0
         figure;
         z = cellfun(deadsum,Usave);
@@ -68,8 +69,8 @@ end
 
 %% Plot rates
 for k = 1:length(DirList)
-    load(['saveData/' DirList(k).name]);
-    if tspan(end) == 100 || tspan(end) == 0
+    load([folder DirList(k).name]);
+    if tspan(end) == 10 || tspan(end) == 0
         figure('Name',"RatePlot_" + DirList(k).name(10:end-4));
         plotRates;
     end
@@ -79,8 +80,8 @@ end
 % close all;
 for k = 1:length(DirList)
 %     subplot(figrows, ceil(length(DirList)/figrows),k);  
-    load(['saveData/' DirList(k).name]);
-    if tspan(end) == 100 || tspan(end) == 0
+    load([folder DirList(k).name]);
+    if tspan(end) == 500 || tspan(end) == 0
         figure('Name',"PrPlot_" + DirList(k).name(10:end-4));
         plotPressure;
     end

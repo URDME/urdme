@@ -22,7 +22,7 @@
 % simulation interval
 doGif = 0;
 doSave = true;
-Tend = 300;
+Tend = 100;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,7 +46,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1e+2;
+alpha = 1e+4;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -61,10 +61,8 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
 [L,dM,N,M] = dt_operators(P,T);
-[r,c] = find(L);
-% Mgamma = assemble_Mgamma(P,T,r,c,size(L),0);
-Mgamma = assemble_Mgamma(P,T);
-Mgamma = Mgamma./dM;
+% Mgamma = assemble_Mgamma(P,T);
+% Mgamma = Mgamma./dM;
 % diag_Mgamma = spdiags(Mgamma,0);
 % robinVec = RobinLoadVector2D(P,T);
 neigh = full(sum(N,2));
@@ -77,7 +75,7 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 1; % Choose initial condition (1,2,3,4,5,6)
+IC = 5; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.35; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
@@ -89,9 +87,8 @@ VU = (U ~= 0);
 Usave = cell(1,numel(tspan));
 Usave{1} = U;
 
-% max radius and inspect_rates vectors
+% max radius
 max_radius = zeros(1,numel(tspan));
-inspect_rates = zeros(5,numel(tspan));
 
 birth_count = 0;
 tt = tspan(1);
@@ -102,10 +99,11 @@ La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % event counter
 Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
+inspect_rates = zeros(length(fieldnames(Ne)),numel(tspan));
 timing_vec = zeros(6,length(tspan)+1);
 
 % oxygen Laplacian
-OLa.X = L./dM;
+OLa.X = L;
 OLai = fsparse(extdof,extdof,1,size(OLa.X));
 OLa.X = OLa.X-OLai*OLa.X+OLai;
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
@@ -126,11 +124,9 @@ while tt <= tspan(end)
 %   idof3 = find(~VU & N*VU > 0); % boundary around "visited voxels"
 %   idof3 = setdiff(idof3,idof1);
   idof = find(Idof);
-%   idof = find(Idof & ~VU);
 
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof];
-%   Adof = [adof; idof; idof2];
 
   % The above will be enumerated within U, a Nvoxels^2-by-1 sparse
   % matrix. Determine also a local enumeration, eg. [1 2 3
@@ -138,8 +134,6 @@ while tt <= tspan(end)
   Adof_ = (1:numel(Adof))';  
  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof);
-%     [bdof_m_,sdof_,sdof_m_,idof1_,idof_,adof_] = ...
-%       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof,adof);
   %% Update LU
   if updLU
     % pressure Laplacian
@@ -152,7 +146,8 @@ while tt <= tspan(end)
     % add derived BC to LHS
     Mgamma_b = Mgamma(Adof,Adof);
     Lai3 = fsparse(idof1_,idof1_,1,size(La.X));
-    La.X = M(Adof,Adof) \ (La.X + alpha_inv*Lai3*Mgamma_b);
+    La.X = (La.X + alpha_inv*Lai3*Mgamma_b);
+%     La.X = M(Adof,Adof) \ (La.X + alpha_inv*Lai3*Mgamma_b);
 
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
@@ -167,7 +162,7 @@ while tt <= tspan(end)
 %                   [size(La.X,1) 1]));    % RHS first...
 %   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
 %                   [size(La.X,1) 1]));     % RHS first...
-  Pr = ones(size(sdof_)) + full(fsparse(sdof_,1,1./dM(sdof), ...
+  Pr = ones(size(La.X,1), 1) + full(fsparse(sdof_,1,1./dM(sdof), ...
                   [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
@@ -386,19 +381,8 @@ legend('total', 'dead','double','single');
 % grid on;
 
 %% Plot the rates through time
-% figure(6), clf
-% rate_names = fieldnames(Ne);
-% inspect_rates_norm = inspect_rates./sum(inspect_rates,1);
-% bar(inspect_rates_norm','stacked','LineStyle','none') %'DisplayName',rate_names{kk});
-% grid on;
-% title('Relative and normalized rates')
-% xlabel('time')
-% ylabel('rates')
-% % ticks = 
-% set(gca, 'XTick', linspace(1,length(tspan),7))
-% set(gca, 'XTickLabel', round(linspace(1,tspan(end),7)))
-% ylim([0 1.5]);
-% legend(rate_names);
+figure(6), clf
+plotRates;
 
 %% Plot Pressure
 figure(7), clf,

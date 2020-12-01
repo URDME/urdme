@@ -100,14 +100,14 @@ figure; spy(R);
 
 
 %%
-Nvoxels = 10;
+Nvoxels = 3;
 [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
 [L,dM,N,M] = dt_operators(P,T);
 [L_orig,M_orig] = assema(P,T,1,1,0);
 [V,R] = mesh2dual(P,E,T,'voronoi');
 Mgamma_test = assemble_Mgamma(P,T);
 
-alpha = [1e-3, 1e-1, 5e-1, 1e+0, 5e+0, 1e+1, 1e+3];
+alpha = [1e-3, 1e-1, 5e-1, 1e+0, 5e+0, 1e+1, 1e+3, 1e+4, 1e+5];
 alpha_inv = 1./alpha;
 adof = 1:floor(Nvoxels^2/2);
 tdof = adof(end)+1:size(L,1);
@@ -122,7 +122,7 @@ for a_inv = alpha_inv
     lhs_1 = (M \ (L_orig - Lai*L_orig + a_inv*Lai*Mgamma_test));
 %     rhs_1 = full(fsparse([adof'; tdof'],1, ...
 %         [ones(size(adof')) + 1./dM(adof); ones(size(tdof'))],[size(L,1) 1]));
-    rhs_1 = full(fsparse(adof',1,1./dM(adof),[size(L,1) 1]));
+    rhs_1 = ones(size(L,1),1) + full(fsparse(adof',1,1./dM(adof),[size(L,1) 1]));
     X_1 = lhs_1 \ rhs_1;
     % toc
     lhs_2 = L - Lai*L;
@@ -132,7 +132,7 @@ for a_inv = alpha_inv
 %     figure;imagesc(lhs);
 %     rhs_2 = full(fsparse([adof'; tdof'],1, ...
 %         [ones(size(adof')) + 1./dM(adof); ones(size(tdof'))],[size(L,1) 1]));
-    rhs_2 = ones(size(adof)) + full(fsparse(adof',1,1./dM(adof),[size(L,1) 1]));
+    rhs_2 = ones(size(L,1),1) + full(fsparse(adof',1,1./dM(adof),[size(L,1) 1]));
 %     figure;imagesc(rhs);
     X_2 = lhs_2 \ rhs_2;
 

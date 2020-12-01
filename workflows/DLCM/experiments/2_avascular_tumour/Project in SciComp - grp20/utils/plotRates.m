@@ -20,7 +20,7 @@ end
 
 % Plot settings
 grid on;
-title('Relative and normalized rates')
+title(sprintf('Relative and normalized rates \n alpha = %d', alpha));
 xlabel('time')
 ylabel('rates')
 % ticks = 

@@ -1,5 +1,6 @@
 %% Plot the pressure in a 2D patched way
 % Get the pressure for the active dofs
+cap_it = false;
 Pr_ = full(U); Pr_(adof) = Pr(adof_);
 
 % Patch active dofs
@@ -20,14 +21,28 @@ caxis([mean(Pr_(ii))-2*std(Pr_(ii)) mean(Pr_(ii))+2*std(Pr_(ii))]);
 colormap(ax1, mymap)
 
 % Get the pressure for the boundary dofs
-Pr_(adof) = 0;
+if ~cap_it
+    Pr_(adof) = 0;
+end
 Pr_(idof) = Pr(idof_);
 
 % Patch boundary dofs
 ii = find(Pr_);
 ax2 = axes;
-patch(ax2, 'Faces',R(ii,:),'Vertices',V, ...
-         'FaceVertexCData',Pr_(ii), 'FaceColor','flat');
+if ~cap_it
+    patch(ax2, 'Faces',R(ii,:),'Vertices',V, ...
+             'FaceVertexCData',Pr_(ii), 'FaceColor','flat');
+else
+    for ii_ = ii'
+        [~,neighs] = find(N(ii_,:));
+        [~,neighs_adof] = ismember(neighs,adof);
+        neighs_adof = nonzeros(unique(neighs_adof));
+        if max(Pr_(adof(neighs_adof))) < Pr_(ii_)
+            patch(ax2, 'Faces',R(ii_,:),'Vertices',V, ...
+                     'FaceVertexCData',Pr_(ii_), 'FaceColor','flat');
+        end
+    end
+end
 
 % Set colormap for the boundary dofs
 map_start = [0,0,1];
@@ -38,7 +53,7 @@ mymap = map_matrix';
 % caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
 caxis([mean(Pr_(ii))-2*std(Pr_(ii)) mean(Pr_(ii))+2*std(Pr_(ii))]);
 % caxis([-1 0.5]);
-colormap(ax2, mymap)
+colormap(ax2, 'cool')
 
 % Add quivers to the moving boundary and source dofs
 % Compute all "moveb"-rates
