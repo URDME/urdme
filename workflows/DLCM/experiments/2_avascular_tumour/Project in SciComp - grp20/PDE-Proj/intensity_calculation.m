@@ -31,9 +31,7 @@
     
     death = full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die));
     degrade = full(r_degrade*(U_dead > 0));
-    %
-    %   %Gillespies algorithm
-    %    intens = [moveb; moves; birth; abs(death); abs(degrade)];
+    
     intens = [birth; death; degrade; moves; moveb];
     
     

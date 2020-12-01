@@ -20,8 +20,4 @@ if tspan(i+1) < tt+dt
 
     % the number of cells
     num_cells = sum(abs(U));
-
-    % the rates
-    %     inspect_rates = [sum(moveb) sum(moves) ...
-    %                      sum(birth) sum(death) sum(degrade)];
 end

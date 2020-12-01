@@ -1,9 +1,4 @@
-    U = U_new;
-    U_dead = U_deadnew;
-    %   Ncells=full(sum(Usave{i}~=0))
-    %   Ndead=full(sum(Usave{i}==-1))
-    %   Nalive=full(sum(Usave{i}>0))
-    
+
     % classify the DOFs
     adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
     % singularly occupied voxels on the boundary: 
