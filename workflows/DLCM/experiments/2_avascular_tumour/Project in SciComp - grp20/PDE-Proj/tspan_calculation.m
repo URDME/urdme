@@ -2,7 +2,6 @@ if i==1
     Oxysave{1} = Oxy(Adof);
 end
 
-
 % report back håll some koll
 if tspan(i+1) < tt+dt
     iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
