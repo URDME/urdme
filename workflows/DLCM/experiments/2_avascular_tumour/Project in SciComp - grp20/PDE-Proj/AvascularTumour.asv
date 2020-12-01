@@ -28,7 +28,7 @@ normalfigure = 1;
 deadfigure = 0;
 
 % simulation interval
-Tend = 20;
+Tend = 10;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -37,8 +37,8 @@ tspan = linspace(0,Tend,101);
 
 %initial: relaxation---------------------------
 init = 1;
-start_value = 2;
-radius = 0.5;
+start_value = 5;
+radius = 0.09;
 rates_type = 1;
 
 cutoff_bdof = 0.1;
@@ -403,10 +403,11 @@ if doffigure==1
 Mdof = struct('cdata',{},'colormap',{});
 figure(3), clf,
 
-Umat=cell2mat(Usave);
-cmat = full(Umat/max(max(Umat)));
+Umat=full(cell2mat(Usave));
+% cmat = full(Umat/max(max(Umat)));
 colorbar
-caxis([0 1])
+caxis([0 max(max(Umat))])
+colorlabel('Concentration [U]')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -415,7 +416,7 @@ for i = 1:numel(Usave)
     axis([-1 1 -1 1]); axis square, axis off
     
     ii = find(Usave{i}>0);
-    c = cmat(ii,i);
+    c = Umat(ii,i);
     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
         
 %     ii = find(Usave{i} > 0 & Usave{i} <=0.5);
@@ -438,29 +439,30 @@ for i = 1:numel(Usave)
 %     patch('Faces',R(ii,:),'Vertices',V, ...
 %         'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
     
-    patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
+    p_bdof = patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
         'FaceColor','cyan'); %[1 0 Usave{i}/max(Usave{i})] 
+%     legend(p_bdof,'bdof')
     
-    patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
+    p_sdof = patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
         'FaceColor','magenta'); %[1 0 Usave{i}/max(Usave{i})]      
-        
+%     legend(p_sdof,'sdof')
 %     ii = find(Usave{i} > 3 );
 %     patch('Faces',R(ii,:),'Vertices',V, ...
 %         'FaceColor',[1 0 0]); %[1 0 Usave{i}/max(Usave{i})]
     
     ii = find(Usave{i} == 0 & Udsave{i} >0);
-    patch('Faces',R(ii,:),'Vertices',V, ...
+    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    legend([p_bdof,p_sdof,p_dead],'bdof','sdof','dead')
     
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
     Mdof(i) = getframe(gcf);
-%     pause(3)
 end
 
 % saves the GIF
-movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof10.gif', ...
-          'delaytime',0.5,'loopcount',0);
+movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof.gif', ...
+          'delaytime',0.1,'loopcount',0);
 end
 
 %%
@@ -475,6 +477,7 @@ Umat=full(cell2mat(Usave));
 % cmat = full(Umat/max(max(Umat)));
 colorbar
 caxis([0 max(max(Umat))])
+colorlabel('Concentration [U]')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -517,8 +520,9 @@ for i = 1:numel(Usave)
     %         'FaceColor',[1 1 0.5]); %[1 0 Usave{i}/max(Usave{i})]
 
     ii = find(Usave{i} == 0 & Udsave{i} >0);
-    patch('Faces',R(ii,:),'Vertices',V, ...
+    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    legend(p_dead,'dead')
     
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
