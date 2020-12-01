@@ -3,22 +3,20 @@
 close all;
 
 model = createpde(1);
+Nvoxels = 121;
 % gd = [3 4 -1 1 1 -1 -1 -1 1 1]';
 % sf = 'SQ1';
 % ns = char(sf)';
 % G = decsg(gd,sf,ns);
-% [X,Y] = meshgrid(-1:2/120:1);
-% X = X(:);
-% Y = Y(:);
-% nodes = [X';Y'];
-% K = delaunayTriangulation(nodes');
-% elements = K.ConnectivityList';
-Nvoxels = 121;
-[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
-[L,M] = assema(P,T,1,1,0);
-TR = triangulation(T(1:3,:)',P');
-geometryFromMesh(model,TR.Points',TR.ConnectivityList');
-specifyCoefficients(model,'m',0,'d',0,'c',1,'a',1,'f',0);
+[P,E,T,grad] = flipped_mesh(Nvoxels);
+pdemesh(P,E,T)
+axis equal
+
+% [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
+% [L,M] = assema(P,T,1,1,0);
+% TR = triangulation(T(1:3,:)',P');
+% geometryFromMesh(model,TR.Points',TR.ConnectivityList');
+% specifyCoefficients(model,'m',0,'d',0,'c',1,'a',1,'f',0);
 figure;
 pdemesh(model)
 axis equal

@@ -20,7 +20,7 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-doGif = 0;
+doGif = false;
 doSave = true;
 Tend = 100;
 tspan = linspace(0,Tend,101);
@@ -46,14 +46,15 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1e+4;
+alpha = 5e+4;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
-[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
+mesh_type = 1; % 1: cartesian, 2: hexagonal
+[P,E,T,gradquotient] = basic_mesh(mesh_type,Nvoxels);
 % pdemesh(P,E,T)
 % axis equal
 [V,R] = mesh2dual(P,E,T,'voronoi');
@@ -61,8 +62,8 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
 [L,dM,N,M] = dt_operators(P,T);
-% Mgamma = assemble_Mgamma(P,T);
-% Mgamma = Mgamma./dM;
+Mgamma = assemble_Mgamma(P,T);
+Mgamma = Mgamma./dM;
 % diag_Mgamma = spdiags(Mgamma,0);
 % robinVec = RobinLoadVector2D(P,T);
 neigh = full(sum(N,2));
@@ -404,8 +405,12 @@ if doSave
         'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
         'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
         'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
-        'Tend', {Tend});
-    filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.') + "_" + strjoin(string(fix(clock)),'-');
+        'Tend', {Tend}, 'mesh_type', {mesh_type});
+    filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
+    if mesh_type == 2
+        filename_ = filename_ + "_HEX";
+    end
+    filename_ = filename_ + "_" + strjoin(string(fix(clock)),'-');
     filename_saveData = "saveData/saveData_" + filename_ + ".mat";
     save(filename_saveData,'-struct','saveData');
     % print('-f7', "images/pressurePlot_" + filename_, '-depsc');
