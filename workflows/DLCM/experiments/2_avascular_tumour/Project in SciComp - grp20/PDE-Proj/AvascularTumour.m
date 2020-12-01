@@ -23,23 +23,41 @@ clear;
 clc;
 close all;
 
+profile on
+
 doffigure = 0;
-normalfigure = 1;
+normalfigure = 0;
 deadfigure = 0;
 
 % simulation interval
-Tend = 20;
+Tend = 10;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
 
-%initial: relaxation---------------------------
-init = 1;
-start_value = 2;
-radius = 0.5;
-rates_type = 1;
+exp = 1;
+%Experiments
+if exp == 0
+    %Normal run------------------------------------
+    init = 1;
+    start_value = 1;
+    radius = 0.1;
+    rates_type = 1;
+elseif exp ==1
+    %initial: relaxation---------------------------
+    init = 1;
+    start_value = 2;
+    radius = 0.2;
+    rates_type = 1;
+elseif exp==2 
+    %initial: simulation---------------------------
+    init = 2;
+    start_value = 1;
+    radius = 0.09;
+    rates_type = 2;
+end
 
 cutoff_bdof = 0.1;
 cutoff_deg = 0.0001;
@@ -60,11 +78,11 @@ elseif rates_type == 1  %relaxation
     r_die = 0;        % rate of death
     r_degrade = 0;     % rate of degradation for already dead cells
 elseif rates_type == 2
-    cons = 0.1;        % consumption of oxygen by cells
+    cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0.12;       % rate of proliferation of singly occupied voxels
+    r_prol = 0.125;       % rate of proliferation of singly occupied voxels
     cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.5;        % rate of death
+    r_die = 0.125;        % rate of death
     r_degrade = 0.01;     % rate of degradation for already dead cells 
 end
 
@@ -87,7 +105,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
-[L,dM,N] = dt_operators(P,T); %N=raden ger alla voxlar, 1or för de som är grannar med radens voxel, tom eller ej
+[L,dM,N] = dt_operators(P,T); %N=raden ger alla voxlar, 1or fÃ¶r de som Ã¤r grannar med radens voxel, tom eller ej
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -105,7 +123,14 @@ if init == 1
     U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
     U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
-
+elseif init == 2
+    % initial population: circular blob of living cells
+    r = sqrt(P(1,:).^2+P(2,:).^2);
+    ii = find(r < radius); % radius of the initial blob
+    U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
+    U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
+    U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
+    U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
 else %all dead
     % initial population: circular blob of dead cells
     r = sqrt(P(1,:).^2+P(2,:).^2);
@@ -148,9 +173,6 @@ OLa.X = OLa.X-OLai*OLa.X+OLai;   %add Dirichlet(?) oxygen at the oxygen source/o
 while tt <= tspan(end)
     U = U_new;
     U_dead = U_deadnew;
-    %   Ncells=full(sum(Usave{i}~=0))
-    %   Ndead=full(sum(Usave{i}==-1))
-    %   Nalive=full(sum(Usave{i}>0))
     
     % classify the DOFs
     adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
@@ -158,11 +180,19 @@ while tt <= tspan(end)
     bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > cutoff_bdof & U <= 1));%(U > 0 & U <= 1));
     sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
     sdof_m = intersect(find(sum(N.*U'<U & boolean(N),2)), find(U > 1)); 
+%     NU = N.*U'<U;
+%     NN = (N&N);
+%     tosum = NU & NN;
+%     summa = sum(tosum,2);
+%     fullsumma = full(summa);
+%     tmp = fullsumma .* U > 1;
+%     sdof_m = find(tmp);
+%     sdof_m = find(full(sum(N.*U'<U & (N&N),2)) .* U > 1);
     
     sdof = find(U > 1); % voxels with 2 cells
     % voxels with 2 cells in them _which may move_, with a voxel
     % containing less number of cells next to it (actually 1 or 0):
-    sdof_m_old = find(N*(U > 1 | U_dead >1)<neigh & U > 1); %kanske större än 1
+%     sdof_m_old = find(N*(U > 1 | U_dead >1)<neigh & U > 1); %kanske större än 1
     Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
     idof1 = find(Idof & ~VU); % "external" OBC1
     idof2 = find(Idof & VU);  % "internal" OBC2
@@ -283,65 +313,68 @@ while tt <= tspan(end)
     end
     
     %movements-----------------------------------
-    D = 1; 
-    %sdof_m
-    rates_sdof = zeros(length(Adof),1);
-    rates_test = zeros(length(Adof),1);
-%     action_vec =zeros(length(Adof),1);
-    
-    for ind=1:length(sdof_m_)
-%         Ne.moves = Ne.moves+1;
-        ix = sdof_m(ind);
-        ix_ = sdof_m_(ind); %index i Adof
+    if exp ==2 
 
-        jx_ = find(N(ix,Adof)); %index i Adof
-        Pr_diff = max(Pr(ix_)-Pr(jx_),0);
-        rates_sdof(jx_) = rates_sdof(jx_) + D*Pr_diff;
-        %rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
-        rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
-        
-%         action_vec(jx_)=1;
-%         action_vec(ix_)= -1;
-    end
-    
-    %%%%%
-%     jx_ = find(N(sdof_m,Adof));
-%     rates_test(jx_) = D*max(Pr(sdof_m_)-Pr(jx_),0);
-%     rates_test(sdof_m_)= -sum(D*max(Pr(sdof_m_)-Pr(jx_),0));
-    
-    
-    
-    %Euler for sdof_m
-    U_new(Adof) = U_new(Adof) + rates_sdof.*dt; %action_vec*
-    
-%     U_temp = U_new(sdof_m);
-%     U_temp(U_temp<cutoff) = 0;
-%     U_new(sdof_m) = U_temp;
-    
-    %bdof
-    rates_bdof = zeros(length(Adof),1);
-%     action_vec =zeros(length(Adof),1);
-%     Ne.moveb = Ne.moveb+1;
-    for ind=1:length(bdof_m_)
-        % movement of a boundary (singly occupied) voxel
-        ix = bdof_m(ind);
-        ix_ = bdof_m_(ind);
+    else 
+        D = 1; 
+        %sdof_m
+        rates_sdof = zeros(length(Adof),1);
+        rates_test = zeros(length(Adof),1);
+    %     action_vec =zeros(length(Adof),1);
 
-        jx_ = find(N(ix,Adof));
-        % (will only move into an empty voxel:)
-        jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
-        %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-        Pr_diff = max(Pr(ix_)-Pr(jx_),0);
-        rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
-        rates_bdof(ix_) = -sum(D*Pr_diff); 
+        for ind=1:length(sdof_m_)
+    %         Ne.moves = Ne.moves+1;
+            ix = sdof_m(ind);
+            ix_ = sdof_m_(ind); %index i Adof
+
+            jx_ = find(N(ix,Adof)); %index i Adof
+            Pr_diff = max(Pr(ix_)-Pr(jx_),0);
+            rates_sdof(jx_) = rates_sdof(jx_) + D*Pr_diff;
+            %rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
+            rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
+
+    %         action_vec(jx_)=1;
+    %         action_vec(ix_)= -1;
+        end
+
+        %%%%%
+    %     jx_ = find(N(sdof_m,Adof));
+    %     rates_test(jx_) = D*max(Pr(sdof_m_)-Pr(jx_),0);
+    %     rates_test(sdof_m_)= -sum(D*max(Pr(sdof_m_)-Pr(jx_),0));
+
+        %Euler for sdof_m
+        U_new(Adof) = U_new(Adof) + rates_sdof.*dt; %action_vec*
+
+    %     U_temp = U_new(sdof_m);
+    %     U_temp(U_temp<cutoff) = 0;
+    %     U_new(sdof_m) = U_temp;
+
+        %bdof
+        rates_bdof = zeros(length(Adof),1);
+    %     action_vec =zeros(length(Adof),1);
+    %     Ne.moveb = Ne.moveb+1;
+        for ind=1:length(bdof_m_)
+            % movement of a boundary (singly occupied) voxel
+            ix = bdof_m(ind);
+            ix_ = bdof_m_(ind);
+
+            jx_ = find(N(ix,Adof));
+            % (will only move into an empty voxel:)
+            jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
+            %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
+            Pr_diff = max(Pr(ix_)-Pr(jx_),0);
+            rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
+            rates_bdof(ix_) = -sum(D*Pr_diff); 
+
+    %         action_vec(jx_)=1;
+    %         action_vec(ix_)= -1;
+        end
+
+        %Euler for bdof_m
+        U_new(Adof) = U_new(Adof) + rates_bdof*dt; %action_vec*
+
         
-%         action_vec(jx_)=1;
-%         action_vec(ix_)= -1;
     end
-    
-    %Euler for bdof_m
-    U_new(Adof) = U_new(Adof) + rates_bdof*dt; %action_vec*
-        
     %ta inte bort, höj cutoff ist
 %     U_temp = U_new(bdof_m);
 %     U_temp(U_temp<cutoff) = 0;
@@ -394,7 +427,8 @@ end
 report(tt,U,'done');
 
 % return;
-
+profile off
+profile report
 %% 
 if doffigure==1
 % create a GIF animation
@@ -403,10 +437,11 @@ if doffigure==1
 Mdof = struct('cdata',{},'colormap',{});
 figure(3), clf,
 
-Umat=cell2mat(Usave);
-cmat = full(Umat/max(max(Umat)));
+Umat=full(cell2mat(Usave));
+% cmat = full(Umat/max(max(Umat)));
 colorbar
-caxis([0 1])
+caxis([0 max(max(Umat))])
+colorlabel('Concentration [U]')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -415,7 +450,7 @@ for i = 1:numel(Usave)
     axis([-1 1 -1 1]); axis square, axis off
     
     ii = find(Usave{i}>0);
-    c = cmat(ii,i);
+    c = Umat(ii,i);
     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
         
 %     ii = find(Usave{i} > 0 & Usave{i} <=0.5);
@@ -438,29 +473,30 @@ for i = 1:numel(Usave)
 %     patch('Faces',R(ii,:),'Vertices',V, ...
 %         'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
     
-    patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
+    p_bdof = patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
         'FaceColor','cyan'); %[1 0 Usave{i}/max(Usave{i})] 
+%     legend(p_bdof,'bdof')
     
-    patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
+    p_sdof = patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
         'FaceColor','magenta'); %[1 0 Usave{i}/max(Usave{i})]      
-        
+%     legend(p_sdof,'sdof')
 %     ii = find(Usave{i} > 3 );
 %     patch('Faces',R(ii,:),'Vertices',V, ...
 %         'FaceColor',[1 0 0]); %[1 0 Usave{i}/max(Usave{i})]
     
     ii = find(Usave{i} == 0 & Udsave{i} >0);
-    patch('Faces',R(ii,:),'Vertices',V, ...
+    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    legend([p_bdof,p_sdof,p_dead],'bdof','sdof','dead')
     
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
     Mdof(i) = getframe(gcf);
-%     pause(3)
 end
 
 % saves the GIF
-movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof10.gif', ...
-          'delaytime',0.5,'loopcount',0);
+movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof.gif', ...
+          'delaytime',0.1,'loopcount',0);
 end
 
 %%
@@ -475,6 +511,7 @@ Umat=full(cell2mat(Usave));
 % cmat = full(Umat/max(max(Umat)));
 colorbar
 caxis([0 max(max(Umat))])
+colorlabel('Concentration [U]')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -517,8 +554,9 @@ for i = 1:numel(Usave)
     %         'FaceColor',[1 1 0.5]); %[1 0 Usave{i}/max(Usave{i})]
 
     ii = find(Usave{i} == 0 & Udsave{i} >0);
-    patch('Faces',R(ii,:),'Vertices',V, ...
+    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    legend(p_dead,'dead')
     
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
