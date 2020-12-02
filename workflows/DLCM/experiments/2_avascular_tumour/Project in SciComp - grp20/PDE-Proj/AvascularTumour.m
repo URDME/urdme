@@ -73,7 +73,7 @@ while tt <= tspan(end)
     U_dead = U_deadnew;
     
     dof_calculation;           %Calculation of dofs
-
+    
     RHS_calculation;           %Laplacian calculation
 
     intensity_calculation;    %Calculate intensties of rates of events
