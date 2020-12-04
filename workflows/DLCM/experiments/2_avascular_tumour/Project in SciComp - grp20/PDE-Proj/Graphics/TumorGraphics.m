@@ -1,6 +1,6 @@
 
 doffigure = 0;  %visualizes the dead cells in every voxel 
-normalfigure = 1;   %visualizes the concentration in every voxel 
+normalfigure = 0;   %visualizes the concentration in every voxel 
 deadfigure = 0; %visualizes the sdof's and bdof's as well as the concentration in other voxels
 
 %% 
@@ -13,7 +13,7 @@ Umat=full(cell2mat(Usave));
 % cmat = full(Umat/max(max(Umat)));
 colorbar
 caxis([0 max(max(Umat))])
-colorlabel('Concentration [U]')
+colorlabel('Concentration of cells, U')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -59,7 +59,7 @@ figure(11), clf,
 Umat=full(cell2mat(Usave));
 colorbar
 caxis([0 max(max(Umat))])
-colorlabel('Concentration [U]')
+colorlabel('Concentration off cells, U')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -125,7 +125,7 @@ xlabel('time')
 ylabel('sum of cells in all voxels')
 legend('alive','dead')
 
-%% Plot the number of cells through time
+%% Plot the number of sources through time
 figure(6), clf
 sources = sum(cell2mat(Usave) > 1);
 nonsources = sum(cell2mat(Usave) <= 1);

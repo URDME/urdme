@@ -78,6 +78,8 @@ while tt <= tspan(end)
 
     move_calculations;         %sdof and bdof movement calculations
     change_calculation;        %proliferation, death and degradation
+
+    RHS_calculation;           %Laplacian calculation
     
     intensity_calculation;     %Calculate intensties of rates of events
     lambda = sum(intens);
