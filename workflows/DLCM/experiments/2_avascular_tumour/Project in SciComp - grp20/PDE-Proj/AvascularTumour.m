@@ -78,12 +78,11 @@ while tt <= tspan(end)
 
     move_calculations;         %sdof and bdof movement calculations
     change_calculation;        %proliferation, death and degradation
-
-    RHS_calculation;           %Laplacian calculation
     
     intensity_calculation;     %Calculate intensties of rates of events
-    lambda = sum(intens);
-    dt = 100/lambda;
+    %lambda = sum(intens);
+    lambda = max(intens); 
+    dt = 1/lambda;
    
     tspan_calculation;         %save times series of current states
     
@@ -109,7 +108,7 @@ while tt <= tspan(end)
         
     check = sum(U<0);
     if check>0
-        print('Warning U<0')
+        check
     end
     
     tt = tt+dt;

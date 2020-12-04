@@ -16,12 +16,11 @@ tspan = linspace(0,Tend,101);
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
-exp = 3;
+exp = 0;
 
 %Experiments
 if exp == 0
     % Normal run------------------------------------
-    init = 1;
     start_value = 1;
     radius = 0.09;
     
@@ -42,10 +41,8 @@ if exp == 0
     
 elseif exp ==1
     % Initial: relaxation---------------------------
-    init = 1;
-    start_value = 2;
-    radius = 0.2;
-    rates_type = 1;
+    start_value = 20;
+    radius = 0.09;
     
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
@@ -63,11 +60,9 @@ elseif exp ==1
     U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initialize
 elseif exp==2 
     %initial: simulation---------------------------
-    init = 1;
     start_value = 1;
     radius = 0.09;
-    rates_type = 2;
-
+    
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
     r_prol = 0.125;       % rate of proliferation of singly occupied voxels
@@ -85,10 +80,8 @@ elseif exp==2
     
 elseif exp==3 
     %initial: Quick, concentrated------------------
-    init = 1;
     start_value = 1;
     radius = 0.09;
-    rates_type = 3;
     
     %Tend=30;
     cons = 0.15;        % consumption of oxygen by cells

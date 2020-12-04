@@ -12,6 +12,7 @@ ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);
 % numel(bdof_m)
 grad = fsparse(ii,1,max(Pr(bdof_m_(ii))-Pr(jj_),0).*D,numel(bdof_m));
 moveb = full(gradquotient*grad);
+rates_bdof;
 
 %moveb = (rates_bdof>0)*rates_bdof;
 
@@ -24,6 +25,12 @@ ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);
 grad = fsparse(ii,1,max(Pr(sdof_m_(ii))-Pr(jj_),0).* ...
     D, numel(sdof_m)); 
 moves = full(gradquotient*grad);
+rates_sdof;
+
+%! sum(rates_sdof(sdof_m_)) = sum(moves)
+%! rates_sdof(sdof_m_)) = moves
+% figure out if we can rewrite the for-loop with the help of these lines
+% fundera ur detta rknas ut
 
 %moves = (rates_sdof>0)*rates_sdof;
 

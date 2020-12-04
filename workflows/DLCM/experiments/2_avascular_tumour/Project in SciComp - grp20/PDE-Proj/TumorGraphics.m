@@ -1,7 +1,7 @@
 
-doffigure = 0;  %visualizes the dead cells in every voxel 
-normalfigure = 0;   %visualizes the concentration in every voxel 
-deadfigure = 0; %visualizes the sdof's and bdof's as well as the concentration in other voxels
+doffigure = 1;  %visualizes the dead cells in every voxel 
+normalfigure = 1;   %visualizes the concentration in every voxel 
+deadfigure = 1; %visualizes the sdof's and bdof's as well as the concentration in other voxels
 
 %% 
 if doffigure==1

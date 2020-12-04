@@ -9,7 +9,8 @@ for ind=1:length(sdof_m_)
     ix_ = sdof_m_(ind); 
 
     jx_ = find(N(ix,Adof)); 
-    Pr_diff = max(Pr(ix_)-Pr(jx_),0);
+    %Pr_diff = max(Pr(ix_)-Pr(jx_),0);
+    Pr_diff = max(Pr(ix_)-Pr(jx_),0)*(U(ix_)-1);    %proportionellt mot over-occupancy
     rates_sdof(jx_) = rates_sdof(jx_) + D*Pr_diff;
     rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
 

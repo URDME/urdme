@@ -73,21 +73,20 @@ while tt <= tspan(end)
     U = U_new;
     U_dead = U_deadnew;
     
-    dof_calculation;            %Calculation of dofs
-    PrOx_calculation;            %Laplacian calculation
+    dof_calculation;           %Calculation of dofs
+    PrOx_calculation;          %Laplacian calculation
 
     move_calculations;         %sdof and bdof movement calculations
     change_calculation;        %proliferation, death and degradation
     
-    intensity_calculation;      %Calculate intensties of rates of events
-    lambda = sum(intens);
-    dt = 100/lambda;
-    
+    intensity_calculation;     %Calculate intensties of rates of events
+    %lambda = sum(intens);
+    lambda = max(intens); 
+    dt = 1/lambda;
+   
     tspan_calculation;         %save times series of current states
     
-    
-    %Euler step 
-    Euler_step;
+    Euler_step;                %Euler step 
     %Proliferation
 %     U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
 %     
@@ -109,14 +108,14 @@ while tt <= tspan(end)
         
     check = sum(U<0);
     if check>0
-        print('Warning U<0')
+        check
     end
     
     tt = tt+dt;
     report(tt,U,'');
     
     % update the visited sites
-    %VU = VU | U;
+    VU = VU | U;
 end
 report(tt,U,'done');
 
