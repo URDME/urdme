@@ -23,13 +23,13 @@ clear;
 clc;
 close all;
 
-%profile on
+profile on
 
 init_experiment;
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
-[L,dM,N] = dt_operators(P,T); %N=raden ger alla voxlar, 1or fÃ¶r de som Ã¤r grannar med radens voxel, tom eller ej
+[L,dM,N] = dt_operators(P,T);       %N gives the neighbours 
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -65,40 +65,62 @@ OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % oxygen Laplacian
 OLa.X = L;
 OLai = fsparse(extdof,extdof,1,size(OLa.X));
-OLa.X = OLa.X-OLai*OLa.X+OLai;   %add Dirichlet(?) oxygen at the oxygen source/outer circle
+OLa.X = OLa.X-OLai*OLa.X+OLai;   
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
+
 
 while tt <= tspan(end)
     U = U_new;
     U_dead = U_deadnew;
     
     dof_calculation;           %Calculation of dofs
+    PrOx_calculation;          %Laplacian calculation
 
-    RHS_calculation;           %Laplacian calculation
-
-    intensity_calculation;    %Calculate intensties of rates of events
+    move_calculations;         %sdof and bdof movement calculations
+    change_calculation;        %proliferation, death and degradation
+    
+    intensity_calculation;     %Calculate intensties of rates of events
     lambda = sum(intens);
-    dt = 1/lambda;
-    
-    tspan_calculation; %save snapshots to time vector
-    
-    move_calculations; %sdof and bdof calculations
-    
-    change_calculation;  %Proliferation, death and degradation
-    
-    updLU = true; % boundary has changed
+    dt = 100/lambda;
    
+    tspan_calculation;         %save times series of current states
+    
+    Euler_step;                %Euler step 
+    %Proliferation
+%     U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
+%     
+%     %Death 
+%     U_new(ind_die) = U_new(ind_die) - dead_conc*dt;
+%     U_deadnew(ind_die) = U_deadnew(ind_die) + dead_conc*dt;
+%     ind_cutoff =  find(U_new < cutoff_remain & (Oxy < cutoff_die));%*check dead/alive instead?
+%     U_new(ind_cutoff) = 0;
+%     
+%     % Degradation
+%     U_deadnew(ddof) = U_deadnew(ddof) - degrade_conc*dt;
+%     U_deadnew(U_deadnew < cutoff_deg) = 0; % remove cells below cutoff_deg
+%         
+% 
+%     % sdof_m
+%     U_new(Adof) = U_new(Adof) + rates_sdof.*dt; 
+%     % bdof_m
+%     U_new(Adof) = U_new(Adof) + rates_bdof*dt; 
+        
+    check = sum(U<0);
+    if check>0
+        print('Warning U<0')
+    end
+    
     tt = tt+dt;
     report(tt,U,'');
     
     % update the visited sites
-    %VU = VU | U;
+    VU = VU | U;
 end
 report(tt,U,'done');
 
 % return;
-% profile off
-% profile report
+profile off
+profile report
 
 %%
 TumorGraphics;

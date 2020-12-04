@@ -1,16 +1,21 @@
-
 %Chrishani Jayaweera 2020-11-04
 %Euler forward 
 
-%Define start values
-%Define step size
+%Proliferation
+U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
 
-function [t, y] = Euler(t0, y0, h, tn)
-    t = (t0:h:tn)';
-    y = zeros(size(t));
-    y(1) = y0;
-    for i = 1:1:length(t) - 1
-        y(i + 1) = y(i) + h * f(y(i), t(i));
-        
-        
-        
+%Death
+U_new(ind_die) = U_new(ind_die) - dead_conc*dt;
+U_deadnew(ind_die) = U_deadnew(ind_die) + dead_conc*dt;
+ind_cutoff =  find(U_new < cutoff_remain & (Oxy < cutoff_die));%*check dead/alive instead?
+U_new(ind_cutoff) = 0;
+
+% Degradation
+U_deadnew(ddof) = U_deadnew(ddof) - degrade_conc*dt;
+U_deadnew(U_deadnew < cutoff_deg) = 0; % remove cells below cutoff_deg
+
+
+% sdof_m
+U_new(Adof) = U_new(Adof) + rates_sdof.*dt;
+% bdof_m
+U_new(Adof) = U_new(Adof) + rates_bdof*dt;

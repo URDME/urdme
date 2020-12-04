@@ -25,11 +25,11 @@ close all;
 
 profile on
 
-set_experiment;
+init_experiment;
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
-[L,dM,N] = dt_operators(P,T); %N=raden ger alla voxlar, 1or fÃ¶r de som Ã¤r grannar med radens voxel, tom eller ej
+[L,dM,N] = dt_operators(P,T);       %N gives the neighbours 
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -65,256 +65,52 @@ OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % oxygen Laplacian
 OLa.X = L;
 OLai = fsparse(extdof,extdof,1,size(OLa.X));
-OLa.X = OLa.X-OLai*OLa.X+OLai;   %add Dirichlet(?) oxygen at the oxygen source/outer circle
+OLa.X = OLa.X-OLai*OLa.X+OLai;   
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
+
 
 while tt <= tspan(end)
     U = U_new;
     U_dead = U_deadnew;
     
-    % classify the DOFs
-    adof = find(U|U_dead); % all filled voxels (U_dead not necessary if U=-1)
-    % singularly occupied voxels on the boundary: 
-    bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > cutoff_bdof & U <= 1));%(U > 0 & U <= 1));
-    sdof_b = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > 1));
- 
-%    sdof_m = intersect(find(sum(N.*U'<U & (N&N),2)), find(U > 1)); 
-     sdof_m = intersect(find(sum(N.*U'<U & boolea(N),2)), find(U > 1)); 
+    dof_calculation;            %Calculation of dofs
+    PrOx_calculation;            %Laplacian calculation
 
-%     NU = N.*U'<U;
-%     NN = (N&N);
-%     tosum = NU & NN;
-%     summa = sum(tosum,2);
-%     fullsumma = full(summa);
-%     tmp = fullsumma .* U > 1;
-%     sdof_m = find(tmp);
-%     sdof_m = find(full(sum(N.*U'<U & (N&N),2)) .* U > 1);
+    move_calculations;         %sdof and bdof movement calculations
+    change_calculation;        %proliferation, death and degradation
     
-    sdof = find(U > 1); % voxels with 2 cells
-    % voxels with 2 cells in them _which may move_, with a voxel
-    % containing less number of cells next to it (actually 1 or 0):
-%     sdof_m_old = find(N*(U > 1 | U_dead >1)<neigh & U > 1); %kanske större än 1
-    Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
-    idof1 = find(Idof & ~VU); % "external" OBC1
-    idof2 = find(Idof & VU);  % "internal" OBC2
-    idof = find(Idof);
-    ddof = find(U_dead > 0);   %degrading voxels
-    
-    % "All DOFs" = adof + idof, like the "hull of adof"
-    Adof = [adof; idof];
-    % The above will be enumerated within U, a Nvoxels^2-by-1 sparse
-    % matrix. Determine also a local enumeration, eg. [1 2 3
-    % ... numel(Adof)].
-    Adof_ = (1:numel(Adof))';
-    [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_,sdof_b_,ddof_] = ...
-        map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,sdof_b,ddof);
-    
-    if updLU
-        % pressure Laplacian
-        La.X = L(Adof,Adof);
-        Lai = fsparse(idof_,idof_,1,size(La.X)); %remove emtpy voxels touching occupied ones
-        La.X = La.X-Lai*La.X+Lai;
-        [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
-        
-        updLU = false; % assume we can reuse
-    end
-    
-    % RHS source term proportional to the over-occupancy and BCs
-    Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...
-        [size(La.X,1) 1]));     % RHS first...
-%     Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
-%         [size(La.X,1) 1]));     % RHS first...
-    Pr_RHS = Pr;
-    Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
-    
-    % RHS source term proportional to the over-occupancy and BCs
-    Oxy = full(fsparse([extdof; adof],1, ...
-        [ones(size(extdof)); ...
-        -cons*full(U(adof)./dM(adof))], ... %change for dependence of U, original -cons*full(max(U(adof),0)./dM(adof))],
-        [size(OLa.X,1) 1]));
-    Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
-    
-    if i==1
-        Oxysave{1} = Oxy(Adof);
-    end
-    
-    % intensities of possible events
-    
-    %   % (1) moving boundary DOFs
-      [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
-      keep = find(U(Adof(jj_)) == 0);  % ...to move to
-      ikeep= ii(keep);
-      ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1); %???varför??
-      % remove any possibly remaining negative rates
-      grad = fsparse(ii,1,max(Pr(bdof_m_(ii))-Pr(jj_),0).* ...
-                     1,...%Drate_(2*VU(Adof(jj_))+1), ... % (U(Adof(jj_)) = 0)
-                     numel(bdof_m));
-      moveb = full(gradquotient*grad);
-    %
-    % (2) also certain sources may move by the same physics
-    [ii,jj_] = find(N(sdof_m,Adof)); % neighbours...
-    keep = find(U(Adof(jj_)) < 1);   % ...to move to
-    ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);
-    % remove any possibly remaining negative rates
-    grad = fsparse(ii,1,max(Pr(sdof_m_(ii))-Pr(jj_),0).* ...
-        1, ... %Drate_(2*VU(Adof(jj_))+abs(U(Adof(jj_)))+1)
-        numel(sdof_m)); % (abs as U could be -1)
-    moves = full(gradquotient*grad);
-    
-    %     moves=moveb;
-    % (3) proliferation/death/degradation rates
-%     r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol);
-    birth = full(r_prol*(U(Adof) > 0 & U(Adof) < 2).*(Oxy(Adof) > cutoff_prol)); %U(Adof) < 2 sätter gräns för när den får proliferate, 1?
-    total_birth = sum(birth);
-    birth = total_birth/total_birth * birth;
-    birth(isnan(birth)) = 0;
-    % (as we get some 0/0 terms if total_birth == 0);
-    
-    death = full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die));
-    degrade = full(r_degrade*(U_dead > 0));
-    %
-    %   %Gillespies algorithm
-    %    intens = [moveb; moves; birth; abs(death); abs(degrade)];
-    intens = [birth; death; degrade; moves; moveb];
+    intensity_calculation;      %Calculate intensties of rates of events
     lambda = sum(intens);
-%     if i==1
-%         dt=1;
-%     else
-%         lambda = (sum(dead_conc) + sum(prol_conc))/(length(dead_conc)+length(prol_conc));
-%         lambda(isnan(lambda)) = 1;
+    dt = 100/lambda;
+    
+    tspan_calculation;         %save times series of current states
+    
+    
+    %Euler step 
+    Euler_step;
+    %Proliferation
+%     U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
+%     
+%     %Death 
+%     U_new(ind_die) = U_new(ind_die) - dead_conc*dt;
+%     U_deadnew(ind_die) = U_deadnew(ind_die) + dead_conc*dt;
+%     ind_cutoff =  find(U_new < cutoff_remain & (Oxy < cutoff_die));%*check dead/alive instead?
+%     U_new(ind_cutoff) = 0;
+%     
+%     % Degradation
+%     U_deadnew(ddof) = U_deadnew(ddof) - degrade_conc*dt;
+%     U_deadnew(U_deadnew < cutoff_deg) = 0; % remove cells below cutoff_deg
+%         
 % 
-%     end
-    %dt = min((1/r_degrade)*0.9, (1/r_die)*0.9);%/lambda;
-
-    dt = 1/lambda;
-%     dt=Tend/50;
-    
-    % report back håll some koll
-    if tspan(i+1) < tt+dt
-        iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
-        Usave(i+1:iend) = {U};
-        Udsave(i+1:iend) = {U_dead};
-        Idofsave(i+1:iend) = {U(Idof)};
+%     % sdof_m
+%     U_new(Adof) = U_new(Adof) + rates_sdof.*dt; 
+%     % bdof_m
+%     U_new(Adof) = U_new(Adof) + rates_bdof*dt; 
         
-        Oxysave(i+1:iend) = {Oxy(Adof)};
-        bdofsave(i+1:iend) = {bdof_m};
-        sdofsave(i+1:iend) = {sdof_m};
-        
-        i = iend;
-        
-        % monitor the maximum outlier cell:
-        max_radius = sqrt(max(P(1,adof).^2+P(2,adof).^2));
-        
-        % the number of cells
-        num_cells = sum(abs(U));
-        
-        % the rates
-        %     inspect_rates = [sum(moveb) sum(moves) ...
-        %                      sum(birth) sum(death) sum(degrade)];
+    check = sum(U<0);
+    if check>0
+        print('Warning U<0')
     end
-    
-    %movements-----------------------------------
-    if exp ==2 
-
-    else 
-        D = 1; 
-        %sdof_m
-        rates_sdof = zeros(length(Adof),1);
-        rates_test = zeros(length(Adof),1);
-    %     action_vec =zeros(length(Adof),1);
-
-        for ind=1:length(sdof_m_)
-    %         Ne.moves = Ne.moves+1;
-            ix = sdof_m(ind);
-            ix_ = sdof_m_(ind); %index i Adof
-
-            jx_ = find(N(ix,Adof)); %index i Adof
-            Pr_diff = max(Pr(ix_)-Pr(jx_),0);
-            rates_sdof(jx_) = rates_sdof(jx_) + D*Pr_diff;
-            %rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
-            rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
-
-    %         action_vec(jx_)=1;
-    %         action_vec(ix_)= -1;
-        end
-
-        %%%%%
-    %     jx_ = find(N(sdof_m,Adof));
-    %     rates_test(jx_) = D*max(Pr(sdof_m_)-Pr(jx_),0);
-    %     rates_test(sdof_m_)= -sum(D*max(Pr(sdof_m_)-Pr(jx_),0));
-
-        %Euler for sdof_m
-        U_new(Adof) = U_new(Adof) + rates_sdof.*dt; %action_vec*
-
-    %     U_temp = U_new(sdof_m);
-    %     U_temp(U_temp<cutoff) = 0;
-    %     U_new(sdof_m) = U_temp;
-
-        %bdof
-        rates_bdof = zeros(length(Adof),1);
-    %     action_vec =zeros(length(Adof),1);
-    %     Ne.moveb = Ne.moveb+1;
-        for ind=1:length(bdof_m_)
-            % movement of a boundary (singly occupied) voxel
-            ix = bdof_m(ind);
-            ix_ = bdof_m_(ind);
-
-            jx_ = find(N(ix,Adof));
-            % (will only move into an empty voxel:)
-            jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
-            %rates(:,i) = Drate_(2*VU(Adof(jx_))+1).*max(Pr(ix_)-Pr(jx_),0);
-            Pr_diff = max(Pr(ix_)-Pr(jx_),0);
-            rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
-            rates_bdof(ix_) = -sum(D*Pr_diff); 
-
-    %         action_vec(jx_)=1;
-    %         action_vec(ix_)= -1;
-        end
-
-        %Euler for bdof_m
-        U_new(Adof) = U_new(Adof) + rates_bdof*dt; %action_vec*
-
-        
-    end
-    %ta inte bort, höj cutoff ist
-%     U_temp = U_new(bdof_m);
-%     U_temp(U_temp<cutoff) = 0;
-%     U_new(bdof_m) = U_temp;
-
-    updLU = true; % boundary has changed
-    
-    %proliferation------------------------------
-%     Ne.birth = Ne.birth+1;
-%     birth_count = birth_count+1;
-    
-
-    ind_prol = find((Oxy > cutoff_prol));
-    prol_conc = r_prol*U(ind_prol);
-    U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
-    
-    %death--------------------------------------
-    % full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die))
-    ind_die = find(Oxy < cutoff_die); %index for dying cells
-    
-%     Oxy(ind_die);
-    dead_conc = r_die*U(ind_die);
-    U_new(ind_die) = U_new(ind_die) - dead_conc*dt;
-    U_deadnew(ind_die) = U_deadnew(ind_die) + dead_conc*dt;
-    
-    ind_cutoff =  find(U_new < cutoff_remain & (Oxy < cutoff_die));%*check dead/alive instead?
-    U_new(ind_cutoff) = 0;
-    
-    %Ne.death = Ne.death+1;
-    
-   
-    %degradation--------------------------------
-    %Ne.degrade = Ne.degrade+1;   
-    U_deadnew(ddof) = U_deadnew(ddof)*(1 - r_degrade*dt); %tidssteg litet->kan inte bli negativt
-    % remove degraded cells
-    U_deadnew(U_deadnew < cutoff_deg) = 0; %ta bort för små
-
-    updLU = true; % boundary has changed
-    %end
     
     tt = tt+dt;
     report(tt,U,'');
@@ -327,360 +123,7 @@ report(tt,U,'done');
 % return;
 profile off
 profile report
-%% 
-if doffigure==1
-% create a GIF animation
-% figure(6)
-% population appearance sdof, bdof visualization
-Mdof = struct('cdata',{},'colormap',{});
-figure(3), clf,
-
-Umat=full(cell2mat(Usave));
-% cmat = full(Umat/max(max(Umat)));
-colorbar
-caxis([0 max(max(Umat))])
-colorlabel('Concentration [U]')
-for i = 1:numel(Usave)
-    
-    patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-        'EdgeColor','none');
-    hold on,
-    axis([-1 1 -1 1]); axis square, axis off
-    
-    ii = find(Usave{i}>0);
-    c = Umat(ii,i);
-    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
-        
-%     ii = find(Usave{i} > 0 & Usave{i} <=0.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 0 0]); %; [0 1 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 0 1]); %[1 0 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Usave{i} > 2 );
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 1 0]); %[1 0 Usave{i}/max(Usave{i})]
-    
-    p_bdof = patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
-        'FaceColor','cyan'); %[1 0 Usave{i}/max(Usave{i})] 
-%     legend(p_bdof,'bdof')
-    
-    p_sdof = patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
-        'FaceColor','magenta'); %[1 0 Usave{i}/max(Usave{i})]      
-%     legend(p_sdof,'sdof')
-%     ii = find(Usave{i} > 3 );
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 0 0]); %[1 0 Usave{i}/max(Usave{i})]
-    
-    ii = find(Usave{i} == 0 & Udsave{i} >0);
-    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
-    legend([p_bdof,p_sdof,p_dead],'bdof','sdof','dead')
-    
-    title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
-    drawnow;
-    Mdof(i) = getframe(gcf);
-end
-
-% saves the GIF
-movie2gif(Mdof,{Mdof([1:2 end]).cdata},'TumourMdof.gif', ...
-          'delaytime',0.1,'loopcount',0);
-end
 
 %%
-if normalfigure==1
-% create a GIF animation
+TumorGraphics;
 
-% population appearance normal
-Mnormal = struct('cdata',{},'colormap',{});
-figure(11), clf,
-
-Umat=full(cell2mat(Usave));
-% cmat = full(Umat/max(max(Umat)));
-colorbar
-caxis([0 max(max(Umat))])
-colorlabel('Concentration [U]')
-for i = 1:numel(Usave)
-    
-    patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-        'EdgeColor','none');
-    hold on,
-    axis([-1 1 -1 1]); axis square, axis off
-    
-    ii = find(Usave{i}>0);
-    c = Umat(ii,i);
-    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
-    
-    %     ii = find(Usave{i}>0 & Usave{i} <= 1);
-    %     cvec = full(Usave{i}(ii)/max(Usave{i}(ii)));
-    %     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData', cvec);% ...
-    %         %'FaceColor',[0 0 Usave{i}/max(Usave{i})]);    
-
-    %     ii = find(Usave{i} > 0 & Usave{i} <=0.5);
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[0 0 1]); %; [0 1 Usave{i}/max(Usave{i})]
-    %     
-    %     ii = find(Usave{i} > 0.5 & Usave{i} <= 1);
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[0 0.5 1]); %; [0 1 Usave{i}/max(Usave{i})]
-
-%     ii = find(Usave{i} > 1);
-%     cvec = full(Usave{i}(ii)/max(Usave{i}(ii)));
-%     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData', cvec);% ...
-%         %'FaceColor',[0 0 Usave{i}/max(Usave{i})]);   
-    
-    %     ii = find(Usave{i} > 1 & Usave{i} <= 1.5);
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[0 1 0.5]); %; [0 1 Usave{i}/max(Usave{i})]
-    %     
-    %     ii = find(Usave{i} > 1.5 & Usave{i} <= 2);
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[0.5 1 0.2]); %[1 0 Usave{i}/max(Usave{i})]
-    %     
-    %     ii = find(Usave{i} > 2 );
-    %     patch('Faces',R(ii,:),'Vertices',V, ...
-    %         'FaceColor',[1 1 0.5]); %[1 0 Usave{i}/max(Usave{i})]
-
-    ii = find(Usave{i} == 0 & Udsave{i} >0);
-    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
-        'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
-    legend(p_dead,'dead')
-    
-    title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
-    drawnow;
-    Mnormal(i) = getframe(gcf);
-%     pause(2)
-end
-% saves the GIF
-movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'TumourMnormal.gif', ...
-          'delaytime',0.1,'loopcount',0);
-end
-%%
-if deadfigure==1
-% dead appearance
-Mdead = struct('cdata',{},'colormap',{});
-figure(10), clf,
-
-Udmat=cell2mat(Udsave);
-cmat = full(Udmat/max(max(Udmat)));
-caxis([1 2])
-colorbar;
-%     set( h, 'YDir', 'reverse' );
-colormap 'gray'
-
-for i = 1:numel(Udsave)
-    patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-        'EdgeColor','none');
-    hold on,
-    axis([-1 1 -1 1]); axis square, axis off
-    
-    ii = find(Udsave{i}>0);
-    c = cmat(ii,i);
-    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
-    
-    
-%     ii = find(Udsave{i} > 0 & Udsave{i} <=0.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[1 1 1]); %; [0 1 Usave{i}/max(Usave{i})]
-%     
-%     ii = find(Udsave{i} > 0.5 & Udsave{i} <= 1.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0.5 0.5 0.5]); %; [0 1 Usave{i}/max(Usave{i})] 
-%   
-%     ii = find(Udsave{i} >1.5);
-%     patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
-    
-    title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
-    drawnow;
-    Mdead(i) = getframe(gcf);
-end
-% saves the GIF
-movie2gif(Mdead,{Mdead([1:2 end]).cdata},'animations/TumourMdead.gif', ...
-          'delaytime',0.1,'loopcount',0);
-end
-%%
-
-% investigate the time evolution of the different cell numbers
-figure(4), clf
-spsum  = @(U)(full(sum(abs(U))));
-deadsum = @(U)(full(sum(U == -1)));
-normsum = @(U)(full(sum(U == 1)));
-prolsum = @(U)(full(sum(U == 2)));
-z = cellfun(deadsum,Usave);
-w = cellfun(prolsum,Usave);
-x = cellfun(normsum,Usave);
-y = cellfun(spsum,Usave);
-p1 = plot(tspan,y);
-hold on
-p2 = plot(tspan,z,'k');
-p3 = plot(tspan,w);
-p4 = plot(tspan,x);
-p3.Color = graphics_color('vermillion');
-p4.Color = graphics_color('bluish green');
-ylim([0 max(y)]);
-xlabel('time')
-ylabel('N cells')
-legend('total', 'dead','double','single');
-
-return;
-
-
-%%%%%%%%%%%%%%%Extra plots
-
-%% Plot the maxium radius through time
-figure(5), clf
-plot(tspan,max_radius);
-xlabel('time')
-ylabel('max radius')
-grid on;
-
-%% Plot the rates through time
-figure(6), clf
-rate_names = fieldnames(Ne);
-inspect_rates_norm = inspect_rates./sum(inspect_rates,1);
-bar(inspect_rates_norm','stacked','LineStyle','none') %'DisplayName',rate_names{kk});
-grid on;
-title('Relative and normalized rates')
-xlabel('time')
-ylabel('rates')
-% ticks = 
-set(gca, 'XTick', linspace(1,length(tspan),7))
-set(gca, 'XTickLabel', round(linspace(1,tspan(end),7)))
-ylim([0 1.5]);
-legend(rate_names);
-
-
-%% Plot Pressure
-figure(7), clf,
-Pr_ = full(U); Pr_(adof) = Pr(adof_);
-[x_Pr_,y_Pr_] = meshgrid(linspace(-1,1,Nvoxels));
-Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
-surf(x_Pr_,y_Pr_,Pr_reshape,...
-    'FaceAlpha','flat',...
-    'AlphaDataMapping','scaled',...
-    'AlphaData',Pr_reshape,...
-    'EdgeColor','none');
-map_start = graphics_color('bluish green');
-map_stop = graphics_color('vermillion');
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-colormap(mymap)
-% colorbar;
-freezeColors;
-hold on;
-Pr_(adof) = 0;
-Pr_(idof) = Pr(idof_);
-Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
-surf(x_Pr_,y_Pr_,Pr_reshape,...
-    'FaceAlpha','flat',...
-    'AlphaDataMapping','scaled',...
-    'AlphaData',Pr_reshape,...
-    'EdgeColor','none');
-hold off;
-title('Pressure in adof(green/orange) and idof(blue)')
-map_start = [0,0,0];
-map_stop = [0,0,1];
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-caxis([-0.5 0]);
-colormap(mymap)
-%% Save the important data in a struct
-if doSave
-    saveData = struct('U', {U}, 'Usave', {Usave}, 'tspan', {tspan}, ...
-        'R', {R}, 'V', {V}, 'BC1', {BC1}, 'BC2', {BC2}, ...
-        'max_radius', {max_radius}, 'Ne', {Ne}, ...
-        'inspect_rates', {inspect_rates}, 'alpha', {alpha}, 'Pr', {Pr}, ...
-        'Adof', {Adof}, 'Nvoxels',{Nvoxels});
-    filename_saveData = "saveData/saveData_T" + Tend + ...
-        "_" + strjoin(string(fix(clock)),'-') + ".mat";
-    save(filename_saveData, 'saveData');
-end
-
-return;
-
-%% %% Plot U
-figure(9), clf,
-U_plt = full(U); U_plt(adof) = U(adof);
-[x_U_plt,y_U_plt] = meshgrid(linspace(-1,1,Nvoxels));
-U_pltreshape = reshape(U_plt, Nvoxels, Nvoxels);
-surf(x_U_plt,y_U_plt,U_pltreshape,...
-    'FaceAlpha','flat',...
-    'AlphaDataMapping','scaled',...
-    'AlphaData',U_pltreshape,...
-    'EdgeColor','none');
-map_start = graphics_color('bluish green');
-map_stop = graphics_color('vermillion');
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-colormap(mymap)
-% colorbar;
-freezeColors;
-hold on;
-%U_plt(adof) = 0;
-U_plt(idof) = U(idof_);
-U_pltreshape = reshape(U_plt, Nvoxels, Nvoxels);
-surf(x_U_plt,y_U_plt,U_pltreshape,...
-    'FaceAlpha','flat',...
-    'AlphaDataMapping','scaled',...
-    'AlphaData',U_pltreshape,...
-    'EdgeColor','none');
-hold off;
-title('Pressure in adof(green/orange) and idof(blue)')
-map_start = [0,0,0];
-map_stop = [0,0,1];
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-caxis([-0.5 0]);
-colormap(mymap)
-
-%% %% Plot Oxygen
-figure(10), clf,
-Oxy_ = full(U); Oxy_(adof) = Oxy(adof);
-[x_Oxy_,y_Oxy_] = meshgrid(linspace(-1,1,Nvoxels));
-Oxy_reshape = reshape(Oxy_, Nvoxels, Nvoxels);
-surf(x_Oxy_,y_Oxy_,Oxy_reshape,...
-    'FaceAlpha','flat',...
-    'AlphaDataMapping','scaled',...
-    'AlphaData',Oxy_reshape,...
-    'EdgeColor','none');
-map_start = graphics_color('bluish green');
-map_stop = graphics_color('vermillion');
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-colormap(mymap)
-% colorbar;
-freezeColors;
-hold on;
-Oxy_(adof) = 0;
-Oxy_(idof) = Oxy(idof_);
-Oxy_reshape = reshape(Oxy_, Nvoxels, Nvoxels);
-surf(x_Oxy_,y_Oxy_,Oxy_reshape,...
-    'FaceAlpha','flat',...
-    'AlphaDataMapping','scaled',...
-    'AlphaData',Oxy_reshape,...
-    'EdgeColor','none');
-hold off;
-title('Pressure in adof(green/orange) and idof(blue)')
-map_start = [0,0,0];
-map_stop = [0,0,1];
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-caxis([-0.5 0]);
-colormap(mymap)
