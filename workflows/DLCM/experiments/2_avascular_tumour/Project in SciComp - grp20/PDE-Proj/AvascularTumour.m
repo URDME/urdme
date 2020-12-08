@@ -80,8 +80,8 @@ while tt <= tspan(end)
     change_calculation;        %proliferation, death and degradation
     
     intensity_calculation;     %Calculate intensties of rates of events
-    %lambda = sum(intens);
-    lambda = max(intens); 
+    lambda = sum(intens);
+    %lambda = max(intens); 
     dt = 1/lambda;
    
     tspan_calculation;         %save times series of current states

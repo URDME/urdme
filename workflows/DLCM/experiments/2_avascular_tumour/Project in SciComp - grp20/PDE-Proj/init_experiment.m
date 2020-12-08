@@ -10,7 +10,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 D=1; %D_rate 
 
 % simulation interval
-Tend = 50;
+Tend = 10;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -21,8 +21,8 @@ exp = 0;
 %Experiments
 if exp == 0
     % Normal run------------------------------------
-    start_value = 1;
-    radius = 0.09;
+    start_value = 2;
+    radius = 0.05;
     
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
@@ -41,8 +41,8 @@ if exp == 0
     
 elseif exp ==1
     % Initial: relaxation---------------------------
-    start_value = 20;
-    radius = 0.09;
+    start_value = 10;
+    radius = 0.07;
     
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
