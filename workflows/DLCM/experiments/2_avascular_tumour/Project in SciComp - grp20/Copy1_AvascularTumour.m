@@ -20,7 +20,7 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-doGif = false;
+doGif = true;
 doSave = true;
 Tend = 100;
 tspan = linspace(0,Tend,101);
@@ -46,7 +46,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 5e+4;
+alpha = 0.1;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels

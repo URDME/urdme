@@ -161,15 +161,92 @@ i4*ones(1,n2);ones(1,n2);zeros(1,n2)];
 it=0:(nt/2-1);
 it2=floor(it/n1);
 it1=(it-n1*it2);
-t(1:4,1:(nt/2))=[it1+(n1+1)*it2+1; ...
-                 it1+(n1+1)*it2+2; ...
-                 it1+(n1+1)*(it2+1)+1; ...
-                 ones(1,nt/2)];
-             
-t(1:4,(nt/2+1):nt)=[it1+(n1+1)*it2+1; ...
-                    it1+(n1+1)*(it2+1)+1; ...
-                    it1+(n1+1)*(it2+1)+1; ...
-                    ones(1,nt/2)];
+
+% Mesh generation depends on Nvoxels being odd/even
+
+if mod(n1+1,2) % Nvoxels is odd
+
+    % Divide triangles into intervals
+    start_int = (1:n1:nt); 
+    
+    % Start indices of intervals that starts with an odd number to keep
+    odd_start = start_int(1:2:end);
+    add_on_odd = 0:2:(n1-1); % Keep every other odd number
+
+    % Define which odd indices to keep in each interval
+    matr1 = odd_start'*ones(1, length(add_on_odd));
+    keep_odd = matr1 + add_on_odd;
+    keep_odd = keep_odd(:);
+
+    % Start indices of intervals that starts with an even number to keep
+    even_start = start_int(2:2:end);
+    add_on_even = 1:2:n1;
+    
+    % Define which even indices to keep in each interval
+    matr2 = even_start'*ones(1, length(add_on_even));
+    keep_even = matr2 + add_on_even;
+    keep_even= keep_even(:);
+
+    % Final definition of which triangles to change 
+    keep = union(keep_odd, keep_even);
+    change = setdiff((1:nt), keep);
+
+    % Divide into different columns for upper and lower triangles
+    keep_low = keep(keep <= nt/2);
+    keep_up = keep(keep > nt/2);
+
+    change_low = change(change <= nt/2);
+    change_up = change(change > nt/2);
+
+    % Lower triangles /| and |\
+    t(1:4,keep_low) = [it1(keep_low) + (n1+1)*it2(keep_low) + 1; ...
+                       it1(keep_low) + (n1+1)*it2(keep_low) + 2; ...
+                       it1(keep_low) + (n1+1)*(it2(keep_low)+1) + 2; ...
+                       ones(1,length(keep_low))];
+
+    t(1:4,change_low) = [it1(change_low) + (n1+1)*it2(change_low) + 1; ...
+                         it1(change_low) + (n1+1)*it2(change_low) + 2; ...
+                         it1(change_low) + (n1+1)*(it2(change_low)+1) + 1; ...
+                         ones(1,length(change_low))];
+
+    % Upper triangles |/ and \|
+    t(1:4,keep_up) = [it1(keep_low) + (n1+1)*it2(keep_low) + 1; ... 
+                      it1(keep_low) + (n1+1)*(it2(keep_low)+1) + 2; ...
+                      it1(keep_low) + (n1+1)*(it2(keep_low)+1) + 1; ...
+                      ones(1,length(keep_low))];
+
+    t(1:4,change_up) = [it1(change_low) + (n1+1)*it2(change_low) + 2; ... 
+                        it1(change_low) + (n1+1)*(it2(change_low)+1) + 2; ...
+                        it1(change_low) + (n1+1)*(it2(change_low)+1) + 1; ...
+                        ones(1,length(change_low))];
+
+
+else % Nvoxels is even
+    end_column1 = (nt/2+2):2:nt;
+    end_column2 = 2:2:(nt/2);
+    
+    % Lower triangles /| and |\
+    t(1:4,1:2:(nt/2))=[it1(1:2:(nt/2)) + (n1+1)*it2(1:2:(nt/2)) + 1; ...
+                       it1(1:2:(nt/2)) + (n1+1)*it2(1:2:(nt/2)) + 2; ...
+                       it1(1:2:(nt/2)) + (n1+1)*(it2(1:2:(nt/2))+1) + 2; ...
+                       ones(1,length(1:2:(nt/2)))];
+
+    t(1:4,end_column2)=[it1(end_column2) + (n1+1)*it2(end_column2) + 1; ...
+                        it1(end_column2) + (n1+1)*it2(end_column2) + 2; ...
+                        it1(end_column2) + (n1+1)*(it2(end_column2)+1) + 1; ...
+                        ones(1,length(end_column2))];
+
+    % Upper triangles |/ and \|
+    t(1:4,(nt/2+1):2:nt)=[it1(1:2:(nt/2)) + (n1+1)*it2(1:2:(nt/2)) + 1; ... 
+                          it1(1:2:(nt/2)) + (n1+1)*(it2(1:2:(nt/2))+1) + 2; ...
+                          it1(1:2:(nt/2)) + (n1+1)*(it2(1:2:(nt/2))+1) + 1; ...
+                          ones(1,length((nt/2+1):2:nt))];
+
+    t(1:4,end_column1)=[it1(end_column2) + (n1+1)*it2(end_column2) + 2; ... 
+                        it1(end_column2) + (n1+1)*(it2(end_column2)+1) + 2; ...
+                        it1(end_column2) + (n1+1)*(it2(end_column2)+1) + 1; ...
+                        ones(1,length(end_column2))];
+end
 
 % Shuffle t to get around qsort() bug on some platforms
 r=rand(1,nt);[r,i]=sort(r);t=t(:,i);
