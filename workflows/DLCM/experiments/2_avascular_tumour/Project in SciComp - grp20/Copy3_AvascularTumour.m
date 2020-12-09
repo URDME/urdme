@@ -22,7 +22,7 @@
 % simulation interval
 doGif = false;
 doSave = true;
-Tend = 200;
+Tend = 500;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,24 +46,24 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1e-2;
-alpha_inv = 1./alpha;
+alpha = 1e+1;
+alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
-[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
-% pdemesh(P,E,T)
-% axis equal
+mesh_type = 1; % 1: cartesian, 2: hexagonal
+[P,E,T,gradquotient] = basic_mesh(mesh_type,Nvoxels);
+% [P,E,T,gradquotient] = flipped_mesh(Nvoxels);
+% [P,E,T,gradquotient] = weird_mesh(Nvoxels);
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
-[L,dM,N] = dt_operators(P,T);
-[r,c] = find(L);
-Mgamma = assemble_Mgamma(P,T,r,c,size(L),0);
-% robinVec = RobinLoadVector2D(P,T);
+[L,dM,N,M] = dt_operators(P,T);
+Mgamma = assemble_Mgamma(P,T);
+Mgamma = Mgamma./dM;
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -74,7 +74,7 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 5; % Choose initial condition (1,2,3,4,5,6)
+IC = 1; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.35; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
@@ -141,17 +141,21 @@ while tt <= tspan(end)
       map(Adof_,Adof,bdof_m,bdof_m1,bdof_m2,sdof,sdof_m,idof1,idof2,idof,adof);
   %% Update LU
   if updLU
-    % pressure Laplacian
+     % pressure Laplacian
     La.X = L(Adof,Adof);
-    Lai = fsparse(idof_,idof_,1,size(La.X));
-    La.X = La.X-Lai*La.X;
-%     La.X = La.X+Lai;
-    Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-    La.X = La.X+Lai2;
-%     % add derived BC to LHS
+    
+    %%% ADD BC to LHS
+    % Robin to external idof (idof1)
     Mgamma_b = Mgamma(Adof,Adof);
+    neighs_LaX = sum(La.X~=0,2)-1;
+    scale_LaX = fsparse(diag(ones(size(neighs_LaX)) - neighs_LaX./4,0));
     Lai3 = fsparse(idof1_,idof1_,1,size(La.X));
-    La.X = La.X + alpha_inv*Lai3*Mgamma_b;
+    La.X = La.X - Lai3*La.X*scale_LaX + a_inv*Lai3*Mgamma_b*Lai3;
+    
+    % Dirichlet to internal idof (idof2)
+    Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
+    La.X = La.X - Lai2*La.X + Lai2;
+
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
   end
@@ -159,14 +163,20 @@ while tt <= tspan(end)
   %% Caculate laplacians
 
   % RHS source term proportional to the over-occupancy and BCs
-  Pr = full(fsparse([sdof_; idof1_],1, ... % ; 
-                  [1./dM(sdof); ...
-                   ones(size(idof1_))], ... % ; 
-                  [size(La.X,1) 1]));    % RHS first...
-%   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
+%   Pr = full(fsparse([sdof_; idof1_],1, ... % ; 
+%                   [1./dM(sdof); ...
+%                    ones(size(idof1_))], ... % ; 
+%                   [size(La.X,1) 1]));    % RHS first...
+  Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
+                  [size(La.X,1) 1]));     % RHS first...
+%   Pr = ones(size(La.X,1), 1) + full(fsparse(sdof_,1,1./dM(sdof), ...
 %                   [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
+%   Pr = normalize(Pr,'range');
+%   if max(Pr) > 30
+%       Pr = normalize(Pr,'range');
+%   end
 
   % RHS source term proportional to the over-occupancy and BCs
   Oxy = full(fsparse([extdof; adof],1, ...
@@ -221,6 +231,8 @@ while tt <= tspan(end)
   %% Caclutate which is suppose to happen
   intens = [moveb1; moveb2; moves; birth; death; degrade];
   lambda = sum(intens);
+%   fprintf('sum(moveb2)/sum(moveb1) = %d \n', sum(moveb2)/sum(moveb1));
+%   fprintf('(sum(moveb2) + sum(moveb1))/sum(moves) = %d \n', (sum(moveb2) + sum(moveb1))/sum(moves));
   dt = -reallog(rand)/lambda; 
   rnd = rand*lambda;
   cum = intens(1);
@@ -354,9 +366,9 @@ report(tt,U,'done');
 % create a GIF animation
 
 % population appearance
+figure(3), clf,
 if doGif
     M = struct('cdata',{},'colormap',{});
-    figure(3), clf,
     for i = 1:2:numel(Usave)
       patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
             'EdgeColor','none');
@@ -403,11 +415,11 @@ legend('total', 'dead','double','single');
 
 
 %% Plot the maxium radius through time
-figure(5), clf
-plot(tspan,max_radius);
-xlabel('time')
-ylabel('max radius')
-grid on;
+% figure(5), clf
+% plot(tspan,max_radius);
+% xlabel('time')
+% ylabel('max radius')
+% grid on;
 
 %% Plot the rates through time
 figure(6), clf
@@ -433,8 +445,12 @@ if doSave
         'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
         'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
         'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
-        'Tend', {Tend});
-    filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.') + "_" + strjoin(string(fix(clock)),'-');
+        'Tend', {Tend}, 'mesh_type', {mesh_type}, 'Drate_', {Drate_});
+    filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
+    if mesh_type == 2
+        filename_ = filename_ + "_HEX";
+    end
+    filename_ = filename_ + "_" + strjoin(string(fix(clock)),'-');
     filename_saveData = "saveData/saveData_" + filename_ + ".mat";
     save(filename_saveData,'-struct','saveData');
     % print('-f7', "images/pressurePlot_" + filename_, '-depsc');

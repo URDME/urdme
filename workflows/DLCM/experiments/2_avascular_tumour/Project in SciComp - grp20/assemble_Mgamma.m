@@ -14,7 +14,6 @@ function Mgamma = assemble_Mgamma(p,t)
     Mgamma = sparse(np,np); % Allocate mass matrix 
     inds = [1,2;2,3;3,1]; % Indices for the points in each triangle
     len = zeros(1,3); % Lenght vector
-%     len = sqrt((p(1,1)-p(1,2))^2 + (p(2,1)-p(2,2))^2)*ones(1,3);
     
     % Loop over all triangles
     for K = 1:nt
@@ -28,12 +27,9 @@ function Mgamma = assemble_Mgamma(p,t)
                +(y(inds(ii,1))-y(inds(ii,2)))^2);
         end
         
-%         % Create MK element
+        % Create MK element
         MK = ([2 0 1; 1 2 0; 0 1 2].*len + ...
-            [2 1 0; 0 2 1; 1 0 2].*circshift(len,1))/(2*6);
-%         MK = ([2 0 1; 1 2 0; 0 1 2]).*len; % + ...
-%             [2 1 0; 0 2 1; 1 0 2].*len)/(2*6);
-%         
+            [2 1 0; 0 2 1; 1 0 2].*circshift(len,1))/(2*6);     
         % Add to Mgamma
         Mgamma(loc2glb,loc2glb) = Mgamma(loc2glb,loc2glb)+ MK;
     end

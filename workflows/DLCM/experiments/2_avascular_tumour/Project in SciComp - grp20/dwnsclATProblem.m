@@ -1,103 +1,4 @@
-
-%%
-close all;
-
-model = createpde(1);
-Nvoxels = 121;
-% gd = [3 4 -1 1 1 -1 -1 -1 1 1]';
-% sf = 'SQ1';
-% ns = char(sf)';
-% G = decsg(gd,sf,ns);
-[P,E,T,grad] = flipped_mesh(Nvoxels);
-pdemesh(P,E,T)
-axis equal
-
-% [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
-% [L,M] = assema(P,T,1,1,0);
-% TR = triangulation(T(1:3,:)',P');
-% geometryFromMesh(model,TR.Points',TR.ConnectivityList');
-% specifyCoefficients(model,'m',0,'d',0,'c',1,'a',1,'f',0);
-figure;
-pdemesh(model)
-axis equal
-figure;
-pdegplot(model.Geometry,'EdgeLabels','on')
-axis equal
-% state.time = 0;
-FEM = assembleFEMatrices(model);
-% applyBoundaryCondition(model,'edge',1:model.Geometry.NumEdges,'u',0);
-% figure;
-% spy(FEM.A)
-% figure;
-% spy(M);
-thirdmatrix = round(M-FEM.A, 14);
-figure;
-title('Diff M')
-spy(thirdmatrix);
-
-% figure;
-% spy(FEM.K)
-% figure;
-% spy(L);
-thirdmatrix = round(L-FEM.K, 14);
-figure;
-title('Diff L')
-spy(thirdmatrix);
-
-% the (lumped) mass matrix gives the element volume
-dM2 = full(sum(FEM.A,2));
-ndofs = size(dM2,1);
-
-% explicitly invert the lumped mass matrix and filter the diffusion matrix
-[i,j,s] = find(FEM.K);
-s = s./dM2(i);
-%keep = find(s < 0); % (possibly removes negative off-diagonal elements)
-keep = find(i ~= j); % (removes only the diagonal)
-i = i(keep); j = j(keep); s = s(keep);
-
-% rebuild L, ensuring that the diagonal equals minus the sum of the
-% off-diagonal elements
-L2 = sparse(i,j,s,ndofs,ndofs);
-L2 = L2+sparse(1:ndofs,1:ndofs,-full(sum(L2,2)));
-
-%% Find points that make up the boundary
-
-[row,col] = find(ismember(T(1:3,:),idof1));
-
-% indices to unique values in col
-[~, ind] = unique(col, 'rows');
-% duplicate indices
-duplicate_ind = setdiff(1:size(col, 1), ind);
-% % duplicate values
-% duplicate_value = col(duplicate_ind);
-
-cont_int_points = zeros(2,length(duplicate_ind));
-
-for i = 1:length(duplicate_ind)
-    cont_int_points(1,i) = T(row(duplicate_ind(i)-1),col(duplicate_ind(i)-1));
-    cont_int_points(2,i) = T(row(duplicate_ind(i)),col(duplicate_ind(i)));
-end
-cont_int_points = sort(cont_int_points,1);
-[~,inds] = unique(cont_int_points(1,:));
-cont_int_points = cont_int_points(:,inds);
-
-plot(P(1,cont_int_points),P(2,cont_int_points),'*')
-
-%%
-
-keep2 = find(ismember(Adof(jj_),idof1));
-iii = reshape(ii(keep2),[],1); jjj_ = reshape(jj_(keep2),[],1);
-idof1_moves = sort(max(Pr(sdof_m_(iii))-Pr(jjj_),0).*Drate_(2*VU(Adof(jjj_))+abs(U(Adof(jjj_)))+1))
-m = mean(max(Pr(sdof_m_(ii))-Pr(jj_),0).*Drate_(2*VU(Adof(jj_))+abs(U(Adof(jj_)))+1))
-maxmax = max(max(Pr(sdof_m_(ii))-Pr(jj_),0).*Drate_(2*VU(Adof(jj_))+abs(U(Adof(jj_)))+1))
-
-%%
-[P,E,T,gradquotient] = basic_mesh(1,121);
-R = RobinMassMatrix2D(P,E);
-figure; spy(R);
-
-
-%%
+%% Downsclaled AvascularTumour problem 11x11 with inner 3x3 geometry
 
 % Number of voxels and step size h
 Nvoxels = 11;
@@ -112,20 +13,20 @@ Mgamma = assemble_Mgamma(P,T);
 Mgamma_dM = Mgamma./dM;
 neigh = full(sum(N,2));
 
-% Initial population
+% Initial population that creates 3x3 inner geometry
 IC = 2; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.35; % Radius of whole initial tumour
 R2 = 0.10; % Radius of inner initial setup (doubly occupied, dead etc.)
 Pr = setInitialCondition(IC,R1,R2,P,Nvoxels);
 VPr = (Pr ~= 0);
-Pr(Pr == -1) = 0;
+% Pr(Pr == -1) = 0; % Set all dead cells to 0 to create internal boundary cells (idof2)
 
 adof = find(Pr); % all filled voxels
-bdof_m = find(N*(Pr ~= 0) < neigh & abs(Pr) >= 1);
+bdof_m = find(N*(Pr ~= 0) < neigh & abs(Pr) >= 1); % single occupied cells next to external boundary
 sdof = find(Pr > 1); % voxels with 2 cells
 Idof = (N*(Pr ~= 0) > 0 & Pr == 0); % empty voxels touching occupied ones
-idof1 = find(Idof & ~VPr); % "external" OBC1
-idof2 = find(Idof & VPr); % "internal" OBC2
+idof1 = find(Idof & ~VPr); % "external" BC1
+idof2 = find(Idof & VPr); % "internal" BC2
 idof = find(Idof);
 
 % Determine also a local enumeration, eg. [1 2 3
@@ -163,20 +64,24 @@ i = 1;
 for a_inv = alpha_inv
 
     %%% LHS
+    % Get local L for all active dofs
     LaX = L(Adof,Adof);
-    Mgamma_b = Mgamma_dM(Adof,Adof);
+    % Create matrix with ones on the idof1 diagonal
     Lai = fsparse(idof1_,idof1_,1,size(LaX));
-    neighs_LaX = sum(LaX~=0,2)-1;
-    scale_LaX = fsparse(diag(ones(size(neighs_LaX)) - neighs_LaX./4,0));
+    % Get local Mgamma for all active dofs
+    Mgamma_b = Mgamma_dM(Adof,Adof);
+    % Get only idof1 part of Mgamma_b
     Mgamma_b_toAdd = Lai*Mgamma_b*Lai;
-    [ii,jj,ss] = find(Mgamma_b_toAdd);
-    keep = find(ii ~= jj); % (removes only the diagonal)
-    ii = ii(keep); jj = jj(keep); ss = ss(keep);
-    Mgamma_b_toAdd = fsparse(ii,jj,ss,size(LaX));
-    Mgamma_b_toAdd = Mgamma_b_toAdd+sparse(1:size(LaX,1),1:size(LaX,1),2*full(sum(Mgamma_b_toAdd,2)));
-
+    % Count the number neighs to all Adofs
+    neighs_LaX = sum(LaX~=0,2)-1;
+    % Create a scaling matrix which scales the hat functions depending on
+    % active dofs
+    scale_LaX = fsparse(diag(ones(size(neighs_LaX)) - neighs_LaX./4,0));
+    
+    % Get lhs
     lhs = LaX - Lai*LaX*scale_LaX + a_inv*Mgamma_b_toAdd;
     
+    % Put Dirichlet BC on inner boundary idof2
     Lai2 = fsparse(idof2_,idof2_,1,size(lhs));
     lhs = lhs - Lai2*lhs + Lai2;
 
@@ -209,7 +114,7 @@ for a_inv = alpha_inv
     i = i + 1;
 end
 
-
+% Plot scaling of matrixes used in problem
 row = idof1(1);
 format rational
 disp('----------------------------------------');

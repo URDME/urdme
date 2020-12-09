@@ -45,11 +45,6 @@ else
 end
 
 % Set colormap for the boundary dofs
-map_start = [0,0,1];
-map_stop = [0.7,0.7,1];
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
 % caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
 caxis([mean(Pr_(ii))-2*std(Pr_(ii)) mean(Pr_(ii))+2*std(Pr_(ii))]);
 % caxis([-1 0.5]);

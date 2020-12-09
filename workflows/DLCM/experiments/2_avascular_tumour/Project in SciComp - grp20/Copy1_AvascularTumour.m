@@ -22,7 +22,7 @@
 % simulation interval
 doGif = true;
 doSave = true;
-Tend = 100;
+Tend = 10;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -32,7 +32,7 @@ cons = 0.0015;        % consumption of oxygen by cells
 cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
 r_prol = 0.125;       % rate of proliferation of singly occupied voxels
 cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-r_die = 0.125;        % rate of dea th
+r_die = 0.125;        % rate of death
 r_degrade = 0.01;     % rate of degradation for already dead cells
 
 % Permeability parameters.
@@ -46,7 +46,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 0.1;
+alpha = 1e+1;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -55,8 +55,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 % fetch Cartesian discretization
 mesh_type = 1; % 1: cartesian, 2: hexagonal
 [P,E,T,gradquotient] = basic_mesh(mesh_type,Nvoxels);
-% pdemesh(P,E,T)
-% axis equal
+% [P,E,T,gradquotient] = flipped_mesh(Nvoxels);
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
@@ -64,8 +63,7 @@ mesh_type = 1; % 1: cartesian, 2: hexagonal
 [L,dM,N,M] = dt_operators(P,T);
 Mgamma = assemble_Mgamma(P,T);
 Mgamma = Mgamma./dM;
-% diag_Mgamma = spdiags(Mgamma,0);
-% robinVec = RobinLoadVector2D(P,T);
+% load('invM.mat');
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -87,9 +85,6 @@ VU = (U ~= 0);
 % representation of solution: cell-vector of sparse matrices
 Usave = cell(1,numel(tspan));
 Usave{1} = U;
-
-% max radius
-max_radius = zeros(1,numel(tspan));
 
 birth_count = 0;
 tt = tspan(1);
@@ -139,15 +134,17 @@ while tt <= tspan(end)
   if updLU
     % pressure Laplacian
     La.X = L(Adof,Adof);
-    Lai = fsparse(idof_,idof_,1,size(La.X));
-    La.X = La.X-Lai*La.X;
+%     Lai = fsparse(idof_,idof_,1,size(La.X));
+%     La.X = La.X-Lai*La.X;
 %     La.X = La.X+Lai;
     Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
     La.X = La.X+Lai2;
     % add derived BC to LHS
     Mgamma_b = Mgamma(Adof,Adof);
+%     Mgamma_b(idof1_,idof1_) = Mgamma(idof1,idof1);
     Lai3 = fsparse(idof1_,idof1_,1,size(La.X));
-    La.X = (La.X + alpha_inv*Lai3*Mgamma_b);
+    La.X = (La.X + alpha_inv*Lai3*Mgamma_b*Lai3);
+%     La.X = invM(Adof,Adof)*(La.X + alpha_inv*Lai3*Mgamma_b);
 %     La.X = M(Adof,Adof) \ (La.X + alpha_inv*Lai3*Mgamma_b);
 
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
@@ -161,10 +158,10 @@ while tt <= tspan(end)
 %                   [1./dM(sdof); ...
 %                    ones(size(idof1_))], ... % ; 
 %                   [size(La.X,1) 1]));    % RHS first...
-%   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
-%                   [size(La.X,1) 1]));     % RHS first...
-  Pr = ones(size(La.X,1), 1) + full(fsparse(sdof_,1,1./dM(sdof), ...
+  Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
                   [size(La.X,1) 1]));     % RHS first...
+%   Pr = ones(size(La.X,1), 1) + full(fsparse(sdof_,1,1./dM(sdof), ...
+%                   [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
@@ -292,7 +289,7 @@ while tt <= tspan(end)
     Usave(i+1:iend) = {U};
 
     % monitor the maximum outlier cell:
-    max_radius(i+1:iend) = sqrt(max(P(1,adof).^2+P(2,adof).^2));
+    max_radius = sqrt(max(P(1,adof).^2+P(2,adof).^2));
 
 
     % the number of cells
@@ -405,7 +402,7 @@ if doSave
         'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
         'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
         'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
-        'Tend', {Tend}, 'mesh_type', {mesh_type});
+        'Tend', {Tend}, 'mesh_type', {mesh_type}, 'Drate_', {Drate_});
     filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
     if mesh_type == 2
         filename_ = filename_ + "_HEX";

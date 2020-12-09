@@ -12,6 +12,7 @@ function U_initial = setInitialCondition(IC,R1,R2,P,Nvoxels)
 % R2: Radius of inner initial setup (doubly occupied, dead etc.)
 
 r = sqrt(P(1,:).^2+P(2,:).^2);
+h = 2/(Nvoxels-1);
 
 if IC == 1 % circular blob of cells
     ii = find(r < 0.05); % radius of the initial blob
@@ -45,7 +46,7 @@ elseif IC == 4 % random cell
 elseif IC == 5 % cell with dead center and doubly occupied voxels on boundary 
     r1 = find(r < R1);
     r2 = find(r < R2);
-    r3 = find(r < R1 + 0.008);
+    r3 = find(r < R1 + h);
     r1 = setdiff(r1,r2);
     r3 = setdiff(r3, union(r1,r2));
     

@@ -30,6 +30,9 @@ map_stop = graphics_color('vermillion');
 xx = linspace(0,1,10);
 map_matrix = map_start' + xx.*(map_stop' - map_start');
 mymap = map_matrix';
+% caxis([1.1*min(Pr_(ii)) 1.1*max(Pr_(ii))]);
+caxis([mean(Pr_(ii))-2*std(Pr_(ii)) mean(Pr_(ii))+2*std(Pr_(ii))]);
+% caxis([0 3]);
 colormap(mymap)
 
 % Freeze this colormap (in order to apply another one to the boundary
@@ -53,14 +56,12 @@ end
 scatterbar3(x_Pr_,y_Pr_,Pr_reshape,width);
 
 % Set colormap for the boundary dofs
-map_start = [0,0,1];
-map_stop = [0.7,0.7,1];
-xx = linspace(0,1,10);
-map_matrix = map_start' + xx.*(map_stop' - map_start');
-mymap = map_matrix';
-caxis([1.1*min(min(Pr_reshape)) 0]);
-colormap(mymap)
+% caxis([1.1*min(min(Pr_(ii))) 1.1*max(max(Pr_(ii)))]);
+caxis([mean(Pr_(ii))-2*std(Pr_(ii)) mean(Pr_(ii))+2*std(Pr_(ii))]);
+% caxis([-1 0.5]);
+colormap('cool')
 
-title('Pressure in adof(green/orange) and idof(blue)')
+title(sprintf('Time = %d, Ncells = %d \n alpha = %d' , ...
+            tspan(end),full(sum(abs(Usave{end}))), alpha));
 hold off;
 view(3)
