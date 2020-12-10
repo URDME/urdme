@@ -6,7 +6,7 @@
     bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > cutoff_bdof & ...
         U <= 1));
     
-    sdof = find(U > 1); % voxels with 2 cells
+    sdof = find(U > 1); %  sdof on the boundary
     sdof_b = find(N*(U~=0 | U_dead ~=0) < neigh & (U > 1));
     
     % voxels with more than concentration 1 in them which may move, 
@@ -15,8 +15,6 @@
     %sdof_m = intersect(find(sum(N.*(U'+U_dead')<(U+U_dead)& logical(N),2)), find(U > 1));
     %sdof_m = find(sum(N.*(U'+U_dead')<(U+U_dead)&(N&N),2).*(U>1));
     sdof_m = find(sum(N.*(U')<(U)&(N&N),2).*(U>1));
-
-    %FIX!!!! Look at total cell-concetration in neighbour (living and dead)
     
     Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
     idof1 = find(Idof & ~VU);         % "external" OBC1

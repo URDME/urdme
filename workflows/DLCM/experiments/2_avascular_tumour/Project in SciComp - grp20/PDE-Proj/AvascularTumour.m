@@ -15,6 +15,7 @@
 %   voxels. Drate3 is the rate cells move into voxels that are already
 %   occupied.
 
+% C. Jayaweera & A. Graf Brolund 2020-12(revision)
 % S. Engblom 2017-12-27 (revision)
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
@@ -51,6 +52,7 @@ Udsave{1} = U_dead;
 Oxysave = cell(1,numel(tspan));
 bdofsave = cell(1,numel(tspan));
 sdofsave = cell(1,numel(tspan));
+sdofbsave = cell(1,numel(tspan));
 
 birth_count = 0;
 tt = tspan(1);
@@ -80,9 +82,33 @@ while tt <= tspan(end)
     change_calculation;        %proliferation, death and degradation
     
     intensity_calculation;     %Calculate intensties of rates of events
-    lambda = sum(intens);
+    %lambda = sum(intens);
     %lambda = max(intens); 
-    dt = 1/lambda;
+    %dt = 1/lambda
+    
+%     rates_sdof__ = max(-rates_sdof(sdof_m_),0.0000001);
+%     rates_bdof__ = max(-rates_sdof(bdof_m_),0.0000001);   
+%     dt_death =U_new(ind_die)./(dead_conc);
+%     dt_sdof = U_new(sdof_m)./rates_sdof__;
+%     dt_bdof = U_new(bdof_m)./rates_bdof__;
+%          
+ 
+    ind_rates_sdof_n = find(rates_sdof(sdof_m_)<0);
+    ind_rates_bdof_n = find(rates_bdof(bdof_m_)<0);
+
+    dt_death = U_new(ind_die)./(dead_conc);
+    dt_sdof = U_new(sdof_m(ind_rates_sdof_n))./(-rates_sdof(sdof_m_(ind_rates_sdof_n)));
+    dt_bdof = U_new(bdof_m(ind_rates_bdof_n))./(-rates_bdof(bdof_m_(ind_rates_bdof_n)));
+    
+    
+
+    if (sum(isinf(dt_sdof))>0)
+        inf;
+    end
+    dt_test = (min([dt_death; dt_sdof; dt_bdof;(0.1*Tend)]));
+%     dt = max(1/lambda,0.005);
+    dt = dt_test*0.001;
+
    
     tspan_calculation;         %save times series of current states
     
@@ -106,6 +132,7 @@ while tt <= tspan(end)
 %     % bdof_m
 %     U_new(Adof) = U_new(Adof) + rates_bdof*dt; 
         
+
     check = sum(U<0);
     if check>0
         check

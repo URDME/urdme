@@ -9,6 +9,7 @@ if tspan(i+1) < tt+dt
 
     bdofsave(i+1:iend) = {bdof_m};
     sdofsave(i+1:iend) = {sdof_m};
+    sdofbsave{i+1:iend} = {sdof_b};
 
     i = iend;
 

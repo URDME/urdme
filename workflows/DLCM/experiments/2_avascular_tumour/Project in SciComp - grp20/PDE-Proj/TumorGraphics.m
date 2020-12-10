@@ -7,7 +7,7 @@ deadfigure = 1; %visualizes the sdof's and bdof's as well as the concentration i
 if doffigure==1
 % create a GIF animation
 Mdof = struct('cdata',{},'colormap',{});
-figure(3), clf,
+figure(1), clf,
 
 Umat=full(cell2mat(Usave));
 % cmat = full(Umat/max(max(Umat)));
@@ -32,14 +32,20 @@ for i = 1:numel(Usave)
     p_bdof = patch('Faces',R(bdofsave{i},:),'Vertices',V, ...
         'FaceColor','cyan'); 
     
+        
+    %sdof_b
+%     p_sdofb = patch('Faces',R(sdofbsave{i},:),'Vertices',V, ...
+%         'FaceColor','red'); 
+%     
     p_sdof = patch('Faces',R(sdofsave{i},:),'Vertices',V, ...
         'FaceColor','magenta'); 
-    
+
     ii = find(Usave{i} == 0 & Udsave{i} >0);
     p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
+    %legend([p_bdof,p_sdof,p_sdofb,p_dead],'bdof','sdof','sdofb','dead')
     legend([p_bdof,p_sdof,p_dead],'bdof','sdof','dead')
-    
+
     title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
     drawnow;
     Mdof(i) = getframe(gcf);
@@ -110,7 +116,7 @@ for i = 1:numel(Udsave)
     Mdead(i) = getframe(gcf);
 end
 % saves the GIF
-movie2gif(Mdead,{Mdead([1:2 end]).cdata},'animations/TumourMdead.gif', ...
+movie2gif(Mdead,{Mdead([1:2 end]).cdata},'TumourMDead.gif', ...
           'delaytime',0.1,'loopcount',0);
 end
 
