@@ -1,8 +1,8 @@
 
 doffigure = 0;  %visualizes the dead cells in every voxel 
-normalfigure = 0;   %visualizes the concentration in every voxel 
+normalfigure = 1;   %visualizes the concentration in every voxel 
 deadfigure = 0; %visualizes the sdof's and bdof's as well as the concentration in other voxels
-oxyfigure =1;
+oxyfigure =0;
 %% 
 if doffigure==1
 % create a GIF animation
@@ -46,7 +46,9 @@ for i = 1:numel(Usave)
     %legend([p_bdof,p_sdof,p_sdofb,p_dead],'bdof','sdof','sdofb','dead')
     legend([p_bdof,p_sdof,p_dead],'bdof','sdof','dead')
 
-    title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
+    %title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
+    title(sprintf('Time = %d',tspan(i)));
+
     drawnow;
     Mdof(i) = getframe(gcf);
 end
@@ -82,7 +84,8 @@ for i = 1:numel(Usave)
 %         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
 %     legend(p_dead,'dead')
     
-    title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Oxysave{i})))));
+    %title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Oxysave{i})))));
+    title(sprintf('Time = %d',tspan(i)));
     drawnow;
     Mnormal(i) = getframe(gcf);
 end
@@ -116,7 +119,8 @@ for i = 1:numel(Usave)
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
     legend(p_dead,'dead')
     
-    title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
+    %title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
+    title(sprintf('Time = %d',tspan(i)));
     drawnow;
     Mnormal(i) = getframe(gcf);
 end
@@ -146,7 +150,8 @@ for i = 1:numel(Udsave)
     c = cmat(ii,i);
     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat');    
 
-    title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
+    %title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
+    title(sprintf('Time = %d',tspan(i)));
     drawnow;
     Mdead(i) = getframe(gcf);
 end

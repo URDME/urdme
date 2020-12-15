@@ -12,6 +12,7 @@ D=1; %D_rate
 % simulation interval
 Tend = 100;
 tspan = linspace(0,Tend,101);
+timescaling=0.005;
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
