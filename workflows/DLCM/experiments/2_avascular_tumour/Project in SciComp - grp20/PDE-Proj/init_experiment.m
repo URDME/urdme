@@ -10,7 +10,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 D=1; %D_rate 
 
 % simulation interval
-Tend = 90;
+Tend = 100;
 tspan = linspace(0,Tend,101);
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 

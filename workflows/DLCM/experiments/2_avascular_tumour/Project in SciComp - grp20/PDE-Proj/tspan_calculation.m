@@ -6,6 +6,8 @@ if tspan(i+1) < tt+dt
     % save relevant values 
     Usave(i+1:iend) = {U};
     Udsave(i+1:iend) = {U_dead};
+    
+    Oxysave(i+1:iend) = {Oxy};
 
     bdofsave(i+1:iend) = {bdof_m};
     sdofsave(i+1:iend) = {sdof_m};

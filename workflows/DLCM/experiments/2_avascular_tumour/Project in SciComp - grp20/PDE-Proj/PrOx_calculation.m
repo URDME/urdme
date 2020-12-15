@@ -20,3 +20,12 @@ Oxy = full(fsparse([extdof; adof],1, ...
     -cons*full(U(adof)./dM(adof))], ... 
     [size(OLa.X,1) 1]));
 Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
+
+if isempty(Oxysave{1})
+    Oxysave{1}=Oxy;
+end
+
+
+
+
+
