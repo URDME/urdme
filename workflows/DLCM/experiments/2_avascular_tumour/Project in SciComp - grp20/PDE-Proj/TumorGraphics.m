@@ -1,8 +1,8 @@
 
 doffigure = 0;  %visualizes the dead cells in every voxel 
-normalfigure = 1;   %visualizes the concentration in every voxel 
+normalfigure = 0;   %visualizes the concentration in every voxel 
 deadfigure = 0; %visualizes the sdof's and bdof's as well as the concentration in other voxels
-oxyfigure =0;
+oxyfigure = 1;
 %% 
 if doffigure==1
 % create a GIF animation
@@ -66,7 +66,7 @@ figure(20), clf,
 
 Oxymat=full(cell2mat(Oxysave));
 colorbar
-caxis([-1 max(max(Oxymat))])
+caxis([min(min(Oxymat)) max(max(Oxymat))])
 colorlabel('Concentration of oxygen, c')
 for i = 1:numel(Usave)
     
