@@ -107,7 +107,7 @@ while tt <= tspan(end)
     end
     dt_test = (min([dt_death; dt_sdof; dt_bdof;(0.1*Tend)]));
 %     dt = max(1/lambda,0.005);
-    dt = dt_test*0.001;
+    dt = dt_test*timescaling;
 
    
     tspan_calculation;         %save times series of current states
@@ -133,10 +133,10 @@ while tt <= tspan(end)
 %     U_new(Adof) = U_new(Adof) + rates_bdof*dt; 
         
 
-    check = sum(U<0);
-    if check>0
-        check
-    end
+%     check = sum(U<0);
+%     if check>0
+%         check
+%     end
     
     tt = tt+dt;
     report(tt,U,'');

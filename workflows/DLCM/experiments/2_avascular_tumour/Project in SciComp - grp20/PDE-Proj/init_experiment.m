@@ -1,6 +1,7 @@
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
+%Nvoxels = 243; 
 
 % fetch Cartesian discretization
 [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);  %gradquotient=1 for Cartesian mesh
@@ -12,6 +13,7 @@ D=1; %D_rate
 % simulation interval
 Tend = 100;
 tspan = linspace(0,Tend,101);
+timescaling=0.005;
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
@@ -61,7 +63,7 @@ elseif exp ==1
 elseif exp==2 
     %initial: simulation---------------------------
     start_value = 1;
-    radius = 0.09;
+    radius = 0.15;
     
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
