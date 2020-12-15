@@ -13,7 +13,7 @@ Umat=full(cell2mat(Usave));
 % cmat = full(Umat/max(max(Umat)));
 colorbar
 caxis([0 max(max(Umat))])
-colorlabel('Concentration of cells, U')
+colorlabel('Concentration of cells, u')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -67,7 +67,7 @@ figure(20), clf,
 Oxymat=full(cell2mat(Oxysave));
 colorbar
 caxis([-1 max(max(Oxymat))])
-colorlabel('Concentration off oxygen, O')
+colorlabel('Concentration of oxygen, c')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
@@ -102,7 +102,7 @@ figure(11), clf,
 Umat=full(cell2mat(Usave));
 colorbar
 caxis([0 max(max(Umat))])
-colorlabel('Concentration off cells, U')
+colorlabel('Concentration of cells, U')
 for i = 1:numel(Usave)
     
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
