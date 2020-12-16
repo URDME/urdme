@@ -7,11 +7,10 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);  %gradquotient=1 for Cartesian mesh
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
-
 D=1; %D_rate 
 
 % simulation interval
-Tend = 100;
+Tend = 200;
 tspan = linspace(0,Tend,101);
 timescaling=0.005;
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
