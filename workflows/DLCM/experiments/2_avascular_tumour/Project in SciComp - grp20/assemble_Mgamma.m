@@ -29,7 +29,7 @@ function Mgamma = assemble_Mgamma(p,t)
         
         % Create MK element
         MK = ([2 0 1; 1 2 0; 0 1 2].*len + ...
-            [2 1 0; 0 2 1; 1 0 2].*circshift(len,1))/(2*6);     
+            [2 1 0; 0 2 1; 1 0 2].*circshift(len,1))/(2*6);
         % Add to Mgamma
         Mgamma(loc2glb,loc2glb) = Mgamma(loc2glb,loc2glb)+ MK;
     end

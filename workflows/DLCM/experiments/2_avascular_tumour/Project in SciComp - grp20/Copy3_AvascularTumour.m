@@ -18,11 +18,19 @@
 % S. Engblom 2017-12-27 (revision)
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
-
-% simulation interval
+% for IC = [1,5]
+for alpha = [1e-3, 1e-2, 1e-1, 1e+0, 1e+1, 1e+4]
+   alpha_inv = 1/alpha; 
 doGif = false;
 doSave = true;
-Tend = 500;
+% Choose to add idof3
+do_idof3 = true;
+% simulation interval
+% if IC == 1
+    Tend = 400;
+% else
+%     Tend = 400;
+% end
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,17 +54,15 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1e+1;
-alpha_inv = 1/alpha;
+% alpha = 1e+4;
+% alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
 mesh_type = 1; % 1: cartesian, 2: hexagonal
-[P,E,T,gradquotient] = basic_mesh(mesh_type,Nvoxels);
-% [P,E,T,gradquotient] = flipped_mesh(Nvoxels);
-% [P,E,T,gradquotient] = weird_mesh(Nvoxels);
+[P,E,T,gradquotient] = basic_mesh2(mesh_type,Nvoxels);
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
@@ -64,6 +70,7 @@ mesh_type = 1; % 1: cartesian, 2: hexagonal
 [L,dM,N,M] = dt_operators(P,T);
 Mgamma = assemble_Mgamma(P,T);
 Mgamma = Mgamma./dM;
+N_Mgamma = (Mgamma ~= 0) - speye(size(Mgamma));
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -74,7 +81,7 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 1; % Choose initial condition (1,2,3,4,5,6)
+IC = 5; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.35; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
@@ -120,6 +127,9 @@ while tt <= tspan(end)
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
+  idof3 = find(~VU & N_Mgamma*VU > 0); % boundary around "visited voxels"
+  idof3 = setdiff(idof3,idof1);
+  idof = find(Idof);
   % Divide bdof_m into the singularly occupied voxels
   % who touch either boundary voxels from idof1 or idof2 
   [ind_r,ind_c] = find(N(bdof_m,:));
@@ -128,7 +138,11 @@ while tt <= tspan(end)
   bdof_m1(find(ismember(bdof_m1, bdof_m2))) = [];
   bdof_m1 = reshape(bdof_m1,[],1);
   bdof_m2 = reshape(bdof_m2,[],1);
-  idof = find(Idof);
+
+  if do_idof3
+    idof1 = [idof1;idof3];
+    idof = [idof;idof3];
+  end
 
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof];
@@ -143,18 +157,34 @@ while tt <= tspan(end)
   if updLU
      % pressure Laplacian
     La.X = L(Adof,Adof);
-    
+
     %%% ADD BC to LHS
     % Robin to external idof (idof1)
-    Mgamma_b = Mgamma(Adof,Adof);
+    Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
+    a_Lai1 = speye(size(Lai1)) - Lai1;
+    Mgamma_b = Lai1*Mgamma(Adof,Adof)*Lai1;
+    Mgamma_b = Mgamma_b - Lai1.*Mgamma_b;
+    Mgamma_b = Mgamma_b + diag(2*sum(Mgamma_b,2));
+    % Count the number neighs to all Adofs
     neighs_LaX = sum(La.X~=0,2)-1;
-    scale_LaX = fsparse(diag(ones(size(neighs_LaX)) - neighs_LaX./4,0));
-    Lai3 = fsparse(idof1_,idof1_,1,size(La.X));
-    La.X = La.X - Lai3*La.X*scale_LaX + a_inv*Lai3*Mgamma_b*Lai3;
+    % Create a scaling matrix which scales the hat functions depending on
+    % active dofs
+    scale_LaX = ones(size(neighs_LaX)) - neighs_LaX/4;
+    scale_LaX_1quart = scale_LaX == 0.25;
+    scale_LaX_halfs = scale_LaX == 0.5;
+    scale_LaX_3quart = scale_LaX == 0.75;
+    La.X = La.X + Lai1*La.X*a_Lai1.*(scale_LaX_1quart + 3*scale_LaX_3quart) ...
+        + Lai1*(La.X - Lai1.*La.X).*scale_LaX_halfs;
     
+    La.X = La.X - 1/2*Lai1*La.X.*scale_LaX_1quart - 3/4*Lai1*La.X.*scale_LaX_halfs ...
+        - 3/4*Lai1*La.X.*scale_LaX_3quart - a_Lai1*La.X*(Lai1.*scale_LaX) + alpha_inv*Mgamma_b;
+    
+%     La.X = La.X - Lai1.*La.X.*scale_LaX - a_Lai1*La.X*Lai1 + alpha_inv*Mgamma_b;
+%     La.X = La.X - scale_LaX.*Lai1.*La.X+ alpha_inv*Mgamma_b; 
+
     % Dirichlet to internal idof (idof2)
-    Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-    La.X = La.X - Lai2*La.X + Lai2;
+%     Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
+%     La.X = La.X - Lai2*La.X + Lai2;
 
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
@@ -163,20 +193,11 @@ while tt <= tspan(end)
   %% Caculate laplacians
 
   % RHS source term proportional to the over-occupancy and BCs
-%   Pr = full(fsparse([sdof_; idof1_],1, ... % ; 
-%                   [1./dM(sdof); ...
-%                    ones(size(idof1_))], ... % ; 
-%                   [size(La.X,1) 1]));    % RHS first...
   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
                   [size(La.X,1) 1]));     % RHS first...
-%   Pr = ones(size(La.X,1), 1) + full(fsparse(sdof_,1,1./dM(sdof), ...
-%                   [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 %   Pr = normalize(Pr,'range');
-%   if max(Pr) > 30
-%       Pr = normalize(Pr,'range');
-%   end
 
   % RHS source term proportional to the over-occupancy and BCs
   Oxy = full(fsparse([extdof; adof],1, ...
@@ -445,7 +466,7 @@ if doSave
         'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
         'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
         'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
-        'Tend', {Tend}, 'mesh_type', {mesh_type}, 'Drate_', {Drate_});
+        'Tend', {Tend}, 'mesh_type', {mesh_type}, 'Drate_', {Drate_}, 'do_idof3', {do_idof3});
     filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
     if mesh_type == 2
         filename_ = filename_ + "_HEX";
@@ -455,7 +476,8 @@ if doSave
     save(filename_saveData,'-struct','saveData');
     % print('-f7', "images/pressurePlot_" + filename_, '-depsc');
 end
-
+% end
+end
 return;
 
 % % saves the GIF

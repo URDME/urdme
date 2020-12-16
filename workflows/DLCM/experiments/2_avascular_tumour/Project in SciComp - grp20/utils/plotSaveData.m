@@ -2,12 +2,8 @@
 % Johannes Dufva 2020-11-06
 
 % Get all saved .mat files from saveData-folder
-<<<<<<< Updated upstream
-% folder = 'saveData/2020-11-30, basePr=1_T500_IC1/';
-=======
-% folder = 'saveData/2020-12-08, scaleL_05_T100_IC5/';
->>>>>>> Stashed changes
-folder = 'saveData/';
+folder = 'saveData/2020-12-16, scaleL_neigh_NEWaLai_idof3_IC5/';
+% folder = 'saveData/';
 DirList = dir(fullfile(folder, '*.mat'));
 Data = cell(1, length(DirList));
 figrows = ceil(sqrt(length(DirList)));
@@ -17,27 +13,29 @@ figrows = ceil(sqrt(length(DirList)));
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
     t_show = length(tspan);
-    if tspan(end) >= 100 || tspan(end) == 0
+    if tspan(end) == 400 || tspan(end) == 0
         figure('Name',"CellPlot_" + DirList(k).name(10:end-4));
         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
                     'EdgeColor','none');
         hold on,
-<<<<<<< Updated upstream
-%         axis([-1 1 -1 1]); axis square%, axis off
-        axis([-1 1 -1 1]*0.55); axis square, %axis off
-=======
+        U_show = Usave{t_show};
         axis([-1 1 -1 1]); axis square%, axis off
 %         axis([-1 1 -1 1]*0.65); axis square, %axis off
->>>>>>> Stashed changes
-        ii = find(Usave{t_show} == 1);
+        ii = find(U_show == 1);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',graphics_color('bluish green'));
-        ii = find(Usave{t_show} == 2);
+        ii = find(U_show == 2);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',graphics_color('vermillion'));
-        ii = find(Usave{t_show} == -1);
+        ii = find(U_show == -1);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',[0 0 0]);
+        ii = idof(ismember(idof,find(~VU)));
+        patch('Faces',R(ii,:),'Vertices',V, ...
+            'FaceColor',[0 0 1]);
+        ii = idof(ismember(idof,find(VU)));
+        patch('Faces',R(ii,:),'Vertices',V, ...
+            'FaceColor',[1 1 0]);
         title(sprintf('Time = %d, Ncells = %d \n alpha = %d' , ...
             tspan(t_show),full(sum(abs(Usave{t_show}))), alpha));
 %         title(sprintf('Time = %d, Ncells = %d \n Ne.moveb2 = %d' , ...
@@ -56,7 +54,7 @@ prolsum = @(U)(full(sum(U == 2)));
 
 for k = 1:length(DirList)
     load([folder DirList(k).name]);
-    if tspan(end) == 100 || tspan(end) == 230
+    if tspan(end) == 1000 || tspan(end) == 230
         figure('Name',"EvolutionPlot_" + DirList(k).name(10:end-4));
         z = cellfun(deadsum,Usave);
         w = cellfun(prolsum,Usave);
@@ -89,14 +87,14 @@ a = 0;
 alphas = [];
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
-        alphas = [alphas, alpha];
+        alphas = [alphas, alpha+k*alpha];
 end
 sorted_alphas = sort(alphas);
 [~,sort_k] = ismember(sorted_alphas,alphas);
 
 figure('Name',"TOTALPlot_");
 hold on;
-tToShow = 500;
+tToShow = 400;
 ymax = 1;
 for k = 1:length(DirList)
     load([folder DirList(sort_k(k)).name]);
@@ -120,7 +118,7 @@ hold off;
 %% Plot rates
 for k = 1:length(DirList)
     load([folder DirList(k).name]);
-    if tspan(end) == 100 || tspan(end) == 0
+    if tspan(end) == 1000 || tspan(end) == 0
         figure('Name',"RatePlot_" + DirList(k).name(10:end-4));
         plotRates;
     end
@@ -131,11 +129,7 @@ end
 for k = 1:length(DirList)
 %     subplot(figrows, ceil(length(DirList)/figrows),k);  
     load([folder DirList(k).name]);
-<<<<<<< Updated upstream
-    if tspan(end) > 100 || tspan(end) == 0
-=======
-    if tspan(end) == 500 || tspan(end) == 0
->>>>>>> Stashed changes
+    if tspan(end) == 1000 || tspan(end) == 0
         figure('Name',"PrPlot_" + DirList(k).name(10:end-4));
         plotPressure;
     end

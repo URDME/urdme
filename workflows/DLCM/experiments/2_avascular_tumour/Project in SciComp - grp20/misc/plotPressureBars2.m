@@ -15,7 +15,7 @@ map_stop = graphics_color('vermillion');
 xx = linspace(0,1,10);
 map_matrix = map_start' + xx.*(map_stop' - map_start');
 mymap = map_matrix';
-%     caxis([mean(Pr_(ii))-2*std(Pr_(ii)) mean(Pr_(ii))+2*std(Pr_(ii))]);
+% caxis([mean(Pr_)-2*std(Pr_) mean(Pr_)+2*std(Pr_)]);
 colormap(mymap)
 
 % Freeze this colormap (in order to apply another one to the boundary
@@ -33,6 +33,6 @@ Pr_reshape = reshape(Pr_, Nvoxels, Nvoxels);
 scatterbar3(x_Pr_,y_Pr_,Pr_reshape,h);
 
 % Set colormap for the boundary dofs
-%     caxis([mean(Pr_(ii))-2*std(Pr_(ii)) mean(Pr_(ii))+2*std(Pr_(ii))]);
+% caxis([mean(Pr_)-2*std(Pr_) mean(Pr_)+2*std(Pr_)]);
 colormap('cool')
 end
