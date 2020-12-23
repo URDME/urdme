@@ -19,8 +19,8 @@
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
 % for IC = [1,5]
-for alpha = [1e-3, 1e-2, 1e-1, 1e+0, 1e+1, 1e+4]
-   alpha_inv = 1/alpha; 
+% for alpha = [5e-2, 5e-1]
+%    alpha_inv = 1/alpha; 
 doGif = false;
 doSave = true;
 % Choose to add idof3
@@ -54,8 +54,8 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-% alpha = 1e+4;
-% alpha_inv = 1/alpha;
+alpha = 1e+2;
+alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
@@ -162,29 +162,8 @@ while tt <= tspan(end)
     % Robin to external idof (idof1)
     Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
     a_Lai1 = speye(size(Lai1)) - Lai1;
-    Mgamma_b = Lai1*Mgamma(Adof,Adof)*Lai1;
-    Mgamma_b = Mgamma_b - Lai1.*Mgamma_b;
-    Mgamma_b = Mgamma_b + diag(2*sum(Mgamma_b,2));
-    % Count the number neighs to all Adofs
-    neighs_LaX = sum(La.X~=0,2)-1;
-    % Create a scaling matrix which scales the hat functions depending on
-    % active dofs
-    scale_LaX = ones(size(neighs_LaX)) - neighs_LaX/4;
-    scale_LaX_1quart = scale_LaX == 0.25;
-    scale_LaX_halfs = scale_LaX == 0.5;
-    scale_LaX_3quart = scale_LaX == 0.75;
-    La.X = La.X + Lai1*La.X*a_Lai1.*(scale_LaX_1quart + 3*scale_LaX_3quart) ...
-        + Lai1*(La.X - Lai1.*La.X).*scale_LaX_halfs;
     
-    La.X = La.X - 1/2*Lai1*La.X.*scale_LaX_1quart - 3/4*Lai1*La.X.*scale_LaX_halfs ...
-        - 3/4*Lai1*La.X.*scale_LaX_3quart - a_Lai1*La.X*(Lai1.*scale_LaX) + alpha_inv*Mgamma_b;
-    
-%     La.X = La.X - Lai1.*La.X.*scale_LaX - a_Lai1*La.X*Lai1 + alpha_inv*Mgamma_b;
-%     La.X = La.X - scale_LaX.*Lai1.*La.X+ alpha_inv*Mgamma_b; 
-
-    % Dirichlet to internal idof (idof2)
-%     Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-%     La.X = La.X - Lai2*La.X + Lai2;
+    La.X = La.X - Lai1*La.X + Lai1;
 
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
@@ -477,7 +456,7 @@ if doSave
     % print('-f7', "images/pressurePlot_" + filename_, '-depsc');
 end
 % end
-end
+% end
 return;
 
 % % saves the GIF

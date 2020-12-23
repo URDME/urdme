@@ -8,6 +8,16 @@ DirList = dir(fullfile(folder, '*.mat'));
 Data = cell(1, length(DirList));
 figrows = ceil(sqrt(length(DirList)));
 
+% Get sorted alpha values
+a = 0;
+alphas = [];
+for k = 1:length(DirList)
+    load([folder, DirList(k).name]);
+        alphas = [alphas, alpha];
+end
+sorted_alphas = sort(alphas);
+[~,sort_k] = ismember(sorted_alphas,alphas);
+
 %% Plot population appearance
 %close all;
 for k = 1:length(DirList)
@@ -79,18 +89,7 @@ for k = 1:length(DirList)
 end
 
 %% Plot number of total cells together
-
 spsum  = @(U)(full(sum(abs(U))));
-
-% Get sorted alpha values
-a = 0;
-alphas = [];
-for k = 1:length(DirList)
-    load([folder, DirList(k).name]);
-        alphas = [alphas, alpha+k*alpha];
-end
-sorted_alphas = sort(alphas);
-[~,sort_k] = ismember(sorted_alphas,alphas);
 
 figure('Name',"TOTALPlot_");
 hold on;
@@ -115,10 +114,38 @@ legend();
 % ylim([ymin ymax]);
 grid on;
 hold off;
+
+%% Plot Ne
+load([folder DirList(1).name]);
+fnames = fieldnames(Ne);
+Ne_vector = zeros(length(fnames),length(DirList));
+for k = 1:length(DirList)
+    load([folder DirList(sort_k(k)).name]);
+    if tspan(end) == 400 || tspan(end) == 0
+        Ne_vector(:,k) = cell2mat(struct2cell(Ne))';
+        
+    end
+end
+% Remove moveb2 elements (due to its relatively huge impact)
+Ne_vector(2,:) = [];
+fnames(2) = [];
+
+% Plot stacked bar plot
+figure('Name',"NePlot_" + folder);
+b = bar(Ne_vector','stacked','LineStyle','none');
+
+% Plot settings
+grid on;
+title('Ne without moveb2');
+xlabel('alpha')
+ylabel('rates')
+xticks(1:length(sorted_alphas))
+xticklabels(sorted_alphas);
+legend(fnames);
 %% Plot rates
 for k = 1:length(DirList)
     load([folder DirList(k).name]);
-    if tspan(end) == 1000 || tspan(end) == 0
+    if tspan(end) == 400 || tspan(end) == 0
         figure('Name',"RatePlot_" + DirList(k).name(10:end-4));
         plotRates;
     end
@@ -129,7 +156,7 @@ end
 for k = 1:length(DirList)
 %     subplot(figrows, ceil(length(DirList)/figrows),k);  
     load([folder DirList(k).name]);
-    if tspan(end) == 1000 || tspan(end) == 0
+    if tspan(end) == 400 || tspan(end) == 0
         figure('Name',"PrPlot_" + DirList(k).name(10:end-4));
         plotPressure;
     end

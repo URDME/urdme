@@ -4,9 +4,9 @@ function Mgamma = assemble_Mgamma(p,t)
 %   Output: Mgamma the allocated mass matrix
 %
 %   The structure of each element MK is as follows:
-%     [2*(len(1)+len(3)),     len(1),         len(3);
-%      len(1),            2*(len(1)+len(2)),  len(2);
-%      len(3),            len(2),         2*(len(2)+len(3))]
+%     [(len(1)+len(3)),     len(1),         len(3);
+%      len(1),            (len(1)+len(2)),  len(2);
+%      len(3),            len(2),         (len(2)+len(3))]
 
 
     np = size(p,2); % Number of nodes 
@@ -28,8 +28,8 @@ function Mgamma = assemble_Mgamma(p,t)
         end
         
         % Create MK element
-        MK = ([2 0 1; 1 2 0; 0 1 2].*len + ...
-            [2 1 0; 0 2 1; 1 0 2].*circshift(len,1))/(2*6);
+        MK = ([1 0 1; 1 1 0; 0 1 1].*len + ...
+            [1 1 0; 0 1 1; 1 0 1].*circshift(len,1))/(2*6);
         % Add to Mgamma
         Mgamma(loc2glb,loc2glb) = Mgamma(loc2glb,loc2glb)+ MK;
     end
