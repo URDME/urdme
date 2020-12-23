@@ -37,6 +37,7 @@ sdof = find(Pr > 1); % voxels with 2 cells
 Idof = (N*(Pr ~= 0) > 0 & Pr == 0); % empty voxels touching occupied ones
 idof1 = find(Idof & ~VPr); % "external" BC1
 idof2 = find(Idof & VPr); % "internal" BC2
+
 idof3 = find(~VPr & N_Mgamma*VPr > 0); % boundary around "visited voxels"
 idof3 = setdiff(idof3,idof1);
 idof = find(Idof);
