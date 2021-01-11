@@ -10,7 +10,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 D=1; %D_rate 
 
 % simulation interval
-Tend = 200;
+Tend = 161;
 tspan = linspace(0,Tend,101);
 timescaling=0.005;
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
@@ -23,7 +23,7 @@ exp = 0;
 if exp == 0
     % Normal run------------------------------------
     start_value = 1;
-    radius = 0.09;
+    radius = 0.05;
     
     cons = 0.0015;        % consumption of oxygen by cells
     cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation

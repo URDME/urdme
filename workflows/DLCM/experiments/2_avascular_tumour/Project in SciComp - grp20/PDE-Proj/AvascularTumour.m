@@ -15,7 +15,7 @@
 %   voxels. Drate3 is the rate cells move into voxels that are already
 %   occupied.
 
-% C. Jayaweera & A. Graf Brolund 2020-12(revision)
+% M.C. Jayaweera & A. Graf Brolund 2020-12(revision)
 % S. Engblom 2017-12-27 (revision)
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
@@ -39,6 +39,7 @@ irem = find(xc < 1 | yc < 1 | xc > Nvoxels | yc > Nvoxels);
 xc(irem) = [];
 yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
+
 
 % visit marker matrix: 1 for voxels who have been occupied
 VU = (U ~= 0);
@@ -68,6 +69,7 @@ OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 OLa.X = L;
 OLai = fsparse(extdof,extdof,1,size(OLa.X));
 OLa.X = OLa.X-OLai*OLa.X+OLai;   
+
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
 
 
@@ -101,7 +103,6 @@ while tt <= tspan(end)
     dt_bdof = U_new(bdof_m(ind_rates_bdof_n))./(-rates_bdof(bdof_m_(ind_rates_bdof_n)));
     
     
-
     if (sum(isinf(dt_sdof))>0)
         inf;
     end
@@ -151,5 +152,5 @@ profile off
 profile report
 
 %%
-TumorGraphics;
+TumorGraphicsResult;
 
