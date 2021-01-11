@@ -20,9 +20,11 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-doGif = true;
+doGif = false;
 doSave = true;
-Tend = 10;
+% Choose to add idof3
+do_idof3 = true;
+Tend = 2000;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -46,7 +48,7 @@ BC1 = 10; % BC for the pressure equation for unvisited boundary
 BC2 = 1; % BC for the visited boundary
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-alpha = 1e+1;
+alpha = 1e+4;
 alpha_inv = 1/alpha;
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -54,16 +56,16 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
 mesh_type = 1; % 1: cartesian, 2: hexagonal
-[P,E,T,gradquotient] = basic_mesh(mesh_type,Nvoxels);
+[P,E,T,gradquotient] = basic_mesh2(mesh_type,Nvoxels);
 % [P,E,T,gradquotient] = flipped_mesh(Nvoxels);
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
-[L,dM,N,M] = dt_operators(P,T);
+[L,dM,N] = dt_operators(P,T);
 Mgamma = assemble_Mgamma(P,T);
 Mgamma = Mgamma./dM;
-% load('invM.mat');
+N_Mgamma = (Mgamma ~= 0) - speye(size(Mgamma));
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -74,7 +76,7 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 5; % Choose initial condition (1,2,3,4,5,6)
+IC = 1; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.35; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
@@ -117,10 +119,15 @@ while tt <= tspan(end)
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
-%   idof3 = find(~VU & N*VU > 0); % boundary around "visited voxels"
-%   idof3 = setdiff(idof3,idof1);
+  idof3 = find(~VU & N_Mgamma*VU > 0); % boundary around "visited voxels"
+  idof3 = setdiff(idof3,idof1);
   idof = find(Idof);
 
+  if do_idof3
+    idof1 = [idof1;idof3];
+    idof = [idof;idof3];
+  end
+  
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof];
 
@@ -134,18 +141,40 @@ while tt <= tspan(end)
   if updLU
     % pressure Laplacian
     La.X = L(Adof,Adof);
-%     Lai = fsparse(idof_,idof_,1,size(La.X));
-%     La.X = La.X-Lai*La.X;
-%     La.X = La.X+Lai;
-    Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-    La.X = La.X+Lai2;
-    % add derived BC to LHS
+    
+    % Get all neihgbours to idof1:s that should be added another -1/h^2
+    % find all neighbours to idof1
+    [r_ind,c] = find(N(idof1,:));
+    % only keep those that are un-active (i.e. not Adof)
+    keep = ismember(c,Adof); 
+    r_ind = reshape(r_ind(~keep),[],1); c = reshape(c(~keep),[],1);
+    % Get actual rows from idof1
+    r = idof1(r_ind);
+    % Shift the column values to the opposite position around the diagonal
+    c_shift = -c + r*2;
+    % Get new matrix with 1 for all neighbours that should be scaled
+    actvN_scale = fsparse(r, c_shift, 1, size(N));
+    % Multiply all rows with three unactive neighbours (where the active
+    % neighbour should be scaled by 3)
+    ind_3neighs = (sum(actvN_scale,2) == 3);
+    actvN_scale(ind_3neighs,:) = actvN_scale(ind_3neighs,:)*3;
+    
+    %%% ADD BC to LHS
+    % Robin to external idof (idof1)
+    Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
+    a_Lai1 = speye(size(Lai1)) - Lai1;
+    
+    % Get local Mgamma for all active dofs
     Mgamma_b = Mgamma(Adof,Adof);
-%     Mgamma_b(idof1_,idof1_) = Mgamma(idof1,idof1);
-    Lai3 = fsparse(idof1_,idof1_,1,size(La.X));
-    La.X = (La.X + alpha_inv*Lai3*Mgamma_b*Lai3);
-%     La.X = invM(Adof,Adof)*(La.X + alpha_inv*Lai3*Mgamma_b);
-%     La.X = M(Adof,Adof) \ (La.X + alpha_inv*Lai3*Mgamma_b);
+
+    % Get only idof1 part of Mgamma_b and then the diagonal
+    Mgamma_b = Lai1*Mgamma_b*Lai1 - Mgamma_b.*Lai1;
+    Mgamma_b = diag(2*sum(Mgamma_b,2));
+    
+    % Adds a -1/h^2 to the L elements that should have one
+    to_add = actvN_scale(Adof,Adof);
+    LaX = La.X + (La.X.*to_add);
+    La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai1;
 
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
@@ -154,14 +183,8 @@ while tt <= tspan(end)
   %% Caculate laplacians
 
   % RHS source term proportional to the over-occupancy and BCs
-%   Pr = full(fsparse([sdof_; idof1_],1, ... % ; 
-%                   [1./dM(sdof); ...
-%                    ones(size(idof1_))], ... % ; 
-%                   [size(La.X,1) 1]));    % RHS first...
   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
                   [size(La.X,1) 1]));     % RHS first...
-%   Pr = ones(size(La.X,1), 1) + full(fsparse(sdof_,1,1./dM(sdof), ...
-%                   [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 

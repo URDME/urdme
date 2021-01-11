@@ -3,13 +3,14 @@
 % Some test
 
 fig420 = figure(420); clf
-fig420.Name = 'alt_StartStruct_idof3_shifted';
+fig420.Name = 'what';
 fig420.Position = [1000 300 600 500];
 ah = gca;
 hold on;
 
 % pdemesh(P,E,T);
-% plot(ah, P(1,:), P(2,:),'.', 'MarkerSize', 10, 'Color', 'b');
+% ii = 1:size(P,2);
+% plot(ah, P(1,ii), P(2,ii),'.', 'MarkerSize', 10, 'Color', 'b');
 
 % hat_val = 0.4;
 % Pr_ = full(zeros(size(Pr))); Pr_(idof1(1)) = hat_val; Pr_(idof1(7)) = hat_val;
@@ -30,23 +31,34 @@ plt_alpha = 0.9;
 % ii = setdiff(1:size(R,1),idof);
 % patch(ah,'Faces',R(ii,:),'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
 %     'EdgeColor','none');
-% axis([-1 1 -1 1 0 1]), axis off,  axis tight
-axis([-1 1 -1 1 0 1]*0.7), axis off, axis tight
+% axis([-1 1 -1 1 0 1]), axis square, axis off
+axis([-1 1 -1 1 0 1]*0.7), axis tight, axis off
 ii = find(Pr == 1);
-patch(ah,'Faces',R(ii,:),'Vertices',V, ...
+p = patch(ah,'Faces',R(ii,:),'Vertices',V, ...
     'FaceColor',graphics_color('bluish green'),'FaceAlpha',plt_alpha);%,'EdgeColor','none');
+set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
 ii = find(Pr == 2);
-patch(ah,'Faces',R(ii,:),'Vertices',V, ...
+p = patch(ah,'Faces',R(ii,:),'Vertices',V, ...
     'FaceColor',graphics_color('vermillion'),'FaceAlpha',plt_alpha);%,'EdgeColor','none');
+set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
 ii = find(Pr == -1);
-patch(ah,'Faces',R(ii,:),'Vertices',V, ...
+p = patch(ah,'Faces',R(ii,:),'Vertices',V, ...
     'FaceColor',[0 0 0],'FaceAlpha',plt_alpha);%,'EdgeColor','none');
+set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
 ii = idof1;
-patch(ah,'Faces',R(ii,:),'Vertices',V, ...
+p = patch(ah,'Faces',R(ii,:),'Vertices',V, ...
     'FaceColor',[0,0,1],'FaceAlpha',plt_alpha-0.1);%,'EdgeColor','none');
+set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
 % title('Start out structure')
 drawnow;
 % view(3);
+
+% ii = find(Pr);
+% plot(ah, P(1,ii), P(2,ii),'square', 'MarkerSize', 10, 'Color', 'k','Displayname',sprintf('\\Omega'));
+% ii = idof1;
+% plot(ah, P(1,ii), P(2,ii),'.', 'MarkerSize', 10, 'Color', 'k','Displayname',sprintf('\\Gamma'));
+% legend('FontSize', 14);
+
 
 for k = 1:length(Adof)
     text(ah,P(1,Adof(k)),P(2,Adof(k)),sprintf('p_{%d}',k),'Color','w','FontSize',11,'HorizontalAlignment','center');
@@ -54,11 +66,21 @@ end
 
 
 % Making plot tight and keep colors right
-% outerpos = ah.OuterPosition;
-% ti = ah.TightInset; 
-% left = outerpos(1) + ti(1);
-% bottom = outerpos(2) + ti(2);
-% ax_width = outerpos(3) - ti(1) - ti(3);
-% ax_height = outerpos(4) - ti(2) - ti(4);
-% ah.Position = [left bottom ax_width ax_height];
+outerpos = ah.OuterPosition;
+ti = ah.TightInset; 
+left = outerpos(1) + ti(1);
+bottom = outerpos(2) + ti(2);
+ax_width = outerpos(3) - ti(1) - ti(3);
+ax_height = outerpos(4) - ti(2) - ti(4);
+ah.Position = [left bottom ax_width ax_height];
+set(gca,'LooseInset',get(gca,'TightInset'));
+
+% set(gcf, 'PaperSize', [6.25 6.25]);
+% set(gcf, 'PaperPositionMode', 'manual');
+% set(gcf, 'PaperPosition', [0 0 6.25 6.25]);
+% 
+% set(gcf, 'PaperUnits', 'inches');
+% set(gcf, 'PaperSize', [6.25 6.25]);
+% set(gcf, 'PaperPositionMode', 'manual');
+% set(gcf, 'PaperPosition', [0 0 6.25 6.25]);
 fig420.InvertHardcopy = 'off';

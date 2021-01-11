@@ -1,7 +1,7 @@
 %% Downsclaled AvascularTumour problem 11x11 with inner 3x3 geometry
 
 % Number of voxels and step size h
-Nvoxels = 31;
+Nvoxels = 43;
 h = 2/(Nvoxels-1);
 
 % Choose to add idof3
@@ -18,12 +18,11 @@ N_Mgamma = (Mgamma ~= 0) - speye(size(Mgamma));
 neigh = full(sum(N,2));
 
 % Initial population that creates 3x3 inner geometry
-IC = 2; % Choose initial condition (1,2,3,4,5,6)
+IC = 5; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.3; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 Pr = setInitialCondition(IC,R1,R2,P,Nvoxels);
-% P_inds = find((P(1,:) > -1 & P(1,:) < 1).*(P(2,:) > -1 & P(2,:) < 1));
-% Pr = fsparse(P_inds(:),1, ones(size(P_inds(:))), [Nvoxels^2 1]); 
+% Pr = circshift(Pr,-1);
 VPr = (Pr ~= 0);
 % Pr(Pr == -1) = 0; % Set all dead cells to 0 to create internal boundary cells (idof2)
 
@@ -44,43 +43,38 @@ if do_idof3
 end
 
 % Get all neihgbours to idof1:s that should be added another -1/h^2
-% idof1-diagonal global matrix
-F_idof1 = fsparse(idof1,idof1,1,size(N)); 
 % find all neighbours to idof1
-[r,c] = find(F_idof1*N);
-% only keep those that are active (i.e. Adof)
+[r_ind,c] = find(N(idof1,:));
+% only keep those that are un-active (i.e. not Adof)
 keep = ismember(c,[adof;idof]); 
-r = reshape(r(keep),[],1); c = reshape(c(keep),[],1);
-% Create matrix with 1 for all active neighbours
-neighs = fsparse(r,c,1,size(N));
-% Get matrix with 1 for all unactive ones
-ua_N = F_idof1*N-neighs;
-% Find row and column values
-[r_un, c_un] = find(ua_N);
+r_ind = reshape(r_ind(~keep),[],1); c = reshape(c(~keep),[],1);
+% Get actual rows from idof1
+r = idof1(r_ind);
 % Shift the column values to the opposite position around the diagonal
-c_un_shift = -c_un + r_un*2;
-% Get new matrix with 1 for all the shifted neighbours
-ua_N_shift = fsparse(r_un, c_un_shift, 1, size(N));
-% Multiply all rows with three unactive neighbours with 3
-ind_3neighs = (sum(ua_N_shift,2) == 3);
-ua_N_shift(ind_3neighs,:) = ua_N_shift(ind_3neighs,:)*3;
+c_shift = -c + r*2;
+% Get new matrix with 1 for all neighbours that should be scaled
+actvN_scale = fsparse(r, c_shift, 1, size(N));
+% Multiply all rows with three unactive neighbours (where the active
+% neighbour should be scaled by 3)
+ind_3neighs = (sum(actvN_scale,2) == 3);
+actvN_scale(ind_3neighs,:) = actvN_scale(ind_3neighs,:)*3;
 
 % Determine also a local enumeration, eg. [1 2 3
 % ... numel(Adof)].
 Adof = [adof;idof];
  Adof_ = (1:numel(Adof))';
-[adof_,sdof_,idof_,idof1_,idof2_,idof3_,bdof_m_] = ...
-      map(Adof_,Adof,adof,sdof,idof,idof1,idof2,idof3,bdof_m);
+[adof_,sdof_,idof_,idof1_,idof2_,bdof_m_] = ...
+      map(Adof_,Adof,adof,sdof,idof,idof1,idof2,bdof_m);
 
 % Plot how the start looks like
 plotInitialPic;
 
 % Step through different values of alpha
-alpha = 10.^(-3:0.5:3);
-alpha_inv = 1./alpha;
+alpha = 10.^(-4:0.2:4);
+alpha_inv_vec = [1./alpha,0];
 ymax = 0;
 zmax = 0;
-for a_inv = alpha_inv
+for alpha_inv = alpha_inv_vec
 
     %%% LHS
     % Get local L for all active dofs
@@ -89,27 +83,29 @@ for a_inv = alpha_inv
     Lai = fsparse(idof1_,idof1_,1,size(LaX));
     a_Lai = speye(size(Lai)) - Lai;
     
+    LaX = LaX - Lai.*LaX;
+    LaX = LaX - diag(sum(Lai*LaX,2));
+    
     % Get local Mgamma for all active dofs
     Mgamma_b = Mgamma_dM(Adof,Adof);
 
     % Get only idof1 part of Mgamma_b and then the diagonal
     Mgamma_b_toAdd = Lai*Mgamma_b*Lai - Mgamma_b.*Lai;
-    Mgamma_b_toAdd = diag(2*sum(Mgamma_b_toAdd,2));
+    Mgamma_b_toAdd = Mgamma_b_toAdd + diag(2*sum(Mgamma_b_toAdd,2));
     
     % Adds a -1/h^2 to the L elements that should have one
-    to_add = ua_N_shift(Adof,Adof);
-    LaX = LaX + (LaX.*to_add);
-    lhs = LaX + a_inv*Mgamma_b_toAdd - a_Lai*LaX*Lai;
+%     to_add = actvN_scale(Adof,Adof);
+%     LaX = LaX + (LaX.*to_add);
+    lhs = LaX - a_Lai*LaX*Lai;
 
     %%% RHS   
-    rhs = fsparse(sdof_,1,1./dM(sdof),[size(LaX,1) 1]);
-%     rhs = fsparse(Adof_,1,(sin(4*pi*P(1,Adof)).*sin(4*pi*P(2,Adof)))',[size(LaX,1) 1]);
-    
-%     rhs = (lhs'*rhs); lhs = (lhs'*lhs);
+    rhs = fsparse(sdof_,1,1./dM(sdof),[size(LaX,1) 1]);       
+%     rhs = fsparse(Adof_,1,(cos(2*pi*P(1,Adof)).*sin(2*pi*P(2,Adof)))',[size(LaX,1) 1]);
+%     rhs = rhs - mean(rhs); 
 
     %%% SOLVE
     X_Pr = full(lhs \ rhs);
-    assert(sum(X_Pr < 0) == 0, "X_Pr solution gives negative pressures!")
+%     assert(sum(X_Pr < 0) == 0, "X_Pr solution gives negative pressures!")
 
     %%% PLOT PRESSURE DIFF
     fig1 = figure(1);
@@ -122,7 +118,8 @@ for a_inv = alpha_inv
     dcm_obj = datacursormode(fig1);
     set(dcm_obj,'UpdateFcn',{@datacursor,labels})
     % set ylim and title
-    ylabel('Pr diff');
+    xlabel('Voxel connections');
+    ylabel('Pr difference');
     if ymax < max(grad)
         ymax = max(grad);
     end
@@ -142,16 +139,16 @@ for a_inv = alpha_inv
     if zmax < max(X_Pr)
         zmax = max(X_Pr);
     end
-    zlim([0 zmax])
+%     zlim([0 zmax])
     hold off;
     grid on;
 %     colormap('jet');
-    title(sprintf('alpha = %d', 1/a_inv));
+    condi = rcond(full((lhs)));
+    title(sprintf('alpha = %e \n rcond = %e', 1/alpha_inv,condi));
     view(3);
     
-    % Print conditionnumber of LHS with rcond
-    condi = rcond(full((lhs)));
-    fprintf('rcond(lhs) = %d  \n',condi);
+    % Print condition number of LHS with rcond
+    fprintf('alpha = %e \t rcond(lhs) = %e  \n',1/alpha_inv,condi);
     if condi < 1e-15
         pause
         disp('Not very good this LHS huh?')

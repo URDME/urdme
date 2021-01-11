@@ -18,19 +18,14 @@
 % S. Engblom 2017-12-27 (revision)
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
-% for IC = [1,5]
-% for alpha = [5e-2, 5e-1]
-%    alpha_inv = 1/alpha; 
-doGif = false;
-doSave = true;
-% Choose to add idof3
-do_idof3 = true;
+
+% Simulations settings
+doGif = false; % choose to plot the gif of the tumour after simulation
+doSave = true; % choose to save the parameters in saveData file.
+do_idof3 = true; % choose to add idof3
+
 % simulation interval
-% if IC == 1
-    Tend = 400;
-% else
-%     Tend = 400;
-% end
+Tend = 1000;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -50,12 +45,8 @@ Drate3 = 0.01;     % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 
 % boundary conditions
-BC1 = 10; % BC for the pressure equation for unvisited boundary
-BC2 = 1; % BC for the visited boundary
-OBC1 = 0; % BC for the oxygen equation for unvisited boundary
-OBC2 = 0; % BC for the visited boundary
-alpha = 1e+2;
-alpha_inv = 1/alpha;
+alpha = 1e+3; % weighting parameter for Robin BC
+alpha_inv = 1/alpha; % inverse is the value used in simulation
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
@@ -70,7 +61,7 @@ mesh_type = 1; % 1: cartesian, 2: hexagonal
 [L,dM,N,M] = dt_operators(P,T);
 Mgamma = assemble_Mgamma(P,T);
 Mgamma = Mgamma./dM;
-N_Mgamma = (Mgamma ~= 0) - speye(size(Mgamma));
+neigh_Mgamma = (Mgamma ~= 0) - speye(size(Mgamma));
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -81,7 +72,7 @@ yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
 % Initial population
-IC = 5; % Choose initial condition (1,2,3,4,5,6)
+IC = 1; % Choose initial condition (1,2,3,4,5,6)
 R1 = 0.35; % Radius of whole initial tumour
 R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
 U = setInitialCondition(IC,R1,R2,P,Nvoxels);
@@ -102,7 +93,6 @@ La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % event counter
 Ne = struct('moveb1',0,'moveb2',0,'moves',0,'birth',0,'death',0,'degrade',0);
-timing_vec = zeros(6,length(tspan)+1);
 
 % max radius and inspect_rates vectors
 max_radius = zeros(1,numel(tspan));
@@ -114,7 +104,6 @@ OLai = fsparse(extdof,extdof,1,size(OLa.X));
 OLa.X = OLa.X-OLai*OLa.X+OLai;
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
 
-% tic
 while tt <= tspan(end)
   %% classify the DOFs
   adof = find(U); % all filled voxels
@@ -127,7 +116,7 @@ while tt <= tspan(end)
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
-  idof3 = find(~VU & N_Mgamma*VU > 0); % boundary around "visited voxels"
+  idof3 = find(~VU & neigh_Mgamma*VU > 0); % boundary around "visited voxels"
   idof3 = setdiff(idof3,idof1);
   idof = find(Idof);
   % Divide bdof_m into the singularly occupied voxels
@@ -139,6 +128,7 @@ while tt <= tspan(end)
   bdof_m1 = reshape(bdof_m1,[],1);
   bdof_m2 = reshape(bdof_m2,[],1);
 
+  % If idof3 is used, incoorporate into the idof
   if do_idof3
     idof1 = [idof1;idof3];
     idof = [idof;idof3];
@@ -155,16 +145,31 @@ while tt <= tspan(end)
       map(Adof_,Adof,bdof_m,bdof_m1,bdof_m2,sdof,sdof_m,idof1,idof2,idof,adof);
   %% Update LU
   if updLU
-     % pressure Laplacian
+    % pressure Laplacian
     La.X = L(Adof,Adof);
-
+    
     %%% ADD BC to LHS
     % Robin to external idof (idof1)
     Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
     a_Lai1 = speye(size(Lai1)) - Lai1;
     
-    La.X = La.X - Lai1*La.X + Lai1;
+    % Scale Laplacian on boundary
+    La.X = La.X - Lai1.*La.X;
+    La.X = La.X - diag(sum(Lai1*La.X,2));
+    
+    % Get local Mgamma for all active dofs
+    Mgamma_b = Mgamma(Adof,Adof);
 
+    % Get only idof1 part of Mgamma_b and set the diagonal as the sum of
+    % all non-diagonal elements times 2
+    Mgamma_b = Lai1*Mgamma_b*Lai1 - Mgamma_b.*Lai1;
+    Mgamma_b = Mgamma_b + diag(2*sum(Mgamma_b,2));
+    
+    % Put together the LHS and remove the connection from adof to idof1
+    % (this sets Dirichlet for adof but keeps the Robin for the boundary)
+    La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai1;
+    
+    % LU-factorize
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
   end
@@ -176,7 +181,6 @@ while tt <= tspan(end)
                   [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
-%   Pr = normalize(Pr,'range');
 
   % RHS source term proportional to the over-occupancy and BCs
   Oxy = full(fsparse([extdof; adof],1, ...
@@ -231,8 +235,6 @@ while tt <= tspan(end)
   %% Caclutate which is suppose to happen
   intens = [moveb1; moveb2; moves; birth; death; degrade];
   lambda = sum(intens);
-%   fprintf('sum(moveb2)/sum(moveb1) = %d \n', sum(moveb2)/sum(moveb1));
-%   fprintf('(sum(moveb2) + sum(moveb1))/sum(moves) = %d \n', (sum(moveb2) + sum(moveb1))/sum(moves));
   dt = -reallog(rand)/lambda; 
   rnd = rand*lambda;
   cum = intens(1);
@@ -334,7 +336,6 @@ while tt <= tspan(end)
     % monitor the maximum outlier cell:
     max_radius(i+1:iend) = sqrt(max(P(1,adof).^2+P(2,adof).^2));
 
-
     % the number of cells
     num_cells = sum(abs(U));
 
@@ -343,13 +344,6 @@ while tt <= tspan(end)
                      sum(birth) sum(death) sum(degrade)];
 
     i = iend;
-    
-%     figure(8);
-%     plot(Pr)
-%     hold on;
-%     xxx = 1:length(Pr);
-%     plot(1:length(Pr),ones(size(xxx))*mean(Pr), 'g', 'LineWidth',1.5)
-%     legend('Pr', sprintf('Mean Pr = %0.3f',mean(Pr)));
   end
 
   tt = tt+dt;
@@ -362,8 +356,7 @@ end
 report(tt,U,'done');
 
 % return;
-%%
-% create a GIF animation
+%% create a GIF animation
 
 % population appearance
 figure(3), clf,
@@ -390,8 +383,7 @@ if doGif
 else
     patchCurrentCells;
 end
-%%
-% investigate the time evolution of the different cell numbers
+%% investigate the time evolution of the different cell numbers
 figure(4), clf
 spsum  = @(U)(full(sum(abs(U))));
 deadsum = @(U)(full(sum(U == -1)));
@@ -415,11 +407,12 @@ legend('total', 'dead','double','single');
 
 
 %% Plot the maxium radius through time
-% figure(5), clf
-% plot(tspan,max_radius);
-% xlabel('time')
-% ylabel('max radius')
-% grid on;
+figure(5)%, clf
+plot(tspan,max_radius);
+xlabel('time')
+ylabel('max radius')
+grid on;
+hold on;
 
 %% Plot the rates through time
 figure(6), clf
@@ -438,7 +431,7 @@ end
 %% Save the important data in a struct
 if doSave
     saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
-        'R', {R}, 'V', {V}, 'N', {N}, 'BC1', {BC1}, 'BC2', {BC2}, ...
+        'R', {R}, 'V', {V}, 'N', {N}, ...
         'max_radius', {max_radius}, 'Ne', {Ne}, 'inspect_rates', {inspect_rates}, ...
         'alpha', {alpha}, 'Pr', {Pr}, 'Adof', {Adof},  ...
         'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
@@ -455,10 +448,3 @@ if doSave
     save(filename_saveData,'-struct','saveData');
     % print('-f7', "images/pressurePlot_" + filename_, '-depsc');
 end
-% end
-% end
-return;
-
-% % saves the GIF
-% movie2gif(M,{M([1:2 end]).cdata},'animations/Tumour.gif', ...
-%           'delaytime',0.1,'loopcount',0);

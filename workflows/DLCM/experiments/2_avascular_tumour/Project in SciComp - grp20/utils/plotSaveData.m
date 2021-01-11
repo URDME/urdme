@@ -2,7 +2,7 @@
 % Johannes Dufva 2020-11-06
 
 % Get all saved .mat files from saveData-folder
-folder = 'saveData/2020-12-16, scaleL_neigh_NEWaLai_idof3_IC5/';
+folder = 'saveData/2021-01-09, FEMfinalSetup_T2000_IC1/';
 % folder = 'saveData/';
 DirList = dir(fullfile(folder, '*.mat'));
 Data = cell(1, length(DirList));
@@ -13,7 +13,7 @@ a = 0;
 alphas = [];
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
-        alphas = [alphas, alpha];
+        alphas = [alphas, alpha*k];
 end
 sorted_alphas = sort(alphas);
 [~,sort_k] = ismember(sorted_alphas,alphas);
@@ -22,15 +22,15 @@ sorted_alphas = sort(alphas);
 %close all;
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
-    t_show = length(tspan);
-    if tspan(end) == 400 || tspan(end) == 0
+    t_show = 1;%length(tspan);
+    if tspan(end) == 1000 || tspan(end) == 0
         figure('Name',"CellPlot_" + DirList(k).name(10:end-4));
-        patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-                    'EdgeColor','none');
+% %         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+% %                     'EdgeColor','none');
         hold on,
         U_show = Usave{t_show};
-        axis([-1 1 -1 1]); axis square%, axis off
-%         axis([-1 1 -1 1]*0.65); axis square, %axis off
+%         axis([-1 1 -1 1]); axis square%, axis off
+        axis([-1 1 -1 1]*0.75); axis square%, axis off
         ii = find(U_show == 1);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',graphics_color('bluish green'));
@@ -40,18 +40,54 @@ for k = 1:length(DirList)
         ii = find(U_show == -1);
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',[0 0 0]);
-        ii = idof(ismember(idof,find(~VU)));
-        patch('Faces',R(ii,:),'Vertices',V, ...
-            'FaceColor',[0 0 1]);
-        ii = idof(ismember(idof,find(VU)));
-        patch('Faces',R(ii,:),'Vertices',V, ...
-            'FaceColor',[1 1 0]);
-        title(sprintf('Time = %d, Ncells = %d \n alpha = %d' , ...
+%         ii = idof(ismember(idof,find(~VU)));
+%         patch('Faces',R(ii,:),'Vertices',V, ...
+%             'FaceColor',[0 0 1]);
+%         ii = idof(ismember(idof,find(VU)));
+%         patch('Faces',R(ii,:),'Vertices',V, ...
+%             'FaceColor',[1 1 0]);
+%         title(sprintf('Time = %d, Ncells = %d \n' , ...
+%             tspan(t_show),full(sum(abs(Usave{t_show})))));
+        title(sprintf('Time = %d, Ncells = %d \n \\alpha = %e' , ...
             tspan(t_show),full(sum(abs(Usave{t_show}))), alpha));
 %         title(sprintf('Time = %d, Ncells = %d \n Ne.moveb2 = %d' , ...
 %             tspan(t_show),full(sum(abs(Usave{t_show}))), Ne.moveb2));
-
+        hold off;
+        set(gca,'LooseInset',get(gca,'TightInset'));
         drawnow;
+    end
+end
+
+%% Plot population appearance (over time)
+alphaToShow = 1e-1;
+for k = 1:length(DirList)
+    load([folder, DirList(k).name]);
+    t_show_vec = 1:25:length(tspan);
+    if alpha == alphaToShow
+        for t_show = t_show_vec
+            figure('Name',"CellPlotTIME_t" + t_show + "_" + DirList(k).name(10:end-4));
+            U_show = Usave{t_show};
+            ii = find(U_show == 0);
+            patch('Faces',R(ii,:),'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+            'EdgeColor','none');
+            hold on,
+    %         axis([-1 1 -1 1]); axis square%, axis off
+            axis([-1 1 -1 1]*0.75); axis square%, axis off
+            ii = find(U_show == 1);
+            patch('Faces',R(ii,:),'Vertices',V, ...
+                'FaceColor',graphics_color('bluish green'));
+            ii = find(U_show == 2);
+            patch('Faces',R(ii,:),'Vertices',V, ...
+                'FaceColor',graphics_color('vermillion'));
+            ii = find(U_show == -1);
+            patch('Faces',R(ii,:),'Vertices',V, ...
+                'FaceColor',[0 0 0]);
+            title(sprintf('Time = %d\n', ...
+                tspan(t_show)));
+            hold off;
+            set(gca,'LooseInset',get(gca,'TightInset'));
+            drawnow;
+        end
     end
 end
 
@@ -91,26 +127,37 @@ end
 %% Plot number of total cells together
 spsum  = @(U)(full(sum(abs(U))));
 
-figure('Name',"TOTALPlot_");
+figure('Name',"TOTALPlot_" + folder(10:end-4));
 hold on;
-tToShow = 400;
+tToShow = Tend;
+alphaToShow = [1e-4, 1e-2, 1e-1, 1e+4];
+plotStyle = {'-o','-s','-^','-d'};
 ymax = 1;
 for k = 1:length(DirList)
     load([folder DirList(sort_k(k)).name]);
-    if tspan(end) == tToShow
+    if tspan(end) >= tToShow && ismember(alpha,alphaToShow)
         y = cellfun(spsum,Usave);
-        p1 = plot(tspan,y,'Displayname',sprintf('\\alpha = %d', alpha), ...
-            'Linewidth', 1.0);
+        p1 = plot(tspan,y,plotStyle{1+mod(k-1,length(plotStyle))},...
+            'MarkerIndices',1:10:length(y),...
+            'Displayname',sprintf('\\alpha = %1.0e', alpha), ...
+            'Linewidth', 1.3);
         if max(y) > ymax
             ymax = max(y);
         end
     end
 end
+plot(tspan,ones(length(y),1)*y(1),'Displayname','Initial cells', ...
+            'Linewidth', 1.0,'LineStyle','--','Color','k');
 ymin = min(y);
-title(sprintf('Total cells at t = %d',tToShow));
-xlabel('time')
-ylabel('N cells')
-legend();
+% title(sprintf('Total cells at t = %d',tToShow));
+xlabel('time','Fontsize',12)
+xticks([0,Tend])
+% xticklabels({'-3\pi','-2\pi','-\pi','0','\pi','2\pi','3\pi'})
+ylabel('N cells','Fontsize',12)
+% yticks([1400:300:3200])
+ax = gca;
+ax.FontSize = 12;
+legend('Fontsize',12);
 % ylim([ymin ymax]);
 grid on;
 hold off;
@@ -118,34 +165,36 @@ hold off;
 %% Plot Ne
 load([folder DirList(1).name]);
 fnames = fieldnames(Ne);
-Ne_vector = zeros(length(fnames),length(DirList));
+alphaToShow = [1e-4, 1e-2, 1e-1, 1e+4];
+Ne_vector = zeros(length(fnames),length(alphaToShow));
+kk = 1;
 for k = 1:length(DirList)
     load([folder DirList(sort_k(k)).name]);
-    if tspan(end) == 400 || tspan(end) == 0
-        Ne_vector(:,k) = cell2mat(struct2cell(Ne))';
-        
+    if tspan(end) >= 400 && ismember(alpha,alphaToShow)
+        Ne_vector(:,kk) = cell2mat(struct2cell(Ne))';
+        kk = kk + 1;
     end
 end
 % Remove moveb2 elements (due to its relatively huge impact)
-Ne_vector(2,:) = [];
-fnames(2) = [];
+% Ne_vector(2,:) = [];
+% fnames(2) = [];
 
 % Plot stacked bar plot
-figure('Name',"NePlot_" + folder);
-b = bar(Ne_vector','stacked','LineStyle','none');
+figure('Name',"NePlot_" + folder(10:end-4));
+b = bar(Ne_vector','LineStyle','none');
 
 % Plot settings
 grid on;
 title('Ne without moveb2');
 xlabel('alpha')
 ylabel('rates')
-xticks(1:length(sorted_alphas))
-xticklabels(sorted_alphas);
+xticks(1:length(alphaToShow))
+xticklabels(alphaToShow);
 legend(fnames);
 %% Plot rates
 for k = 1:length(DirList)
     load([folder DirList(k).name]);
-    if tspan(end) == 400 || tspan(end) == 0
+    if tspan(end) == 2000 || tspan(end) == 0
         figure('Name',"RatePlot_" + DirList(k).name(10:end-4));
         plotRates;
     end
@@ -156,7 +205,7 @@ end
 for k = 1:length(DirList)
 %     subplot(figrows, ceil(length(DirList)/figrows),k);  
     load([folder DirList(k).name]);
-    if tspan(end) == 400 || tspan(end) == 0
+    if tspan(end) == 1000 || tspan(end) == 0
         figure('Name',"PrPlot_" + DirList(k).name(10:end-4));
         plotPressure;
     end
@@ -169,5 +218,5 @@ for k = 1:length(openFigures)
     figNumb = openFigures(k).Number;
     figHandle = "-f" + figNumb;
     figName = openFigures(k).Name;
-    print(figHandle, '-r300', "images/" + figName, '-dpng');
+    print(figHandle, '-r300', "images/" + figName,'-painters','-dpdf'); %    '-painters'
 end
