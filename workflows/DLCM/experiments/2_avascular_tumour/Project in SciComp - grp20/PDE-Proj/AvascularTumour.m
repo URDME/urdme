@@ -24,7 +24,8 @@ clear;
 clc;
 close all;
 
-profile on
+%profile on       %Profiler to check which functions are most
+                  %computationally heavy
 
 init_experiment;
 
@@ -85,6 +86,7 @@ while tt <= tspan(end)
     
     intensity_calculation;     %Calculate intensties of rates of events
  
+    % Timestsep calculation
     ind_rates_sdof_n = find(rates_sdof(sdof_m_)<0);
     ind_rates_bdof_n = find(rates_bdof(bdof_m_)<0);
 
@@ -92,29 +94,28 @@ while tt <= tspan(end)
     dt_sdof = U_new(sdof_m(ind_rates_sdof_n))./(-rates_sdof(sdof_m_(ind_rates_sdof_n)));
     dt_bdof = U_new(bdof_m(ind_rates_bdof_n))./(-rates_bdof(bdof_m_(ind_rates_bdof_n)));
     
-    
     if (sum(isinf(dt_sdof))>0)
         inf;
     end
-    dt_test = (min([dt_death; dt_sdof; dt_bdof;(0.1*Tend)]));
-%     dt = max(1/lambda,0.005);
-    dt = dt_test*timescaling;
+    dt_unscaled = (min([dt_death; dt_sdof; dt_bdof;(0.1*Tend)]));
+    dt = dt_unscaled*timescaling;
 
     tspan_calculation;         %save times series of current states
     
     Euler_step;                %Euler step 
 
-    tt = tt+dt;
+    tt = tt+dt;                %Increase time 
     report(tt,U,'');
     
     % update the visited sites
-    VU = VU | U;
+    VU = VU | U_new;
 end
-report(tt,U,'done');
+%report(tt,U,'done');
 
-% return;
-profile off
-profile report
+% return; 
+
+%profile off                  %End of profiler
+%profile report
 
 %%
 TumorGraphicsResult;

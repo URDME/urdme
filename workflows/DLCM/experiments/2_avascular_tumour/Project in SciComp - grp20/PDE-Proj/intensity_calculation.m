@@ -14,7 +14,7 @@ death = (ind_die>0)*r_die;
 degrade = (r_degrade*(U_deadnew(ddof)>0));
 
 %Total intensity 
-intens = [birth; death; degrade; moves; moveb];
+%intens = [birth; death; degrade; moves; moveb];
 
 
 

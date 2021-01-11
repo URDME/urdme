@@ -4,17 +4,17 @@ function collImg = collage
 %# OUTPUT collImg : collage image, with individual images arranged as [a;b,c]
 %#
 
-T1 = imread('Bilder/Collage/T=1.png');
-T2= imread('Bilder/Collage/T=50.png');
-T3= imread('Bilder/Collage/T=100.png');
-T4= imread('Bilder/Collage/T=150.png');
-T5= imread('Bilder/Collage/T=201.png');
+T1 = imread('Pictures/Stoc/T=1.pdf');
+T2= imread('Pictures/Stoc/T=40.pdf');
+T3= imread('Pictures/Stoc/T=80.pdf');
+T4= imread('Pictures/Stoc/T=120.pdf');
+T5= imread('Pictures/Stoc/T=161.pdf');
 
-PT1 = imread('Bilder/Collage/PT=1.png');
-PT2= imread('Bilder/Collage/PT=50.png');
-PT3= imread('Bilder/Collage/PT=100.png');
-PT4= imread('Bilder/Collage/PT=150.png');
-PT5= imread('Bilder/Collage/PT=201.png');
+PT1 = imread('Pictures/PDE/T=1.pdf');
+PT2= imread('Pictures/PDE/T=40.pdf');
+PT3= imread('Pictures/PDE/T=80.pdf');
+PT4= imread('Pictures/PDE/T=120.pdf');
+PT5= imread('Pictures/PDE/T=161.pdf');
 
 
 T1 = imcrop(T1,[183 60 535 530]);

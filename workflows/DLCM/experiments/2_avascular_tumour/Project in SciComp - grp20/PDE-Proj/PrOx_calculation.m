@@ -1,3 +1,4 @@
+
 %Pressure and oxygen calculation
 if updLU
         % pressure Laplacian
@@ -10,7 +11,7 @@ if updLU
 end
 
 % RHS source term proportional to the over-occupancy and BCs
-Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...     % Take U_dead into consideration?
+Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...             %the equilibrium value of pressure is U=1 or U(sdof-1)
     [size(La.X,1) 1]));     % RHS first...
 Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
@@ -21,9 +22,10 @@ Oxy = full(fsparse([extdof; adof],1, ...
     [size(OLa.X,1) 1]));
 Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
 
-if isempty(Oxysave{1})
-    Oxysave{1}=Oxy;
-end
+
+% if isempty(Oxysave{1})
+%     Oxysave{1}=Oxy;
+% end
 
 
 

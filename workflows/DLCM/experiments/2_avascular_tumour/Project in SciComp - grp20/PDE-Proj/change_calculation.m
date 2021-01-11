@@ -1,11 +1,11 @@
 % Change calculation of proliferation, death and degradation
 
 %proliferation-----------------------------
-ind_prol = find((Oxy > cutoff_prol));
+ind_prol = find((Oxy > cutoff_prol));       %index of proliferating cells
 prol_conc = r_prol*U(ind_prol);
 
 %death--------------------------------------
-ind_die = find(Oxy < cutoff_die); %index for dying cells
+ind_die = find(Oxy < cutoff_die);           %index for dying cells
 dead_conc = r_die*U(ind_die);
 
 %degradation--------------------------------
