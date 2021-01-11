@@ -84,16 +84,6 @@ while tt <= tspan(end)
     change_calculation;        %proliferation, death and degradation
     
     intensity_calculation;     %Calculate intensties of rates of events
-    %lambda = sum(intens);
-    %lambda = max(intens); 
-    %dt = 1/lambda
-    
-%     rates_sdof__ = max(-rates_sdof(sdof_m_),0.0000001);
-%     rates_bdof__ = max(-rates_sdof(bdof_m_),0.0000001);   
-%     dt_death =U_new(ind_die)./(dead_conc);
-%     dt_sdof = U_new(sdof_m)./rates_sdof__;
-%     dt_bdof = U_new(bdof_m)./rates_bdof__;
-%          
  
     ind_rates_sdof_n = find(rates_sdof(sdof_m_)<0);
     ind_rates_bdof_n = find(rates_bdof(bdof_m_)<0);
@@ -110,35 +100,10 @@ while tt <= tspan(end)
 %     dt = max(1/lambda,0.005);
     dt = dt_test*timescaling;
 
-   
     tspan_calculation;         %save times series of current states
     
     Euler_step;                %Euler step 
-    %Proliferation
-%     U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
-%     
-%     %Death 
-%     U_new(ind_die) = U_new(ind_die) - dead_conc*dt;
-%     U_deadnew(ind_die) = U_deadnew(ind_die) + dead_conc*dt;
-%     ind_cutoff =  find(U_new < cutoff_remain & (Oxy < cutoff_die));%*check dead/alive instead?
-%     U_new(ind_cutoff) = 0;
-%     
-%     % Degradation
-%     U_deadnew(ddof) = U_deadnew(ddof) - degrade_conc*dt;
-%     U_deadnew(U_deadnew < cutoff_deg) = 0; % remove cells below cutoff_deg
-%         
-% 
-%     % sdof_m
-%     U_new(Adof) = U_new(Adof) + rates_sdof.*dt; 
-%     % bdof_m
-%     U_new(Adof) = U_new(Adof) + rates_bdof*dt; 
-        
 
-%     check = sum(U<0);
-%     if check>0
-%         check
-%     end
-    
     tt = tt+dt;
     report(tt,U,'');
     
