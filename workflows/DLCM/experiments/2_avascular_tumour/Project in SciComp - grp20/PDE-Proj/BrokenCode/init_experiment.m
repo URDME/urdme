@@ -8,18 +8,20 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 D=1; %D_rate 
 
-% simulation interval
-Tend = 21;                %
+% Simulation interval
+Tend = 21;                  %Final time step
 tspan = linspace(0,Tend,101);
-timescaling=0.005;
+timescaling=0.005;          %Time scaling
+
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
 
-exp = 0;
 
-%Experiments
+%-----Experiments ------
+
+exp = 0;        %Set experiment type
 if exp == 0
     % Normal run------------------------------------
     start_value = 1;
@@ -59,6 +61,7 @@ elseif exp ==1
     U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
     U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initialize
     U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initialize
+    
 elseif exp==2 
     %initial: simulation---------------------------
     start_value = 1;

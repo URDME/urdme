@@ -20,7 +20,7 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-Tend = 161;
+Tend = 11;
 tspan = linspace(0,Tend,101);
 %report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -286,14 +286,17 @@ for i = 1:numel(Usave)
   hold on,
   axis([-1 1 -1 1]); axis square, axis off
   ii = find(Usave{i} == 1);
-  patch('Faces',R(ii,:),'Vertices',V, ...
+  single = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',graphics_color('bluish green'));
   ii = find(Usave{i} == 2);
-  patch('Faces',R(ii,:),'Vertices',V, ...
+  double = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',graphics_color('vermillion'));
   ii = find(Usave{i} == -1);
-  patch('Faces',R(ii,:),'Vertices',V, ...
+  dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);
+  
+  legend([single, double, dead],{'single','double', 'dead'},'Location','northeast','NumColumns',3); 
+  
   if title==1
     title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
   end

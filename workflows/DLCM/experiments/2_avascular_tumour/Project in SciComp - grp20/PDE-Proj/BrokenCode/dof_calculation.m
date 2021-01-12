@@ -11,6 +11,9 @@
     
     % voxels with more than concentration 1 in them which may move, 
     % with a voxel containing less number of cells next to it:
+
+    %sdof_m = intersect(find(sum(N.*(U'+U_dead')<(U+U_dead)& logical(N),2)), find(U > 1));
+    %sdof_m = find(sum(N.*(U'+U_dead')<(U+U_dead)&(N&N),2).*(U>1));
     sdof_m = find(sum(N.*(U')<(U)&(N&N),2).*(U>1));
     
     Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
