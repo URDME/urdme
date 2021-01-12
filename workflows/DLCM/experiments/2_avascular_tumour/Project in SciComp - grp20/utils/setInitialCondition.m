@@ -6,7 +6,6 @@ function U_initial = setInitialCondition(IC,R1,R2,P,Nvoxels)
 %   IC3 --> dead cells in center
 %   IC4 --> random; dead/empty in center surrounded by single/doubly occupied
 %   IC5 --> cell with dead center and doubly occupied voxels on boundary 
-%   IC6 --> tumour at T=600 from run with IC1
 % P: point matrix from mesh
 % R1: Radius of whole initial tumour
 % R2: Radius of inner initial setup (doubly occupied, dead etc.)
@@ -52,9 +51,5 @@ elseif IC == 5 % cell with dead center and doubly occupied voxels on boundary
     
     U_initial = fsparse([r1(:); r2(:); r3(:)],1, ...
                 [ones(size(r1,2),1); -1*ones(size(r2,2),1); 2*ones(size(r3,2),1)], ...
-                [Nvoxels^2 1]); 
-            
-else % "random" from previous run
-    U_initial = load('U_random.mat','U').U;
-
+                [Nvoxels^2 1]);
 end
