@@ -122,7 +122,8 @@ while tt <= tspan(end)
   idof3 = find(~VU & N_Mgamma*VU > 0); % boundary around "visited voxels"
   idof3 = setdiff(idof3,idof1);
   idof = find(Idof);
-
+  
+  % Add idof3 to the idofs
   if do_idof3
     idof1 = [idof1;idof3];
     idof = [idof;idof3];
@@ -145,7 +146,7 @@ while tt <= tspan(end)
     %%% ADD BC to LHS
     % Find external idofs (idof1)
     Lai = fsparse(idof1_,idof1_,1,size(La.X));
-    a_Lai1 = speye(size(Lai)) - Lai; % all other nodes
+    a_Lai = speye(size(Lai)) - Lai; % all other nodes
     
     % Scale Laplacian on boundary 
     La.X = La.X - Lai.*La.X; % remove fully supported hat functions 
@@ -160,7 +161,7 @@ while tt <= tspan(end)
     
     % Put together the LHS and remove the connection from adof to idof1
     % (this sets Dirichlet for adof but keeps the Robin for the boundary)
-    La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai;
+    La.X = La.X + alpha_inv*Mgamma_b - a_Lai*La.X*Lai;
 
     % LU factorization
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
@@ -301,7 +302,6 @@ while tt <= tspan(end)
     % monitor the maximum outlier cell:
     max_radius = sqrt(max(P(1,adof).^2+P(2,adof).^2));
 
-
     % the number of cells
     num_cells = sum(abs(U));
 
@@ -310,13 +310,6 @@ while tt <= tspan(end)
                      sum(birth) sum(death) sum(degrade)];
 
     i = iend;
-    
-%     figure(8);
-%     plot(Pr)
-%     hold on;
-%     xxx = 1:length(Pr);
-%     plot(1:length(Pr),ones(size(xxx))*mean(Pr), 'g', 'LineWidth',1.5)
-%     legend('Pr', sprintf('Mean Pr = %0.3f',mean(Pr)));
   end
 
   tt = tt+dt;
@@ -329,10 +322,7 @@ report(tt,U,'done');
 
 % return;
 
-%% Plot
-% create a GIF animation
-
-% population appearance
+%% Plot population appearance
 figure(1), clf,
 if doGif
     M = struct('cdata',{},'colormap',{});
@@ -357,8 +347,7 @@ if doGif
 else
     patchCurrentCells;
 end
-%%
-% investigate the time evolution of the different cell numbers
+%% Investigate the time evolution of the different cell numbers
 figure(2), clf
 spsum  = @(U)(full(sum(abs(U))));
 deadsum = @(U)(full(sum(U == -1)));
@@ -382,6 +371,6 @@ legend('total', 'dead','double','single');
 
 return;
 
-% % saves the GIF
-% movie2gif(M,{M([1:2 end]).cdata},'animations/Tumour.gif', ...
-%           'delaytime',0.1,'loopcount',0);
+% saves the GIF
+movie2gif(M,{M([1:2 end]).cdata},'animations/Tumour.gif', ...
+          'delaytime',0.1,'loopcount',0);
