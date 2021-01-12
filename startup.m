@@ -12,5 +12,5 @@ addpath(genpath([link 'workflows/']));
 
 % Johannes Dufva 2020-10-30
 % path to other functions used
-% run('stenglib/make_all.m')
+run('stenglib/make_all.m')
 run('stenglib/startup.m')

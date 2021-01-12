@@ -20,7 +20,7 @@
 % S. Engblom 2017-02-11
 
 % Simulations settings
-doGif = false; % choose to plot the gif of the tumour after simulation
+doGif = true; % choose to plot the gif of the tumour after simulation
 doSave = true; % choose to save the parameters in saveData file.
 do_idof3 = true; % choose to add idof3
 
@@ -35,7 +35,7 @@ cons = 0.0015;        % consumption of oxygen by cells
 cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
 r_prol = 0.125;       % rate of proliferation of singly occupied voxels
 cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-r_die = 0.125;        % rate of dea th
+r_die = 0.125;        % rate of death
 r_degrade = 0.01;     % rate of degradation for already dead cells
 
 % Permeability parameters.
@@ -45,7 +45,7 @@ Drate3 = 0.01;     % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 
 % boundary conditions
-alpha = 1e+3; % weighting parameter for Robin BC
+alpha = 1e-6; % weighting parameter for Robin BC
 alpha_inv = 1/alpha; % inverse is the value used in simulation
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -60,7 +60,10 @@ mesh_type = 1; % 1: cartesian, 2: hexagonal
 % volume vector, and the sparse neighbor matrix
 [L,dM,N,M] = dt_operators(P,T);
 Mgamma = assemble_Mgamma(P,T);
+Mgamma = Mgamma - diag(diag(Mgamma)); % Remove diagonal
 Mgamma = Mgamma./dM;
+
+% find neighbours on boundary and in the domain
 neigh_Mgamma = (Mgamma ~= 0) - speye(size(Mgamma));
 neigh = full(sum(N,2));
 
@@ -113,12 +116,15 @@ while tt <= tspan(end)
   % voxels with 2 cells in them _which may move_, with a voxel
   % containing less number of cells next to it (actually 1 or 0):
   sdof_m = find(N*(U > 1) < neigh & U > 1);
+  
+  % Define boundary voxels
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
   idof3 = find(~VU & neigh_Mgamma*VU > 0); % boundary around "visited voxels"
   idof3 = setdiff(idof3,idof1);
   idof = find(Idof);
+  
   % Divide bdof_m into the singularly occupied voxels
   % who touch either boundary voxels from idof1 or idof2 
   [ind_r,ind_c] = find(N(bdof_m,:));
@@ -150,24 +156,23 @@ while tt <= tspan(end)
     
     %%% ADD BC to LHS
     % Robin to external idof (idof1)
-    Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
-    a_Lai1 = speye(size(Lai1)) - Lai1;
+    Lai = fsparse(idof1_,idof1_,1,size(La.X));
+    a_Lai1 = speye(size(Lai)) - Lai;
     
     % Scale Laplacian on boundary
-    La.X = La.X - Lai1.*La.X;
-    La.X = La.X - diag(sum(Lai1*La.X,2));
+    La.X = La.X - Lai.*La.X;
+    La.X = La.X - diag(sum(Lai*La.X,2));
     
     % Get local Mgamma for all active dofs
     Mgamma_b = Mgamma(Adof,Adof);
 
     % Get only idof1 part of Mgamma_b and set the diagonal as the sum of
     % all non-diagonal elements times 2
-    Mgamma_b = Lai1*Mgamma_b*Lai1 - Mgamma_b.*Lai1;
-    Mgamma_b = Mgamma_b + diag(2*sum(Mgamma_b,2));
+    Mgamma_b = (Mgamma_b + diag(2*sum(Mgamma_b,2)))*Lai;
     
     % Put together the LHS and remove the connection from adof to idof1
     % (this sets Dirichlet for adof but keeps the Robin for the boundary)
-    La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai1;
+    La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai;
     
     % LU-factorize
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
@@ -178,7 +183,7 @@ while tt <= tspan(end)
 
   % RHS source term proportional to the over-occupancy and BCs
   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
-                  [size(La.X,1) 1]));     % RHS first...
+                    [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 

@@ -19,12 +19,13 @@
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
 
+% simulation settings
+doGif = true; % plot GIF of tumour after simulation
+doSave = true; % save parameters in saveData file
+do_idof3 = true; % add idof3 for continuous boundary (with alternative mesh)
+
 % simulation interval
-doGif = false;
-doSave = true;
-% Choose to add idof3
-do_idof3 = true;
-Tend = 2000;
+Tend = 1000;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -44,27 +45,25 @@ Drate3 = 0.01;     % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 
 % boundary conditions
-BC1 = 10; % BC for the pressure equation for unvisited boundary
-BC2 = 1; % BC for the visited boundary
-OBC1 = 0; % BC for the oxygen equation for unvisited boundary
-OBC2 = 0; % BC for the visited boundary
-alpha = 1e+4;
-alpha_inv = 1/alpha;
+alpha = 1e-4; % weighting parameter for Robin BC
+alpha_inv = 1/alpha; % inverse is the value used in simulation
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
 mesh_type = 1; % 1: cartesian, 2: hexagonal
-[P,E,T,gradquotient] = basic_mesh2(mesh_type,Nvoxels);
-% [P,E,T,gradquotient] = flipped_mesh(Nvoxels);
+[P,E,T,gradquotient] = basic_mesh2(mesh_type,Nvoxels); % alternative mesh
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
 Mgamma = assemble_Mgamma(P,T);
+Mgamma = Mgamma - diag(diag(Mgamma)); % Remove diagonal (added each time step)
 Mgamma = Mgamma./dM;
+
+% find neighbours on boundary and in the domain
 N_Mgamma = (Mgamma ~= 0) - speye(size(Mgamma));
 neigh = full(sum(N,2));
 
@@ -106,7 +105,6 @@ OLai = fsparse(extdof,extdof,1,size(OLa.X));
 OLa.X = OLa.X-OLai*OLa.X+OLai;
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
 
-% tic
 while tt <= tspan(end)
   %% classify the DOFs
   adof = find(U); % all filled voxels
@@ -116,6 +114,8 @@ while tt <= tspan(end)
   % voxels with 2 cells in them _which may move_, with a voxel
   % containing less number of cells next to it (actually 1 or 0):
   sdof_m = find(N*(U > 1) < neigh & U > 1);
+  
+  % define boundary voxels
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
@@ -135,47 +135,34 @@ while tt <= tspan(end)
   % matrix. Determine also a local enumeration, eg. [1 2 3
   % ... numel(Adof)].
   Adof_ = (1:numel(Adof))';  
- [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
+  [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof);
   %% Update LU
   if updLU
-    % pressure Laplacian
+    % pressure Laplacian for active dofs
     La.X = L(Adof,Adof);
     
-    % Get all neihgbours to idof1:s that should be added another -1/h^2
-    % find all neighbours to idof1
-    [r_ind,c] = find(N(idof1,:));
-    % only keep those that are un-active (i.e. not Adof)
-    keep = ismember(c,Adof); 
-    r_ind = reshape(r_ind(~keep),[],1); c = reshape(c(~keep),[],1);
-    % Get actual rows from idof1
-    r = idof1(r_ind);
-    % Shift the column values to the opposite position around the diagonal
-    c_shift = -c + r*2;
-    % Get new matrix with 1 for all neighbours that should be scaled
-    actvN_scale = fsparse(r, c_shift, 1, size(N));
-    % Multiply all rows with three unactive neighbours (where the active
-    % neighbour should be scaled by 3)
-    ind_3neighs = (sum(actvN_scale,2) == 3);
-    actvN_scale(ind_3neighs,:) = actvN_scale(ind_3neighs,:)*3;
-    
     %%% ADD BC to LHS
-    % Robin to external idof (idof1)
-    Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
-    a_Lai1 = speye(size(Lai1)) - Lai1;
+    % Find external idofs (idof1)
+    Lai = fsparse(idof1_,idof1_,1,size(La.X));
+    a_Lai1 = speye(size(Lai)) - Lai; % all other nodes
+    
+    % Scale Laplacian on boundary 
+    La.X = La.X - Lai.*La.X; % remove fully supported hat functions 
+    La.X = La.X - diag(sum(Lai*La.X,2)); % replace with scaled hats
     
     % Get local Mgamma for all active dofs
     Mgamma_b = Mgamma(Adof,Adof);
 
-    % Get only idof1 part of Mgamma_b and then the diagonal
-    Mgamma_b = Lai1*Mgamma_b*Lai1 - Mgamma_b.*Lai1;
-    Mgamma_b = diag(2*sum(Mgamma_b,2));
+    % Get only idof1 part of Mgamma_b and set the diagonal as the sum of
+    % all non-diagonal elements times 2
+    Mgamma_b = Lai*(Mgamma_b + diag(2*sum(Mgamma_b,2)))*Lai;
     
-    % Adds a -1/h^2 to the L elements that should have one
-    to_add = actvN_scale(Adof,Adof);
-    LaX = La.X + (La.X.*to_add);
-    La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai1;
+    % Put together the LHS and remove the connection from adof to idof1
+    % (this sets Dirichlet for adof but keeps the Robin for the boundary)
+    La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai;
 
+    % LU factorization
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
     updLU = false; % assume we can reuse
   end
@@ -184,7 +171,7 @@ while tt <= tspan(end)
 
   % RHS source term proportional to the over-occupancy and BCs
   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
-                  [size(La.X,1) 1]));     % RHS first...
+                    [size(La.X,1) 1]));     % RHS first...
 
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
@@ -338,15 +325,15 @@ while tt <= tspan(end)
   % update the visited sites
   VU = VU | U;
 end
-% toc
 report(tt,U,'done');
 
 % return;
-%%
+
+%% Plot
 % create a GIF animation
 
 % population appearance
-figure(3), clf,
+figure(1), clf,
 if doGif
     M = struct('cdata',{},'colormap',{});
     for i = 1:2:numel(Usave)
@@ -372,7 +359,7 @@ else
 end
 %%
 % investigate the time evolution of the different cell numbers
-figure(4), clf
+figure(2), clf
 spsum  = @(U)(full(sum(abs(U))));
 deadsum = @(U)(full(sum(U == -1)));
 normsum = @(U)(full(sum(U == 1)));
@@ -392,49 +379,6 @@ ylim([0 max(y)]);
 xlabel('time')
 ylabel('N cells')
 legend('total', 'dead','double','single');
-
-
-%% Plot the maxium radius through time
-% figure(5), clf
-% plot(tspan,max_radius);
-% xlabel('time')
-% ylabel('max radius')
-% grid on;
-
-%% Plot the rates through time
-figure(6), clf
-plotRates;
-
-%% Plot Pressure
-figure(7), clf,
-if 1
-    plotPressure;
-else
-    % Here is some weird try on a 3D bar plot
-    % OBSERVE: takes a long time to plot
-    plotPressureBars;
-end
-    
-%% Save the important data in a struct
-if doSave
-    saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
-        'R', {R}, 'V', {V}, 'N', {N}, 'BC1', {BC1}, 'BC2', {BC2}, ...
-        'max_radius', {max_radius}, 'Ne', {Ne}, 'inspect_rates', {inspect_rates}, ...
-        'alpha', {alpha}, 'Pr', {Pr}, 'Adof', {Adof},  ...
-        'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
-        'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
-        'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
-        'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
-        'Tend', {Tend}, 'mesh_type', {mesh_type}, 'Drate_', {Drate_});
-    filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
-    if mesh_type == 2
-        filename_ = filename_ + "_HEX";
-    end
-    filename_ = filename_ + "_" + strjoin(string(fix(clock)),'-');
-    filename_saveData = "saveData/saveData_" + filename_ + ".mat";
-    save(filename_saveData,'-struct','saveData');
-    % print('-f7', "images/pressurePlot_" + filename_, '-depsc');
-end
 
 return;
 
