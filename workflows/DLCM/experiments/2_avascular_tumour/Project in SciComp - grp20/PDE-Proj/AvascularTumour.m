@@ -27,7 +27,7 @@ close all;
 %profile on       %Profiler to check which functions are most
                   %computationally heavy
 
-%%
+%% Initial experiment setup
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
@@ -35,20 +35,17 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);  %gradquotient=1 for Cartesian mesh
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
-D=1; %D_rate 
+D=1; %D_rate, the rate of which cells move in the domain  
 
 % Simulation interval
-Tend = 21;                  %Final time step
+Tend = 51;                  %Final time step
 tspan = linspace(0,Tend,101);
 timescaling=0.005;          %Time scaling
 
-% report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
+report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 %     The user specified cutoff and rate parameters for the proliferation,
 %     death, degradation and consumption rules.
-
-
-% Normal run------------------------------------
 start_value = 1;
 radius = 0.05;
 
@@ -67,7 +64,6 @@ U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
 U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]);      %Intialize
 U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]);   %Initialize
 
-
 % cutoff parameters
 cutoff_bdof = 0.1;
 cutoff_deg = 0.0001;
@@ -82,6 +78,17 @@ OBC2 = 0; % BC for the visited boundary
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);       %N gives the neighbours 
 neigh = full(sum(N,2));
+
+N_vec = zeros(size(N,1),4);         % Matrix used to find sdof_m
+for k = 1:size(N,1)
+    temp = find(N(k,:));
+    if length(temp) == 2
+        temp = [temp, temp(1),temp(2)];
+    elseif length(temp) == 3
+        temp = [temp, temp(1)];
+    end
+    N_vec(k,:) = temp;
+end
 
 % dofs for the sources at the extreme outer circular boundary
 [xc,yc] = getmidpointcircle(1/2*(Nvoxels+1),1/2*(Nvoxels+1),1/2*(Nvoxels-1));
@@ -105,7 +112,6 @@ bdofsave = cell(1,numel(tspan));
 sdofsave = cell(1,numel(tspan));
 sdofbsave = cell(1,numel(tspan));
 
-
 tt = tspan(1);
 i = 1;
 % logic for reuse of LU-factorizations
@@ -120,33 +126,29 @@ OLa.X = OLa.X-OLai*OLa.X+OLai;
 
 [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
 
-%%
+%% Time loop
 while tt <= tspan(end)
+    %% Init U and U_dead and classify the DOFs
     U = U_new;
     U_dead = U_deadnew;
-    
-    
-    %%
-    %dof_calculation;           %Calculation of dofs
-    % classify the DOFs
-    adof = find(U|U_dead); % all filled voxels 
-    
+    U_and_U_dead = U | U_dead;
+  
+    %Classification of the DOFs
+    adof = find(U_and_U_dead); % all filled voxels 
     % singularly occupied voxels on the boundary: 
-    bdof_m = find(N*(U ~= 0 | U_dead ~= 0) < neigh & (U > cutoff_bdof & ...
+    bdof_m = find(N*(U_and_U_dead ~= 0) < neigh & (U > cutoff_bdof & ...
         U <= 1));
-    
     sdof = find(U > 1); %  sdof on the boundary
-    sdof_b = find(N*(U~=0 | U_dead ~=0) < neigh & (U > 1));
-    
+    sdof_b = find(N*(U_and_U_dead ~=0) < neigh & (U > 1));
     % voxels with more than concentration 1 in them which may move, 
     % with a voxel containing less number of cells next to it:
-    sdof_m = find(sum(N.*(U')<(U)&(N&N),2).*(U>1));
-    
-    Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
+    % sdof_m = find(sum(N.*(U')<(U)&(N&N),2).*(U>1));
+    sdof_m = find(U - min(U(N_vec),[],2) > 0 & U>1);
+    Idof = (N*(U_and_U_dead ~= 0) > 0 & U_and_U_dead == 0); % empty voxels touching occupied ones idof1 = find(Idof & ~VU);         % "external" OBC1
     idof1 = find(Idof & ~VU);         % "external" OBC1
     idof2 = find(Idof & VU);          % "internal" OBC2
     idof = find(Idof);
-    ddof = find(U_dead > 0);   %degrading voxels
+    ddof = find(U_dead > 0);            %degrading voxels
     
     % "All DOFs" = adof + idof, like the "hull of adof"
     Adof = [adof; idof];
@@ -158,8 +160,7 @@ while tt <= tspan(end)
     [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_, sdof_b_,ddof_] = ...          
        map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,sdof_b,ddof);
     
-    %%
-    %PrOx_calculation;          %Laplacian calculation
+    %% Calculate Pressure and Oxygen systems
     %Pressure and oxygen calculation
     if updLU
             % pressure Laplacian
@@ -187,66 +188,30 @@ while tt <= tspan(end)
     %     Oxysave{1}=Oxy;
     % end
 
-%%
-    move_calculations;         %sdof and bdof movement calculations
-% 
-%     %Movement calculations
-%     D = 1;
-% 
-%     %sdof_m
-%     rates_sdof = zeros(length(Adof),1);
-% 
-% 
-%     for ind=1:length(sdof_m_)
-%         ix = sdof_m(ind);
-%         ix_ = sdof_m_(ind); 
-% 
-%         jx_ = find(N(ix,Adof)); 
-%         %Pr_diff = max(Pr(ix_)-Pr(jx_),0);
-%         Pr_diff = max(Pr(ix_)-Pr(jx_),0);%*(U(ix)-1);    %proportional to over-occupancy
-% 
-%         rates_sdof(jx_) = rates_sdof(jx_) + D*Pr_diff;
-%         rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
-%     end
-% 
-% 
-%     % % % rates_sdof__ = zeros(length(Adof),1);
-%     % % % 
-%     % % % 
-%     % % % [ii,jj_] = find(N(sdof_m,Adof)); % neighbours...
-%     % % % %keep = find(U(Adof(jj_)) < 1);   % ...to move to
-%     % % % %ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);
-%     % % % % remove any possibly remaining negative rates
-%     % % % %Pr_diff__ = max(Pr(sdof_m_(ii))-Pr(jj_),0).*(U(sdof_m(ii))-1);    %proportional to over-occupancy
-%     % % % Pr_diff__ = max(Pr(sdof_m_(ii))-Pr(jj_),0);    %proportional to over-occupancy
-%     % % % 
-%     % % % grad_sdof = fsparse(ii,1,Pr_diff__*D, numel(sdof_m)); 
-%     % % % %moves = full(gradquotient*grad);
-%     % % % rates_sdof__(sdof_m_) = -gradquotient*grad_sdof;
-%     % % % 
-%     % % % grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof)); 
-%     % % % rates_sdof__ = rates_sdof__ + gradquotient*grad_N;
-%     % % % 
-%     % % % rates_sdof = rates_sdof__;
-% 
-%     % %Euler for sdof_m
-%     % U_new(Adof) = U_new(Adof) + rates_sdof.*dt; 
-% 
-% 
+%% Move calculations
+    %move_calculations;         %sdof and bdof movement calculations
+    
+    %sdof_m  
+    rates_sdof = zeros(length(Adof),1);
+    [ii,jj_] = find(N(sdof_m,Adof)); % neighbours...
+    Pr_diff__ = max(Pr(sdof_m_(ii))-Pr(jj_),0);    %proportional to over-occupancy
+    grad_sdof = fsparse(ii,1,Pr_diff__*D, numel(sdof_m));
+    rates_sdof(sdof_m_) = -gradquotient*grad_sdof;
+    grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof));
+    rates_sdof = rates_sdof + gradquotient*grad_N;
+    
 %     % bdof_m
 %     rates_bdof = zeros(length(Adof),1);
 % 
 %     %check if boundary is updated. If no bdofs exist, skip bdof calculation
-%     if (sum(bdof_m) + sum(sdof_b)) == 0
-%         updLU = true;
-%         return
-%     elseif sum(bdof_m) == 0
+%     if sum(bdof_m) == 0
 %         updLU = true;
 %         return          %!Check this expression if integrated into larger code
 %     else
-%         %bdof
-%         %rates_bdof = zeros(length(Adof),1);
-% 
+%        
+    % bdof_m
+    rates_bdof = zeros(length(Adof),1);
+    %check if boundary is updated. If no bdofs exist, skip bdof calculation
 %         for ind=1:length(bdof_m_)
 %             % movement of a boundary (singly occupied) voxel
 %             ix = bdof_m(ind);
@@ -254,38 +219,48 @@ while tt <= tspan(end)
 % 
 %             jx_ = find(N(ix,Adof));
 %             % (will only move into an empty voxel:)
-%             jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
-%             Pr_diff = max(Pr(ix_)-Pr(jx_),0);%*U(ix);    %proportionellt mot over-occupancy
+%             jx_ = jx_(U_and_U_dead(Adof(jx_)) == 0);
+%             Pr_diff = max(Pr(ix_)-Pr(jx_),0);
 % 
 %             rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
 %             rates_bdof(ix_) = -sum(D*Pr_diff); 
 %         end
-% 
-%     % % %     
-%     % % %     rates_bdof__ = zeros(length(Adof),1);
-%     % % % 
-%     % % % 
-%     % % %     [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
-%     % % %     %keep = find(U(Adof(jj_)) < 1);   % ...to move to
-%     % % %     %ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);
-%     % % %     % remove any possibly remaining negative rates
-%     % % %     Pr_diff__ = max(Pr(bdof_m_(ii))-Pr(jj_),0).*(U(bdof_m(ii))-1);    %proportionellt mot over-occupancy
-%     % % %     grad_bdof = fsparse(ii,1,Pr_diff__*D, numel(bdof_m)); 
-%     % % %     %moves = full(gradquotient*grad);
-%     % % %     rates_bdof__(bdof_m_) = -gradquotient*grad_bdof;
-%     % % % 
-%     % % %     grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof)); 
-%     % % %     rates_bdof__ = rates_bdof__ + gradquotient*grad_N;
-%     % % % 
-%     % % %     rates_bdof = rates_bdof__;
-% 
-% 
-%         %Euler for bdof_m
-%     %     U_new(Adof) = U_new(Adof) + rates_bdof*dt; 
-% 
-%         updLU = true;
-%     end
+        
+        for ind=1:length(bdof_m_)
+            % movement of a boundary (singly occupied) voxel
+            ix = bdof_m(ind);
+            ix_ = bdof_m_(ind);
 
+            jx_ = find(N(ix,Adof));
+            % (will only move into an empty voxel:)
+            jx_ = jx_(U_and_U_dead(Adof(jx_)) == 0);
+            %jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
+            Pr_diff = max(Pr(ix_)-Pr(jx_),0);%*U(ix);    %proportionellt mot over-occupancy
+
+            rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
+            rates_bdof(ix_) = -sum(D*Pr_diff); 
+        end
+
+    
+        
+%         rates_bdof = zeros(length(Adof),1);
+%         [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
+%         %keep = find(U(Adof(jj_)) < 1);   % ...to move to
+%         %ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);
+%         % remove any possibly remaining negative rates
+%         %Pr_diff__ = max(Pr(bdof_m_(ii))-Pr(jj_),0).*(U(bdof_m(ii))-1);    %proportionellt mot over-occupancy
+%         Pr_diff__ = max(Pr(bdof_m_(ii))-Pr(jj_),0);    %proportionellt mot over-occupancy
+% 
+%         grad_bdof = fsparse(ii,1,Pr_diff__*D, numel(bdof_m)); 
+%         %moves = full(gradquotient*grad);
+%         rates_bdof(bdof_m_) = -gradquotient*grad_bdof;
+%     
+%         grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof)); 
+%         rates_bdof = rates_bdof + gradquotient*grad_N;
+% %         updLU = true;
+        
+%     end
+    updLU = true;
 
 %%    
     %Change calculation of proliferation, death and degradation
@@ -301,21 +276,20 @@ while tt <= tspan(end)
     %degradation--------------------------------
     degrade_conc = U_deadnew(ddof)*r_degrade; 
 
- %%
+ %% Intensity calculation
     %Calculate intensties of rates of events
+    % bdof_m
     moveb = rates_bdof(bdof_m_);
+    % sdof_m
     moves = rates_sdof(sdof_m_);
-    
     %proliferation
-    birth = (ind_prol>0)*r_prol; 
-
+    birth = (ind_prol>0)*r_prol;
     %death
     death = (ind_die>0)*r_die; 
-
     %degradation
     degrade = (r_degrade*(U_deadnew(ddof)>0));
     
-%%    
+%%  Calculate timestep dt  
     % Timestsep calculation
     ind_rates_sdof_n = find(rates_sdof(sdof_m_)<0);
     ind_rates_bdof_n = find(rates_bdof(bdof_m_)<0);
@@ -330,7 +304,7 @@ while tt <= tspan(end)
     dt_unscaled = (min([dt_death; dt_sdof; dt_bdof;(0.1*Tend)]));
     dt = dt_unscaled*timescaling;
 
-%%
+%%  Save time series of current step
     % Report back and save time series of current states 
     if tspan(i+1) < tt+dt
         iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
@@ -351,9 +325,7 @@ while tt <= tspan(end)
         max_radius = sqrt(max(P(1,adof).^2+P(2,adof).^2));
     end
 
-%%  
-    %Euler forward step
-
+%%  Euler forward step
     %Proliferation
     U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
 
@@ -374,7 +346,7 @@ while tt <= tspan(end)
     U_new(Adof) = U_new(Adof) + rates_bdof*dt;
 
 
-%%
+%% Step in time
     tt = tt+dt;                %Increase time with time step
     report(tt,U,'');
     
@@ -388,12 +360,10 @@ end
 %profile off                  %End of profiler
 %profile report
 
-%%
+%% Graphics
 
-%Graphics
 tumour_figure=1;
 
-%%
 if tumour_figure==1
     % create a GIF animation
     Mnormal = struct('cdata',{},'colormap',{});
@@ -445,4 +415,18 @@ if tumour_figure==1
               'delaytime',0.1,'loopcount',0);
 end
 
+%% SAVE DATA
+saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
+    'R', {R}, 'V', {V}, 'N', {N}, 'Udsave', {Udsave}, ...
+    'max_radius', {max_radius}, 'Pr', {Pr}, 'Adof', {Adof},  ...
+    'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
+    'Nvoxels',{Nvoxels}, ...
+    'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
+    'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
+    'Tend', {Tend});
+%filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
+filename_ = filename_ + "_" + strjoin(string(fix(clock)),'-');
+filename_saveData = "testShit/saveData_" + filename_ + ".mat";
+save(filename_saveData,'-struct','saveData');
 
+return;
