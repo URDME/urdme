@@ -70,10 +70,10 @@ else
         rates_bdof(ix_) = -sum(D*Pr_diff); 
     end
     
-% %     
-% %     rates_bdof__ = zeros(length(Adof),1);
-% % 
-% % 
+% % %     
+% % %     rates_bdof__ = zeros(length(Adof),1);
+% % % 
+% % % 
 % % %     [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
 % % %     %keep = find(U(Adof(jj_)) < 1);   % ...to move to
 % % %     %ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);

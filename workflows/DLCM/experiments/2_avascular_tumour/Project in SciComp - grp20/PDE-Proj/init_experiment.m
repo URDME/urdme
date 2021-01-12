@@ -11,7 +11,7 @@ D=1; %D_rate
 % Simulation interval
 Tend = 201;                  %Final time step
 tspan = linspace(0,Tend,101);
-timescaling=0.1;          %Time scaling
+timescaling=0.005;          %Time scaling
 
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 

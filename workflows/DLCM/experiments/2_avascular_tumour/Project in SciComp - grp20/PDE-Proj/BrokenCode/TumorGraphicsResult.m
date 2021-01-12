@@ -182,17 +182,24 @@ end
 if normalfigure==1
 % create a GIF animation
 Mnormal = struct('cdata',{},'colormap',{});
-figure(11), clf,
+fig = figure(11), 
+clf,
+%fig11.InvertHardcopy = 'off';
+%set(fig11,'color','none');
+
 
 Umat=full(cell2mat(Usave));
-colorbar
-caxis([0 max(max(Umat))])
+%colorbar
 colorbar('southoutside')
+caxis([0 max(max(Umat))])
 colorlabel('Concentration of cells, U')
+title=0;
 
 for i = 1:numel(Usave)
-    
-    patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+    clf
+    %patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+    %    'EdgeColor','none');
+    patch('Faces',R,'Vertices',V,'FaceColor','none', ...
         'EdgeColor','none');
     hold on,
     axis([-1 1 -1 1]); axis square, axis off
@@ -206,25 +213,40 @@ for i = 1:numel(Usave)
         'FaceColor',[0 0 0]);%'FaceVertexCData',color,'FaceColor','flat');
     %legend(p_dead,'dead')
     
-    %title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
-    title(sprintf('Time = %d',tspan(i)));
+    if title==1
+        %title(sprintf('Time = %d, Ncells = %d, Nbdof = %d',tspan(i),full(sum(abs(Usave{i}))),length(bdofsave{i})));
+        title(sprintf('Time = %d',tspan(i)));
+    end
     drawnow;
     Mnormal(i) = getframe(gcf);
     
           %Save 5 snapshots of the tumor progression
-      if i~= [1 ceil([0.24 0.49 0.74 1]*numel(Usave))]
+      %if i~= [1 ceil([0.24 0.49 0.74 1]*numel(Usave))]
 
+      %if i~= [1 ceil([0.24 0.33 0.49 0.66 0.74 1]*numel(Usave))]
+          
+      if i~= [1 ceil([0.24 0.49 0.74 1]*numel(Usave))]
       elseif i==1
-          filename = 'T=1.png';
-          %set(gca,'color','none');
-          set(0,'DefaultFigureColor','remove')
-          saveas(gcf,filename) 
+          filename = 'T=1.pdf';
+          %set(gcf,'color','white')
+          %set(gcf,'DefaultFigureColor','remove')
+          %set(gcf,'color','white')
+          %set(gca, 'InvertHardcopy', 'off');
+          %print(gcf,filename,'-painters','-dpdf');
+          print(fig,filename,'-painters','-dpdf'); 
+
+          %saveas(gcf,filename) 
+          
       else
           ii=ceil(i*(Tend/numel(Usave)));
-          filename = ['T=' num2str(ii) '.png'];
-          %set(gca,'color','none');
-          set(0,'DefaultFigureColor','remove')
-          saveas(gcf,filename)
+          filename = ['T=' num2str(ii) '.pdf'];
+          %set(gcf,'color','none');
+          %set(gcf,'DefaultFigureColor','remove')
+          %set(gcf,'color','white')
+          %set(gca, 'InvertHardcopy', 'off');
+          %print(gcf,filename,'-painters','-dpdf');
+          print(fig,filename,'-painters','-dpdf'); 
+          %saveas(gcf,filename)
       end
 end
 % saves the GIF
