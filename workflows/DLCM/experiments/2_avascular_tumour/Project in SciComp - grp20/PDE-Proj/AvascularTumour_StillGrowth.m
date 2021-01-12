@@ -35,7 +35,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 D=1; %D_rate 
 
 % simulation interval
-Tend = 100;
+Tend = 200;
 tspan = linspace(0,Tend,101);
 timescaling = 0.005;
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
@@ -51,6 +51,7 @@ r_die = 0.125;        % rate of death
 r_degrade = 0.01;     % rate of degradation for already dead cells
 cutoff_deg = 0.0001;  % the minimum amount of dead cells in a voxel
 cutoff_remain = 0.01; % the minimum amount of alive cells in a voxel
+cutoff_bdof = 0.1;    % needed for dof_calculation. No movement in this experiment
 
 % Initial population: circular blob of living cells
 start_value = 1;
