@@ -1,7 +1,6 @@
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
-%Nvoxels = 243; 
 
 % fetch Cartesian discretization
 [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);  %gradquotient=1 for Cartesian mesh
@@ -13,10 +12,9 @@ D=1; %D_rate
 Tend = 161;
 tspan = linspace(0,Tend,101);
 timescaling=0.005;
-% report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
+report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
-%     The user specified cutoff and rate parameters for the proliferation,
-%     death, degradation and consumption rules.
+% Set which experiment to use
 exp = 0;
 
 %Experiments
