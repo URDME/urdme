@@ -45,7 +45,7 @@ Drate3 = 0.01;     % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 
 % boundary conditions
-alpha = 1e-4; % weighting parameter for Robin BC
+alpha = 1e-1; % weighting parameter for Robin BC
 alpha_inv = 1/alpha; % inverse is the value used in simulation
 
 % cells live in a square of Nvoxels-by-Nvoxels
@@ -152,6 +152,10 @@ while tt <= tspan(end)
     La.X = La.X - Lai.*La.X; % remove fully supported hat functions 
     La.X = La.X - diag(sum(Lai*La.X,2)); % replace with scaled hats
     
+    % Remove the connection from adof to idof1
+    % (this sets Dirichlet for adof)
+    La.X = La.X - a_Lai*La.X*Lai;
+    
     % Get local Mgamma for all active dofs
     Mgamma_b = Mgamma(Adof,Adof);
 
@@ -159,9 +163,8 @@ while tt <= tspan(end)
     % all non-diagonal elements times 2
     Mgamma_b = Lai*(Mgamma_b + diag(2*sum(Mgamma_b,2)))*Lai;
     
-    % Put together the LHS and remove the connection from adof to idof1
-    % (this sets Dirichlet for adof but keeps the Robin for the boundary)
-    La.X = La.X + alpha_inv*Mgamma_b - a_Lai*La.X*Lai;
+    % Put together the LHS and 
+    La.X = La.X + alpha_inv*Mgamma_b;
 
     % LU factorization
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
@@ -368,6 +371,27 @@ ylim([0 max(y)]);
 xlabel('time')
 ylabel('N cells')
 legend('total', 'dead','double','single');
+
+%% Save the important data in a struct
+if doSave
+    saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
+        'R', {R}, 'V', {V}, 'N', {N}, ...
+        'max_radius', {max_radius}, 'Ne', {Ne}, 'inspect_rates', {inspect_rates}, ...
+        'alpha', {alpha}, 'Pr', {Pr}, 'Adof', {Adof},  ...
+        'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
+        'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
+        'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
+        'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
+        'Tend', {Tend}, 'mesh_type', {mesh_type}, 'Drate_', {Drate_}, 'do_idof3', {do_idof3});
+    filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
+    if mesh_type == 2
+        filename_ = filename_ + "_HEX";
+    end
+    filename_ = filename_ + "_" + strjoin(string(fix(clock)),'-');
+    filename_saveData = "saveData/saveData_" + filename_ + ".mat";
+    save(filename_saveData,'-struct','saveData');
+    % print('-f7', "images/pressurePlot_" + filename_, '-depsc');
+end
 
 return;
 
