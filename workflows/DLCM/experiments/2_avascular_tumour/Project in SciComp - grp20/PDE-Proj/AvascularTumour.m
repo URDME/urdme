@@ -38,13 +38,13 @@ mesh_type = 1;
 D = 1; % D rate, the rate of which cells move in the domain 
 
 % simulation interval
-Tend = 200;
+Tend = 100;
 tspan = linspace(0,Tend,101);
 timescaling=0.005;
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 % boundary conditions
-alpha = 1e+4; % weighting parameter for Robin BC
+alpha = 1e-4; % weighting parameter for Robin BC
 alpha_inv = 1/alpha; % inverse is the value used in simulation
 
 % Set which experiment to use
@@ -184,8 +184,8 @@ updLU = true;
 La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % event counter
-% Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
-
+Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
+inspect_rate_toIdof = cell(3,numel(tspan));
 % oxygen Laplacian
 OLa.X = L;
 OLai = fsparse(extdof,extdof,1,size(OLa.X));
@@ -291,7 +291,7 @@ while tt <= tspan(end)
     rates_sdof(sdof_m_) = -gradquotient*grad_sdof;
     grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof));
     rates_sdof = rates_sdof + gradquotient*grad_N;
-
+    
     % bdof_m
     rates_bdof = zeros(length(Adof),1);
     %check if boundary is updated. If no bdofs exist, skip bdof calculation
@@ -310,6 +310,11 @@ while tt <= tspan(end)
             rates_bdof(ix_) = -sum(D*Pr_diff); 
         end
     end
+    
+%     if sum(rates_bdof(idof_)) > 0
+%         disp("Hold up");
+%     end
+    
     %% Change calculation
     %proliferation-----------------------------
     ind_prol = find((Oxy > cutoff_prol));
@@ -365,7 +370,10 @@ while tt <= tspan(end)
         bdofsave(i+1:iend) = {bdof_m};
         sdofsave(i+1:iend) = {sdof_m};
         sdofbsave{i+1:iend} = {sdof_b};
-
+        
+        % the rates
+        inspect_rate_toIdof(:,i) = {rates_sdof;sdof_m_;idof_};
+        
         i = iend;
         
         % monitor the maximum outlier cell:
@@ -401,7 +409,7 @@ end
 report(tt,U,'done');
 
 %%
-TumorGraphicsResult;
+% TumorGraphicsResult;
 
 %% SAVE DATA
 saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
@@ -409,7 +417,7 @@ saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
     'max_radius', {max_radius}, ...
     'alpha', {alpha}, 'Pr', {Pr}, 'Adof', {Adof},  ...
     'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
-    'Nvoxels',{Nvoxels}, ...
+    'Nvoxels',{Nvoxels},'inspect_rates',{inspect_rate_toIdof}, ...
     'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
     'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
     'Tend', {Tend});

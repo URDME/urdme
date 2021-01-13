@@ -2,11 +2,9 @@
 % Johannes Dufva 2020-11-06
 
 % Get all saved .mat files from saveData-folder
-folder = 'testShit/2020-01-12, T=200_exp=0/';
+folder = 'testShit/2020-01-12, T=150_exp=0/';
 % folder = 'testShit/';
 DirList = dir(fullfile(folder, '*.mat'));
-Data = cell(1, length(DirList));
-figrows = ceil(sqrt(length(DirList)));
 
 % Get sorted alpha values
 a = 0;
@@ -22,7 +20,7 @@ sorted_alphas = sort(alphas);
 %close all;
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
-    t_show = length(tspan);
+    t_show = find(tspan == 150);
     if tspan(end) == 200
         figure('Name',"CellPlot_" + DirList(k).name(10:end-4));
         set(gca,'color','none');
@@ -37,8 +35,8 @@ for k = 1:length(DirList)
         ii = find(Usave{t_show}>0);
         c = full(Usave{t_show});
         patch('Faces',R(ii,:),'Vertices',V, ...
-            'FaceVertexCData',c(ii),'FaceColor','flat','Edgecolor', 'none');     
-        ii = find(Usave{t_show} == 0 & Udsave{t_show} > 0);
+            'FaceVertexCData',c(ii),'FaceColor','flat');     
+        ii = find(Usave{t_show} == 0 & Udsave{t_show} > 0);% ,'Edgecolor', 'none'
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',[0 0 0]);
         hold off;
@@ -50,7 +48,7 @@ for k = 1:length(DirList)
 end
 
 %% Plot population appearance (over time)
-alphaToShow = 1e-4;
+alphaToShow = 1e+4;
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
     t_show_vec = 1:25:length(tspan);
@@ -69,7 +67,7 @@ for k = 1:length(DirList)
             ii = find(Usave{t_show}>0);
             c = full(Usave{t_show});
             patch('Faces',R(ii,:),'Vertices',V, ...
-                'FaceVertexCData',c(ii),'FaceColor','flat','Edgecolor', 'none');     
+                'FaceVertexCData',c(ii),'FaceColor','flat');%,'Edgecolor', 'none'
             ii = find(Usave{t_show} == 0 & Udsave{t_show} > 0);
             patch('Faces',R(ii,:),'Vertices',V, ...
                 'FaceColor',[0 0 0]);
@@ -121,15 +119,17 @@ spsum  = @(U)(full(sum(abs(U))));
 
 figure('Name',"TOTALPlot_" + folder(10:end-4));
 hold on;
-tToShow = Tend;
-alphaToShow = [1e-4, 1e-2, 1e-1, 1e+4];
+Tend = 150;
+tToShow = find(tspan == Tend);
+alphaToShow = [1e-4, 1e+4];
 plotStyle = {'-o','-s','-^','-d'};
 ymax = 1;
 for k = 1:length(DirList)
     load([folder DirList(sort_k(k)).name]);
     if tspan(end) >= tToShow && ismember(alpha,alphaToShow)
-        y = cellfun(spsum,Usave);
-        p1 = plot(tspan,y,plotStyle{1+mod(k-1,length(plotStyle))},...
+        y = cellfun(spsum,Usave(1:tToShow));
+        y = y + cellfun(spsum,Udsave(1:tToShow));
+        p1 = plot(tspan(1:tToShow),y,plotStyle{1+mod(k-1,length(plotStyle))},...
             'MarkerIndices',1:10:length(y),...
             'Displayname',sprintf('\\alpha = %1.0e', alpha), ...
             'Linewidth', 1.3);
@@ -138,12 +138,12 @@ for k = 1:length(DirList)
         end
     end
 end
-plot(tspan,ones(length(y),1)*y(1),'Displayname','Initial cells', ...
-            'Linewidth', 1.0,'LineStyle','--','Color','k');
+% plot(tspan(1:tToShow),ones(length(y),1)*y(1),'Displayname','Initial cells', ...
+%             'Linewidth', 1.0,'LineStyle','--','Color','k');
 ymin = min(y);
 % title(sprintf('Total cells at t = %d',tToShow));
 xlabel('time','Fontsize',12)
-xticks([0,Tend])
+xticks([0,150])
 % xticklabels({'-3\pi','-2\pi','-\pi','0','\pi','2\pi','3\pi'})
 ylabel('N cells','Fontsize',12)
 % yticks([1400:300:3200])
@@ -186,21 +186,39 @@ legend(fnames);
 %% Plot rates
 for k = 1:length(DirList)
     load([folder DirList(k).name]);
-    if tspan(end) == 2000 || tspan(end) == 0
-        figure('Name',"RatePlot_" + DirList(k).name(10:end-4));
-        plotRates;
-    end
+    figure('Name',"RatePlot_" + DirList(k).name(10:end-4));
+    plotRates2;
 end
-
 %% Plot pressure
 % close all;
 for k = 1:length(DirList)
-%     subplot(figrows, ceil(length(DirList)/figrows),k);  
     load([folder DirList(k).name]);
-    if tspan(end) == 1000 || tspan(end) == 0
-        figure('Name',"PrPlot_" + DirList(k).name(10:end-4));
-        plotPressure;
+    figure('Name',"PrPlot_" + DirList(k).name(10:end-4));
+    plotPressure;
+end
+
+%% Plot pressure diff in bars
+ymax=0;
+for k = 1:length(DirList)
+    load([folder DirList(sort_k(k)).name]);
+    fig1 = figure(k);
+    fig1.Position = [0 300 500 400];
+    [iii,jjj_] = find(N(idof,adof)); % neighbours...
+    grad = max(Pr(jjj_) - Pr(idof_(iii)),0);
+    bar(grad);
+    % Fix data tip labels to show pressure between which nodes
+    labels = compose('%d -> %d', [idof(iii),jjj_]);
+    dcm_obj = datacursormode(fig1);
+    set(dcm_obj,'UpdateFcn',{@datacursor,labels})
+    % set ylim and title
+    xlabel('Voxel connections');
+    ylabel('Pr difference');
+    if ymax < max(grad)
+        ymax = max(grad);
     end
+    ylim([0 ymax]);
+    grid on;
+    title(sprintf('sum bars = %d \n \\alpha = %1.0e', sum(grad),alpha));
 end
 
 %% Print all open figures
