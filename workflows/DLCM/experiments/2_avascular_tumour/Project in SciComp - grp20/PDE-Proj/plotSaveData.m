@@ -2,8 +2,8 @@
 % Johannes Dufva 2020-11-06
 
 % Get all saved .mat files from saveData-folder
-% folder = 'testShit/2020-01-12, T=150_exp=0/';
-folder = 'testShit/';
+folder = 'testShit/2020-01-12, T=150_exp=0/';
+% folder = 'testShit/';
 DirList = dir(fullfile(folder, '*.mat'));
 
 % Get sorted alpha values
@@ -20,15 +20,15 @@ sorted_alphas = sort(alphas);
 %close all;
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
-    t_show = find(tspan == 100);
+    t_show = find(tspan == 150);
         figure('Name',"CellPlot_" + DirList(k).name(10:end-4));
         set(gca,'color','none');
         Umat=full(cell2mat(Usave));
-        colorbar('southoutside')
+%         colorbar('southoutside')
         caxis([0 max(max(Usave{t_show}))])
-        colorlabel('Concentration of cells, U')
-%         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-%             'EdgeColor','none');
+%         colorlabel('Concentration of cells, U')
+        patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+            'EdgeColor','none');
         hold on,
         axis([-1 1 -1 1]); axis square, axis off
         ii = find(Usave{t_show}>0);
@@ -39,14 +39,14 @@ for k = 1:length(DirList)
         patch('Faces',R(ii,:),'Vertices',V, ...
             'FaceColor',[0 0 0]);
         hold off;
-        title(sprintf('Time = %d, Ncells = %d \n \\alpha = %1.0e' , ...
-            tspan(t_show),full(sum(Usave{t_show})) + full(sum(Udsave{t_show})), alpha));       
+%         title(sprintf('Time = %d, Ncells = %d \n \\alpha = %1.0e' , ...
+%             tspan(t_show),full(sum(Usave{t_show})) + full(sum(Udsave{t_show})), alpha));       
         set(gca,'LooseInset',get(gca,'TightInset'));
         drawnow;
 end
 
 %% Plot population appearance (over time)
-alphaToShow = 1e+4;
+alphaToShow = 1e-4;
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
     t_show_vec = 1:25:length(tspan);
@@ -168,10 +168,11 @@ end
 
 %% Plot pressure diff in bars
 ymax=0;
+fig1 = figure('Name',"PressureDiffPlot_" + DirList(1).name(10:end-4));
 for k = 1:length(DirList)
     load([folder DirList(sort_k(k)).name]);
-    fig1 = figure(k);
-    fig1.Position = [0 300 500 400];
+    subplot(2,1,k);
+%     fig1.Position = [0 300 500 400];
     [iii,jjj_] = find(N(idof,adof)); % neighbours...
     grad = max(Pr(jjj_) - Pr(idof_(iii)),0);
     bar(grad);
@@ -180,16 +181,23 @@ for k = 1:length(DirList)
     dcm_obj = datacursormode(fig1);
     set(dcm_obj,'UpdateFcn',{@datacursor,labels})
     % set ylim and title
-    xlabel('Voxel connections');
-    ylabel('Pr difference');
+    xlabel('Connections from tumour to boundary','Fontsize',12);
+    ylabel('\nabla P','Fontsize',12);
+    xticks([0:100:400])
     if ymax < max(grad)
         ymax = max(grad);
     end
+    if k < 2
+      set(gca,'xticklabel',{[]})
+      xlabel('');
+    end   
     ylim([0 ymax]);
     grid on;
-    title(sprintf('sum bars = %d \n \\alpha = %1.0e', sum(grad),alpha));
+%     title(sprintf('sum bars = %d \n \\alpha = %1.0e', sum(grad),alpha));
+    title(sprintf('\\alpha = %1.0e',alpha),'Fontsize',12);
+    ax = gca;
+    ax.FontSize = 11;
 end
-
 %% Print all open figures
 % Observe that you need to name all the figures that you want to save
 openFigures = findobj('Type', 'figure');
@@ -197,5 +205,5 @@ for k = 1:length(openFigures)
     figNumb = openFigures(k).Number;
     figHandle = "-f" + figNumb;
     figName = openFigures(k).Name;
-    print(figHandle, '-r300', "images/" + figName,'-painters','-dpdf'); %    '-painters'
+    print(figHandle, '-r300', "testshit/imgs/" + figName,'-painters','-dpng'); %    '-painters'
 end
