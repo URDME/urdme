@@ -31,19 +31,21 @@ close all;
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
-[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);  %gradquotient=1 for Cartesian mesh
+mesh_type = 1;
+[P,E,T,gradquotient] = basic_mesh2(mesh_type,Nvoxels);  %gradquotient=1 for Cartesian mesh
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 D = 1; % D rate, the rate of which cells move in the domain 
+Drate_ = [1,1];
 
 % simulation interval
-Tend = 150;
+Tend = 100;
 tspan = linspace(0,Tend,101);
 timescaling=0.005;
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 % boundary conditions
-alpha = 1e+4; % weighting parameter for Robin BC
+alpha = 1e-4; % weighting parameter for Robin BC
 alpha_inv = 1/alpha; % inverse is the value used in simulation
 
 % Set which experiment to use
@@ -183,8 +185,8 @@ updLU = true;
 La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % event counter
-% Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
-
+Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
+inspect_rate_toIdof = cell(3,numel(tspan));
 % oxygen Laplacian
 OLa.X = L;
 OLai = fsparse(extdof,extdof,1,size(OLa.X));
@@ -209,17 +211,17 @@ while tt <= tspan(end)
     % with a voxel containing less number of cells next to it:
 %     sdof_m = find(sum(N.*(U')<(U)&(N&N),2).*(U>1));
     sdof_m = find(U - min(U(N_vec),[],2) > 0 & U>1);
-    Idof = (N*(U ~= 0) > 0 & U_and_U_dead == 0); % empty voxels touching occupied ones
+    Idof = (N*(U_and_U_dead ~= 0) > 0 & U_and_U_dead == 0); % empty voxels touching occupied ones
     idof1 = find(Idof & ~VU);         % "external" OBC1
     idof2 = find(Idof & VU);          % "internal" OBC2
-%     idof3 = find(~VU & neigh_Mgamma*VU > 0); % boundary around "visited voxels"
-%     idof3 = setdiff(idof3,idof1);
+    idof3 = find(~VU & neigh_Mgamma*VU > 0); % boundary around "visited voxels"
+    idof3 = setdiff(idof3,idof1);
     idof = find(Idof);
     ddof = find(U_dead > 0);   %degrading voxels
     
-%     % Add idof3
-%     idof1 = [idof1;idof3];
-%     idof = [idof;idof3];
+    % Add idof3
+    idof1 = [idof1;idof3];
+    idof = [idof;idof3];
     
     % "All DOFs" = adof + idof, like the "hull of adof"
     Adof = [adof; idof];
@@ -243,13 +245,13 @@ while tt <= tspan(end)
         %%% ADD BC to LHS
         % Robin to external idof (idof1)
         Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
-        Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
+%         Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
         a_Lai1 = speye(size(Lai1)) - Lai1;
 
         % Scale Laplacian on boundary
         La.X = La.X - Lai1.*La.X;
         La.X = La.X - diag(sum(Lai1*La.X,2));
-        La.X = La.X - Lai2*La.X + Lai2;
+%         La.X = La.X - Lai2*La.X + Lai2;
 
         % Get local Mgamma for all active dofs
         Mgamma_b = Mgamma(Adof,Adof);
@@ -290,7 +292,7 @@ while tt <= tspan(end)
     rates_sdof(sdof_m_) = -gradquotient*grad_sdof;
     grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof));
     rates_sdof = rates_sdof + gradquotient*grad_N;
-
+    
     % bdof_m
     rates_bdof = zeros(length(Adof),1);
     %check if boundary is updated. If no bdofs exist, skip bdof calculation
@@ -303,12 +305,17 @@ while tt <= tspan(end)
             jx_ = find(N(ix,Adof));
             % (will only move into an empty voxel:)
             jx_ = jx_(U_and_U_dead(Adof(jx_)) == 0);
-            Pr_diff = max(Pr(ix_)-Pr(jx_),0);%*U(ix);    %proportionellt mot over-occupancy
+            Pr_diff = max(Pr(ix_)-Pr(jx_),0)*Drate_(1+VU(Adof(jj_)));%*U(ix);    %proportionellt mot over-occupancy
 
-            rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
-            rates_bdof(ix_) = -sum(D*Pr_diff); 
+            rates_bdof(jx_) = rates_bdof(jx_) + Pr_diff;
+            rates_bdof(ix_) = -sum(Pr_diff); 
         end
     end
+    
+%     if sum(rates_bdof(idof_)) > 0
+%         disp("Hold up");
+%     end
+    
     %% Change calculation
     %proliferation-----------------------------
     ind_prol = find((Oxy > cutoff_prol));
@@ -364,7 +371,10 @@ while tt <= tspan(end)
         bdofsave(i+1:iend) = {bdof_m};
         sdofsave(i+1:iend) = {sdof_m};
         sdofbsave{i+1:iend} = {sdof_b};
-
+        
+        % the rates
+        inspect_rate_toIdof(:,i) = {rates_sdof;sdof_m_;idof_};
+        
         i = iend;
         
         % monitor the maximum outlier cell:
@@ -400,7 +410,7 @@ end
 report(tt,U,'done');
 
 %%
-TumorGraphicsResult;
+% TumorGraphicsResult;
 
 %% SAVE DATA
 saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
@@ -408,7 +418,7 @@ saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
     'max_radius', {max_radius}, ...
     'alpha', {alpha}, 'Pr', {Pr}, 'Adof', {Adof},  ...
     'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
-    'Nvoxels',{Nvoxels}, ...
+    'Nvoxels',{Nvoxels},'inspect_rates',{inspect_rate_toIdof}, ...
     'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
     'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
     'Tend', {Tend});
@@ -418,54 +428,3 @@ filename_saveData = "testShit/saveData_" + filename_ + ".mat";
 save(filename_saveData,'-struct','saveData');
 
 return;
-%%
-tic;
-sdof_m = find(sum(N.*(U')<(U)&(N&N),2).*(U>1));
-toc;
-
-tic;
-% sdof_m2 = [];
-% for k = sdof'
-%     if U(k) - min(U(N_vec{k})) > 0
-%         sdof_m2 = [sdof_m2;k];
-%     end
-% end
-% [sdof_m_test,c] = find(N(sdof_m,:));
-% negh = N.*U;
-sdof_m2 = find(U - min(U(N_vec),[],2) > 0 & U>1);
-toc;
-
-fprintf('Diff is %d\n', sum(sdof_m - sdof_m2));
-%%
-rates_sdof = zeros(length(Adof),1);
-tic
-for ind=1:length(sdof_m_)
-    ix = sdof_m(ind);
-    ix_ = sdof_m_(ind); 
-
-    jx_ = find(N(ix,Adof)); 
-    Pr_diff = max(Pr(ix_)-Pr(jx_),0);%*(U(ix)-1);    %proportionellt mot over-occupancy
-
-    rates_sdof(jx_) = rates_sdof(jx_) + D*Pr_diff;
-    rates_sdof(ix_) = rates_sdof(ix_) - sum(D*Pr_diff);
-end
-toc
-
-ss = rates_sdof;
-
-tic
-rates_sdof__ = zeros(length(Adof),1);
-[ii,jj_] = find(N(sdof_m,Adof)); % neighbours...
-Pr_diff__ = max(Pr(sdof_m_(ii))-Pr(jj_),0);    %proportional to over-occupancy
-grad_sdof = fsparse(ii,1,Pr_diff__*D, numel(sdof_m));
-rates_sdof__(sdof_m_) = -gradquotient*grad_sdof;
-grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof));
-rates_sdof__ = rates_sdof__ + gradquotient*grad_N;
-rates_sdof = rates_sdof__;
-toc
-
-fprintf('Diff is %d\n', sum(ss - rates_sdof));
-plot(ss,'o')
-hold on;
-plot(rates_sdof,'o');
-legend();

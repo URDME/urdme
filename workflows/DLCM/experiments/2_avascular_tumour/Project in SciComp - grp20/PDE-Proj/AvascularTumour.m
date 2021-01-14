@@ -36,6 +36,7 @@ mesh_type = 1;
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 D = 1; % D rate, the rate of which cells move in the domain 
+Drate_ = [0.01;25];
 
 % simulation interval
 Tend = 100;
@@ -44,7 +45,7 @@ timescaling=0.005;
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 % boundary conditions
-alpha = 1e-4; % weighting parameter for Robin BC
+alpha = 1e+4; % weighting parameter for Robin BC
 alpha_inv = 1/alpha; % inverse is the value used in simulation
 
 % Set which experiment to use
@@ -287,9 +288,9 @@ while tt <= tspan(end)
     rates_sdof = zeros(length(Adof),1);
     [ii,jj_] = find(N(sdof_m,Adof)); % neighbours...
     Pr_diff__ = max(Pr(sdof_m_(ii))-Pr(jj_),0);    %proportional to over-occupancy
-    grad_sdof = fsparse(ii,1,Pr_diff__*D, numel(sdof_m));
+    grad_sdof = fsparse(ii,1,Pr_diff__.*Drate_(1+VU(Adof(jj_))), numel(sdof_m));
     rates_sdof(sdof_m_) = -gradquotient*grad_sdof;
-    grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof));
+    grad_N = fsparse(jj_,1, Pr_diff__.*Drate_(1+VU(Adof(jj_))), numel(Adof));
     rates_sdof = rates_sdof + gradquotient*grad_N;
     
     % bdof_m
@@ -304,10 +305,10 @@ while tt <= tspan(end)
             jx_ = find(N(ix,Adof));
             % (will only move into an empty voxel:)
             jx_ = jx_(U_and_U_dead(Adof(jx_)) == 0);
-            Pr_diff = max(Pr(ix_)-Pr(jx_),0);%*U(ix);    %proportionellt mot over-occupancy
+            Pr_diff = max(Pr(ix_)-Pr(jx_),0).*Drate_(1+VU(Adof(jx_)));%*U(ix)*;    %proportionellt mot over-occupancy
 
-            rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
-            rates_bdof(ix_) = -sum(D*Pr_diff); 
+            rates_bdof(jx_) = rates_bdof(jx_) + Pr_diff;
+            rates_bdof(ix_) = -sum(Pr_diff); 
         end
     end
     
@@ -372,7 +373,7 @@ while tt <= tspan(end)
         sdofbsave{i+1:iend} = {sdof_b};
         
         % the rates
-        inspect_rate_toIdof(:,i) = {rates_sdof;sdof_m_;idof_};
+        inspect_rate_toIdof(:,i) = {rates_bdof;sdof_m_;idof_};
         
         i = iend;
         
@@ -409,7 +410,7 @@ end
 report(tt,U,'done');
 
 %%
-% TumorGraphicsResult;
+TumorGraphicsResult;
 
 %% SAVE DATA
 saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...

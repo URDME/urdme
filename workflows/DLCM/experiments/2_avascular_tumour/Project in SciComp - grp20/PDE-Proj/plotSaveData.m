@@ -2,8 +2,8 @@
 % Johannes Dufva 2020-11-06
 
 % Get all saved .mat files from saveData-folder
-folder = 'testShit/2020-01-12, T=150_exp=0/';
-% folder = 'testShit/';
+% folder = 'testShit/2020-01-12, T=150_exp=0/';
+folder = 'testShit/';
 DirList = dir(fullfile(folder, '*.mat'));
 
 % Get sorted alpha values
@@ -20,8 +20,7 @@ sorted_alphas = sort(alphas);
 %close all;
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
-    t_show = find(tspan == 150);
-    if tspan(end) == 200
+    t_show = find(tspan == 100);
         figure('Name',"CellPlot_" + DirList(k).name(10:end-4));
         set(gca,'color','none');
         Umat=full(cell2mat(Usave));
@@ -44,7 +43,6 @@ for k = 1:length(DirList)
             tspan(t_show),full(sum(Usave{t_show})) + full(sum(Udsave{t_show})), alpha));       
         set(gca,'LooseInset',get(gca,'TightInset'));
         drawnow;
-    end
 end
 
 %% Plot population appearance (over time)
@@ -119,14 +117,14 @@ spsum  = @(U)(full(sum(abs(U))));
 
 figure('Name',"TOTALPlot_" + folder(10:end-4));
 hold on;
-Tend = 150;
+Tend = 100;
 tToShow = find(tspan == Tend);
-alphaToShow = [1e-4, 1e+4];
+alphaToShow = [1e-4, 1e+4, Inf];
 plotStyle = {'-o','-s','-^','-d'};
 ymax = 1;
 for k = 1:length(DirList)
     load([folder DirList(sort_k(k)).name]);
-    if tspan(end) >= tToShow && ismember(alpha,alphaToShow)
+    if ismember(alpha,alphaToShow)
         y = cellfun(spsum,Usave(1:tToShow));
         y = y + cellfun(spsum,Udsave(1:tToShow));
         p1 = plot(tspan(1:tToShow),y,plotStyle{1+mod(k-1,length(plotStyle))},...
@@ -154,35 +152,6 @@ legend('Fontsize',12);
 grid on;
 hold off;
 
-%% Plot Ne
-load([folder DirList(1).name]);
-fnames = fieldnames(Ne);
-alphaToShow = [1e-4, 1e-2, 1e-1, 1e+4];
-Ne_vector = zeros(length(fnames),length(alphaToShow));
-kk = 1;
-for k = 1:length(DirList)
-    load([folder DirList(sort_k(k)).name]);
-    if tspan(end) >= 400 && ismember(alpha,alphaToShow)
-        Ne_vector(:,kk) = cell2mat(struct2cell(Ne))';
-        kk = kk + 1;
-    end
-end
-% Remove moveb2 elements (due to its relatively huge impact)
-% Ne_vector(2,:) = [];
-% fnames(2) = [];
-
-% Plot stacked bar plot
-figure('Name',"NePlot_" + folder(10:end-4));
-b = bar(Ne_vector','LineStyle','none');
-
-% Plot settings
-grid on;
-title('Ne without moveb2');
-xlabel('alpha')
-ylabel('rates')
-xticks(1:length(alphaToShow))
-xticklabels(alphaToShow);
-legend(fnames);
 %% Plot rates
 for k = 1:length(DirList)
     load([folder DirList(k).name]);
