@@ -205,5 +205,5 @@ for k = 1:length(openFigures)
     figNumb = openFigures(k).Number;
     figHandle = "-f" + figNumb;
     figName = openFigures(k).Name;
-    print(figHandle, '-r300', "testshit/imgs/" + figName,'-painters','-dpng'); %    '-painters'
+    print(figHandle, '-r300', "testshit/imgs/" + figName,'-painters','-depsc'); %    '-painters'
 end
