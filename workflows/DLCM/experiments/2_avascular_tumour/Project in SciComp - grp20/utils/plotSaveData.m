@@ -23,7 +23,7 @@ sorted_alphas = sort(alphas);
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
     t_show = length(tspan);
-    if tspan(end) == 2000 || tspan(end) == 0
+    if tspan(end) == 1000 || tspan(end) == 0
         figure('Name',"CellPlot_" + DirList(k).name(10:end-4));
 % %         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
 % %                     'EdgeColor','none');
@@ -59,7 +59,7 @@ for k = 1:length(DirList)
 end
 
 %% Plot population appearance (over time)
-alphaToShow = 1e-2;
+alphaToShow = 1e-1;
 for k = 1:length(DirList)
     load([folder, DirList(k).name]);
     t_show_vec = 1:20:length(tspan);
@@ -89,6 +89,15 @@ for k = 1:length(DirList)
 %                 'Fontsize',14,'FontName','Gill Alt One MT Italic');
             hold off;
             set(gca,'LooseInset',get(gca,'TightInset'));
+%             ax = gca;
+%             outerpos = ax.OuterPosition;
+%             ti = ax.TightInset; 
+%             left = outerpos(1) + ti(1);
+%             bottom = outerpos(2) + ti(2);
+%             ax_width = outerpos(3) - ti(1) - ti(3);
+%             ax_height = outerpos(4) - ti(2) - ti(4);
+%             ax.Position = [left bottom ax_width ax_height];
+%             axis(ax, 'tight')
         end
     end
 end
@@ -261,5 +270,5 @@ for k = 1:length(openFigures)
     figNumb = openFigures(k).Number;
     figHandle = "-f" + figNumb;
     figName = openFigures(k).Name;
-    print(figHandle, '-r300', "images/" + figName,'-painters','-depsc'); %    '-painters'
+    print(figHandle, '-r300', "images/" + figName,'-painters','-dpng'); %    '-painters'
 end
