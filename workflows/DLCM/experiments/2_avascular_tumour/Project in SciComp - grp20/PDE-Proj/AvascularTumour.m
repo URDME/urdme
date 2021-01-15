@@ -38,7 +38,7 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 D=1; %D_rate, the rate of which cells move in the domain  
 
 % Simulation interval
-Tend = 51;                  %Final time step
+Tend = 11;                  %Final time step
 tspan = linspace(0,Tend,101);
 timescaling=0.005;          %Time scaling
 
@@ -56,6 +56,11 @@ cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
 r_die = 0.125;        % rate of death
 r_degrade = 0.01;     % rate of degradation for already dead cells
 
+% cutoff parameters
+cutoff_bdof = 0.1;
+cutoff_deg = 0.0001;
+cutoff_remain = 0.01;
+
 % Initial population: circular blob of living cells
 r = sqrt(P(1,:).^2+P(2,:).^2);
 ii = find(r < radius); % radius of the initial blob
@@ -64,15 +69,9 @@ U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
 U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]);      %Intialize
 U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]);   %Initialize
 
-% cutoff parameters
-cutoff_bdof = 0.1;
-cutoff_deg = 0.0001;
-cutoff_remain = 0.01;
-
 % boundary conditions
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
 OBC2 = 0; % BC for the visited boundary
-
     
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
@@ -142,7 +141,6 @@ while tt <= tspan(end)
     sdof_b = find(N*(U_and_U_dead ~=0) < neigh & (U > 1));
     % voxels with more than concentration 1 in them which may move, 
     % with a voxel containing less number of cells next to it:
-    % sdof_m = find(sum(N.*(U')<(U)&(N&N),2).*(U>1));
     sdof_m = find(U - min(U(N_vec),[],2) > 0 & U>1);
     Idof = (N*(U_and_U_dead ~= 0) > 0 & U_and_U_dead == 0); % empty voxels touching occupied ones idof1 = find(Idof & ~VU);         % "external" OBC1
     idof1 = find(Idof & ~VU);         % "external" OBC1
@@ -162,15 +160,12 @@ while tt <= tspan(end)
     
     %% Calculate Pressure and Oxygen systems
     %Pressure and oxygen calculation
-    if updLU
-            % pressure Laplacian
-            La.X = L(Adof,Adof);
-            Lai = fsparse(idof_,idof_,1,size(La.X)); %remove emtpy voxels touching occupied ones
-            La.X = La.X-Lai*La.X+Lai;
-            [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
-
-            updLU = false; % assume we can reuse
-    end
+    
+    % pressure Laplacian
+    La.X = L(Adof,Adof);
+    Lai = fsparse(idof_,idof_,1,size(La.X)); %remove emtpy voxels touching occupied ones
+    La.X = La.X-Lai*La.X+Lai;
+    [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
 
     % RHS source term proportional to the over-occupancy and BCs
     Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...             %the equilibrium value of pressure is U=1 or U(sdof-1)
@@ -184,12 +179,8 @@ while tt <= tspan(end)
         [size(OLa.X,1) 1]));
     Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
 
-    % if isempty(Oxysave{1})
-    %     Oxysave{1}=Oxy;
-    % end
-
 %% Move calculations
-    %move_calculations;         %sdof and bdof movement calculations
+    %sdof and bdof movement calculations
     
     %sdof_m  
     rates_sdof = zeros(length(Adof),1);
@@ -262,7 +253,7 @@ while tt <= tspan(end)
 %     end
     updLU = true;
 
-%%    
+%%  Change calculation
     %Change calculation of proliferation, death and degradation
 
     %proliferation-----------------------------
@@ -276,21 +267,8 @@ while tt <= tspan(end)
     %degradation--------------------------------
     degrade_conc = U_deadnew(ddof)*r_degrade; 
 
- %% Intensity calculation
-    %Calculate intensties of rates of events
-    % bdof_m
-    moveb = rates_bdof(bdof_m_);
-    % sdof_m
-    moves = rates_sdof(sdof_m_);
-    %proliferation
-    birth = (ind_prol>0)*r_prol;
-    %death
-    death = (ind_die>0)*r_die; 
-    %degradation
-    degrade = (r_degrade*(U_deadnew(ddof)>0));
-    
 %%  Calculate timestep dt  
-    % Timestsep calculation
+    % Time stsep calculation
     ind_rates_sdof_n = find(rates_sdof(sdof_m_)<0);
     ind_rates_bdof_n = find(rates_bdof(bdof_m_)<0);
 
@@ -370,17 +348,21 @@ if tumour_figure==1
     fig = figure(11), 
     clf,
     Umat=full(cell2mat(Usave));
-    colorbar('southoutside')
+    %colorbar('southoutside')
+    colorbar;
     caxis([0 max(max(Umat))])
     colorlabel('Concentration of cells, U')
-    title=0;        %Time in gif or not
+    
+    title=0;        %Time in gif
+    snapshot =1;    %Save 5 snapshots 
 
     for i = 1:numel(Usave)
-        clf
-        %patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-        %    'EdgeColor','none');
-        patch('Faces',R,'Vertices',V,'FaceColor','none', ...
+        %clf
+        patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
             'EdgeColor','none');
+        %patch('Faces',R,'Vertices',V,'FaceColor','none', ...
+        %%transparent background
+        %    'EdgeColor','none');
         hold on,
         axis([-1 1 -1 1]); axis square, axis off
 
@@ -399,22 +381,26 @@ if tumour_figure==1
         end
         drawnow;
         Mnormal(i) = getframe(gcf);
-
-        %Save 5 snapshots of the tumor progression
-        if i~= [1 ceil([0.24 0.49 0.74 1]*numel(Usave))]
-        elseif i==1
-          filename = 'T=1.pdf';
-          print(fig,filename,'-painters','-dpdf'); 
-        else
-          ii=ceil(i*(Tend/numel(Usave)));
-          filename = ['T=' num2str(ii) '.pdf'];
+        if snapshot ==1
+            %Save 5 snapshots of the tumor progression
+            if i~= [1 ceil([0.24 0.49 0.74 1]*numel(Usave))]
+            elseif i==1
+              filename = 'T=1.eps';
+              print(fig,filename,'-painters','-depsc'); 
+            else
+              ii=ceil(i*(Tend/numel(Usave)));
+              %filename = ['T=' num2str(ii) '.eps'];
+              %print(fig,filename,'-painters','-depsc'); 
+               filename = ['T=' num2str(ii) '.png'];
+               print(fig,filename,'-painters','-dpng'); 
+            end
         end
+        % saves the GIF
+        %movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'Tumour.gif', ...
+        %          'delaytime',0.1,'loopcount',0);
+              
     end
-    % saves the GIF
-    movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'Tumour.gif', ...
-              'delaytime',0.1,'loopcount',0);
 end
-
 %% SAVE DATA
 saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
     'R', {R}, 'V', {V}, 'N', {N}, 'Udsave', {Udsave}, ...
