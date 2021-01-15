@@ -1,4 +1,4 @@
-% Simulation of an avascular tumour model.
+% Simulation of an avascular tumour model with a Robin boundary condition
 %
 %   Avascular tumour growth: An initial circular population cells (one
 %   per voxel) lie in a domain rich in oxygen. Cells consume oxygen at
@@ -14,17 +14,25 @@
 %   cells move into previously occupied but currently empty
 %   voxels. Drate3 is the rate cells move into voxels that are already
 %   occupied.
+%
+%   Robin boundary condition: the boundary condition is governed by the
+%   value of alpha >= 0 which for a small value induces a homogenous
+%   Dirichlet boundary and for a greater value goes towards a homogenous 
+%   Neumann instead.
+%   
 
+% J. Dufva & R. Persson 2021-01-15
 % S. Engblom 2017-12-27 (revision)
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
 
+% simulation settings
+doGif = true; % plot GIF of tumour after simulation
+doSave = true; % save parameters in saveData file
+do_idof3 = true; % add idof3 for continuous boundary (with alternative mesh)
+
 % simulation interval
-<<<<<<< HEAD
-Tend = 1001;
-=======
-Tend = 1000;
->>>>>>> RobinBC
+Tend = 5000;
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
@@ -44,19 +52,26 @@ Drate3 = 0.01;     % into already occupied voxel
 Drate_ = [Drate1 Drate2; NaN Drate3];
 
 % boundary conditions
-OBC1 = 0; % BC for the oxygen equation for unvisited boundary
-OBC2 = 0; % BC for the visited boundary
+alpha = Inf; % weighting parameter for Robin BC
+alpha_inv = 1/alpha; % inverse is the value used in simulation
 
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
 % fetch Cartesian discretization
-[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
+mesh_type = 1; % 1: cartesian, 2: hexagonal
+[P,E,T,gradquotient] = basic_mesh2(mesh_type,Nvoxels); % alternative mesh
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
+Mgamma = assemble_Mgamma(P,T);
+Mgamma = Mgamma - diag(diag(Mgamma)); % Remove diagonal (added each time step)
+Mgamma = Mgamma./dM;
+
+% find neighbours on boundary and in the domain
+N_Mgamma = (Mgamma ~= 0) - speye(size(Mgamma));
 neigh = full(sum(N,2));
 
 % dofs for the sources at the extreme outer circular boundary
@@ -66,11 +81,12 @@ xc(irem) = [];
 yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
-% initial population: circular blob of cells
-r = sqrt(P(1,:).^2+P(2,:).^2);
-ii = find(r < 0.05); % radius of the initial blob
-U = fsparse(ii(:),1,1,[Nvoxels^2 1]);
-   
+% Initial population
+IC = 5; % Choose initial condition (1,2,3,4,5,6)
+R1 = 0.35; % Radius of whole initial tumour
+R2 = 0.1; % Radius of inner initial setup (doubly occupied, dead etc.)
+U = setInitialCondition(IC,R1,R2,P,Nvoxels);
+
 % visit marker matrix: 1 for voxels who have been occupied
 VU = (U ~= 0);
 
@@ -87,8 +103,17 @@ La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 % event counter
 Ne = struct('moveb',0,'moves',0,'birth',0,'death',0,'degrade',0);
+inspect_rates = zeros(length(fieldnames(Ne)),numel(tspan));
+timing_vec = zeros(6,length(tspan)+1);
+
+% oxygen Laplacian
+OLa.X = L;
+OLai = fsparse(extdof,extdof,1,size(OLa.X));
+OLa.X = OLa.X-OLai*OLa.X+OLai;
+[OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
+
 while tt <= tspan(end)
-  % classify the DOFs
+  %% classify the DOFs
   adof = find(U); % all filled voxels
   % singularly occupied voxels on the boundary:
   bdof_m = find(N*(U ~= 0) < neigh & abs(U) == 1);
@@ -96,11 +121,21 @@ while tt <= tspan(end)
   % voxels with 2 cells in them _which may move_, with a voxel
   % containing less number of cells next to it (actually 1 or 0):
   sdof_m = find(N*(U > 1) < neigh & U > 1);
+  
+  % define boundary voxels
   Idof = (N*(U ~= 0) > 0 & U == 0); % empty voxels touching occupied ones
   idof1 = find(Idof & ~VU); % "external" OBC1
   idof2 = find(Idof & VU);  % "internal" OBC2
+  idof3 = find(~VU & N_Mgamma*VU > 0); % boundary around "visited voxels"
+  idof3 = setdiff(idof3,idof1);
   idof = find(Idof);
-
+  
+  % Add idof3 to the idofs
+  if do_idof3
+    idof1 = [idof1;idof3];
+    idof = [idof;idof3];
+  end
+  
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof];
 
@@ -110,26 +145,45 @@ while tt <= tspan(end)
   Adof_ = (1:numel(Adof))';  
   [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_] = ...
       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof);
-
+  %% Update LU
   if updLU
-    % pressure Laplacian
+    % pressure Laplacian for active dofs
     La.X = L(Adof,Adof);
-    Lai = fsparse(idof_,idof_,1,size(La.X));
-    La.X = La.X-Lai*La.X+Lai;
+    
+    %%% ADD BC to LHS
+    % Find external idofs (idof1)
+    Lai = fsparse(idof1_,idof1_,1,size(La.X));
+    a_Lai = speye(size(Lai)) - Lai; % all other nodes
+    
+    % Scale Laplacian on boundary 
+    La.X = La.X - Lai.*La.X; % remove fully supported hat functions 
+    La.X = La.X - diag(sum(Lai*La.X,2)); % replace with scaled hats
+    
+    % Remove the connection from adof to idof1
+    % (this sets Dirichlet for adof)
+    La.X = La.X - a_Lai*La.X*Lai;
+    
+    % Get local Mgamma for all active dofs
+    Mgamma_b = Mgamma(Adof,Adof);
+
+    % Get only idof1 part of Mgamma_b and set the diagonal as the sum of
+    % all non-diagonal elements times 2
+    Mgamma_b = Lai*(Mgamma_b + diag(2*sum(Mgamma_b,2)))*Lai;
+    
+    % Put together the LHS and 
+    La.X = La.X + alpha_inv*Mgamma_b;
+
+    % LU factorization
     [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
-
-    % oxygen Laplacian
-    OLa.X = L;
-    OLai = fsparse(extdof,extdof,1,size(OLa.X));
-    OLa.X = OLa.X-OLai*OLa.X+OLai;
-    [OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
-
     updLU = false; % assume we can reuse
   end
+
+  %% Caculate laplacians
 
   % RHS source term proportional to the over-occupancy and BCs
   Pr = full(fsparse(sdof_,1,1./dM(sdof), ...
                     [size(La.X,1) 1]));     % RHS first...
+
   Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
   % RHS source term proportional to the over-occupancy and BCs
@@ -139,6 +193,7 @@ while tt <= tspan(end)
                      [size(OLa.X,1) 1]));
   Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
 
+  %% Measure events probabilites
   % intensities of possible events
 
   % (1) moving boundary DOFs
@@ -167,10 +222,11 @@ while tt <= tspan(end)
 %   birth = total_birth/total_birth * birth;
   birth(isnan(birth)) = 0;
   % (as we get some 0/0 terms if total_birth == 0);
- 
+
   death = full(r_die*(U(Adof) > 0).*(Oxy(Adof) < cutoff_die));
   degrade = full(r_degrade*(U(Adof) == -1));
-  
+
+  %% Caclutate which is suppose to happen
   intens = [moveb; moves; birth; death; degrade];
   lambda = sum(intens);
   dt = -reallog(rand)/lambda; 
@@ -183,23 +239,7 @@ while tt <= tspan(end)
   end
   % (now ix_ points to the intensity which fired first)
 
-  % report back
-  if tspan(i+1) < tt+dt
-    iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
-    Usave(i+1:iend) = {U};
-    i = iend;
-
-    % monitor the maximum outlier cell:
-    max_radius = sqrt(max(P(1,adof).^2+P(2,adof).^2));
-
-    % the number of cells
-    num_cells = sum(abs(U));
-
-    % the rates
-    inspect_rates = [sum(moveb) sum(moves) ...
-                     sum(birth) sum(death) sum(degrade)];
-  end
-
+  %% Execute the event that happens
   if ix_ <= numel(moveb)
     Ne.moveb = Ne.moveb+1;
     % movement of a boundary (singly occupied) voxel
@@ -262,6 +302,26 @@ while tt <= tspan(end)
     U(ix) = 0;
     updLU = true; % boundary has changed
   end
+
+  %% Rest of while loop
+  % report back
+  if tspan(i+1) < tt+dt
+    iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
+    Usave(i+1:iend) = {U};
+
+    % monitor the maximum outlier cell:
+    max_radius = sqrt(max(P(1,adof).^2+P(2,adof).^2));
+
+    % the number of cells
+    num_cells = sum(abs(U));
+
+    % the rates
+    inspect_rates(:,i) = [sum(moveb) sum(moves) ...
+                     sum(birth) sum(death) sum(degrade)];
+
+    i = iend;
+  end
+
   tt = tt+dt;
   report(tt,U,'');
 
@@ -272,32 +332,33 @@ report(tt,U,'done');
 
 % return;
 
-% create a GIF animation
-
-% % population appearance
-% M = struct('cdata',{},'colormap',{});
-% figure(3), clf,
-% for i = 1:numel(Usave)
-%   patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
-%         'EdgeColor','none');
-%   hold on,
-%   axis([-1 1 -1 1]); axis square, axis off
-%   ii = find(Usave{i} == 1);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',graphics_color('bluish green'));
-%   ii = find(Usave{i} == 2);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',graphics_color('vermillion'));
-%   ii = find(Usave{i} == -1);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
-%         'FaceColor',[0 0 0]);
-%   title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
-%   drawnow;
-%   M(i) = getframe(gcf);
-% end
-
-% investigate the time evolution of the different cell numbers
-figure(4), clf
+%% Plot population appearance
+figure(1), clf,
+if doGif
+    M = struct('cdata',{},'colormap',{});
+    for i = 1:2:numel(Usave)
+      patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
+            'EdgeColor','none');
+      hold on,
+      axis([-1 1 -1 1]); axis square, axis off
+      ii = find(Usave{i} == 1);
+      patch('Faces',R(ii,:),'Vertices',V, ...
+            'FaceColor',graphics_color('bluish green'));
+      ii = find(Usave{i} == 2);
+      patch('Faces',R(ii,:),'Vertices',V, ...
+            'FaceColor',graphics_color('vermillion'));
+      ii = find(Usave{i} == -1);
+      patch('Faces',R(ii,:),'Vertices',V, ...
+            'FaceColor',[0 0 0]);
+      title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
+      drawnow;
+      M(i) = getframe(gcf);
+    end
+else
+    patchCurrentCells;
+end
+%% Investigate the time evolution of the different cell numbers
+figure(2), clf
 spsum  = @(U)(full(sum(abs(U))));
 deadsum = @(U)(full(sum(U == -1)));
 normsum = @(U)(full(sum(U == 1)));
@@ -317,6 +378,26 @@ ylim([0 max(y)]);
 xlabel('time')
 ylabel('N cells')
 legend('total', 'dead','double','single');
+
+%% Save the important data in a struct
+if doSave
+    saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
+        'R', {R}, 'V', {V}, 'N', {N}, ...
+        'max_radius', {max_radius}, 'Ne', {Ne}, 'inspect_rates', {inspect_rates}, ...
+        'alpha', {alpha}, 'Pr', {Pr}, 'Adof', {Adof},  ...
+        'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
+        'Nvoxels',{Nvoxels}, 'IC', {IC}, 'R1', {R1}, 'R2', {R2},...
+        'P', {P}, 'bdof_m', {bdof_m}, 'bdof_m_', {bdof_m_}, ...
+        'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
+        'Tend', {Tend}, 'mesh_type', {mesh_type}, 'Drate_', {Drate_}, 'do_idof3', {do_idof3});
+    filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
+    if mesh_type == 2
+        filename_ = filename_ + "_HEX";
+    end
+    filename_ = filename_ + "_" + strjoin(string(fix(clock)),'-');
+    filename_saveData = "saveData_" + filename_ + ".mat";
+    save(filename_saveData,'-struct','saveData');
+end
 
 return;
 

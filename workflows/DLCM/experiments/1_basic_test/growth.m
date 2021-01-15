@@ -16,7 +16,7 @@ Nvoxels = 40;
 Drate = 2;
 
 % build the hex-mesh
-[P,E,T,gradquotient] = basic_mesh(2,Nvoxels);
+[P,E,T,gradquotient] = basic_mesh(1,Nvoxels);
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
@@ -42,7 +42,7 @@ ID = fsparse(ii(:),1,(1:numel(ii))',[Nvoxels^2 2]);
 % track of individual cells.
 
 % simulation interval
-Tend = 10;
+Tend = 100;
 % solution recorded at this grid:
 tspan = linspace(0,Tend,41);
 
@@ -61,16 +61,16 @@ neigh = 6;
 updLU = true;
 La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
 while tt <= tspan(end)
-% $$$   % visualization (somewhat slow)
-% $$$   figure(1), clf,
-% $$$   patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9]);
-% $$$   hold on,
-% $$$   axis([-1 1 -1 1]); axis square, axis off
-% $$$   ii = find(U == 1);
-% $$$   patch('Faces',R(ii,:),'Vertices',V,'FaceColor',[0 1 0]);
-% $$$   jj = find(U > 1);
-% $$$   patch('Faces',R(jj,:),'Vertices',V,'FaceColor',[1 0 0]);
-% $$$   drawnow;
+%    % visualization (somewhat slow)
+%    figure(1), clf,
+%    patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9]);
+%    hold on,
+%    axis([-1 1 -1 1]); axis square, axis off
+%    ii = find(U == 1);
+%    patch('Faces',R(ii,:),'Vertices',V,'FaceColor',[0 1 0]);
+%    jj = find(U > 1);
+%    patch('Faces',R(jj,:),'Vertices',V,'FaceColor',[1 0 0]);
+%    drawnow;
 
   % classify the DOFs
 
