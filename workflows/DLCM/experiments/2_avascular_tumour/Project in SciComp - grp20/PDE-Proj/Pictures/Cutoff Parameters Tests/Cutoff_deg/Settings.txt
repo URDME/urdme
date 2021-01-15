@@ -1,0 +1,4 @@
+cutoff_bdof=0.1
+cutoff_remain=0.01
+
+scaled

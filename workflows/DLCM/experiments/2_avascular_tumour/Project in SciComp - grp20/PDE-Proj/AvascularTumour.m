@@ -348,7 +348,6 @@ if tumour_figure==1
     fig = figure(11), 
     clf,
     Umat=full(cell2mat(Usave));
-    %colorbar('southoutside')
     colorbar;
     caxis([0 max(max(Umat))])
     colorlabel('Concentration of cells, U')
@@ -357,7 +356,6 @@ if tumour_figure==1
     snapshot =1;    %Save 5 snapshots 
 
     for i = 1:numel(Usave)
-        %clf
         patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
             'EdgeColor','none');
         %patch('Faces',R,'Vertices',V,'FaceColor','none', ...
@@ -385,8 +383,8 @@ if tumour_figure==1
             %Save 5 snapshots of the tumor progression
             if i~= [1 ceil([0.24 0.49 0.74 1]*numel(Usave))]
             elseif i==1
-              filename = 'T=1.eps';
-              print(fig,filename,'-painters','-depsc'); 
+              filename = 'T=1.png';
+              print(fig,filename,'-painters','-dpng'); 
             else
               ii=ceil(i*(Tend/numel(Usave)));
               %filename = ['T=' num2str(ii) '.eps'];
@@ -396,13 +394,13 @@ if tumour_figure==1
             end
         end
         % saves the GIF
-        %movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'Tumour.gif', ...
-        %          'delaytime',0.1,'loopcount',0);
+        movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'Tumour.gif', ...
+                 'delaytime',0.1,'loopcount',0);
               
     end
 end
 %% SAVE DATA
-saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
+saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Udsave}, 'tspan', {tspan}, ...
     'R', {R}, 'V', {V}, 'N', {N}, 'Udsave', {Udsave}, ...
     'max_radius', {max_radius}, 'Pr', {Pr}, 'Adof', {Adof},  ...
     'adof', {adof}, 'adof_', {adof_}, 'idof', {idof}, 'idof_', {idof_}, ...
@@ -411,8 +409,9 @@ saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
     'sdof_m', {sdof_m},'sdof_m_', {sdof_m_}, 'gradquotient', {gradquotient}, ...
     'Tend', {Tend});
 %filename_ = "alpha" + erase(sprintf('%0.0e',alpha),'.');
-filename_ = filename_ + "_" + strjoin(string(fix(clock)),'-');
-filename_saveData = "testShit/saveData_" + filename_ + ".mat";
+%filename_ = filename_ + "_" + strjoin(string(fix(clock)),'-');
+filename = "Data";
+filename_saveData = "Data/saveData_" + filename_ + ".mat";
 save(filename_saveData,'-struct','saveData');
 
 return;
