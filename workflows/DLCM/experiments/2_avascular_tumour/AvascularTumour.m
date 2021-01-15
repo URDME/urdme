@@ -22,7 +22,7 @@
 % simulation interval
 Tend = 1000;
 tspan = linspace(0,Tend,101);
-report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
+%report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 % The user specified cutoff and rate parameters for the proliferation,  
 % death, degradation and consumption rules.
@@ -279,14 +279,19 @@ report(tt,U,'done');
 %   hold on,
 %   axis([-1 1 -1 1]); axis square, axis off
 %   ii = find(Usave{i} == 1);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
+%   single = patch('Faces',R(ii,:),'Vertices',V, ...
 %         'FaceColor',graphics_color('bluish green'));
+%   
 %   ii = find(Usave{i} == 2);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
+%   double = patch('Faces',R(ii,:),'Vertices',V, ...
 %         'FaceColor',graphics_color('vermillion'));
+%   
 %   ii = find(Usave{i} == -1);
-%   patch('Faces',R(ii,:),'Vertices',V, ...
+%   dead = patch('Faces',R(ii,:),'Vertices',V, ...
 %         'FaceColor',[0 0 0]);
+%     
+%   legend([single, double, dead],'single','double', 'dead');
+%   
 %   title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
 %   drawnow;
 %   M(i) = getframe(gcf);

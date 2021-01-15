@@ -34,6 +34,8 @@ BC2 = 0;
 % BC1 >= BC2 is the only thing that makes sense. And normalizing one
 % of them to 0 sets the pressure unit.
 
+mesh_type = 1
+
 % fetch discretization (mesh_type = 1 or 2)
 if ~exist('mesh_type','var'), error('Must define mesh_type.'); end
 [P,E,T,gradquotient] = basic_mesh(mesh_type,Nvoxels);
@@ -60,7 +62,6 @@ ii = find(abs(P(2,:)+1) < 0.35);
 U(ii) = 0; % an empty bottom strip
 
 % classify the DOFs
-
 neigh = full(sum(N,2));
 adof = find(U);
 bdof_m = find(N*(U > 0) < neigh & U == 1);
@@ -115,10 +116,10 @@ grad = fsparse(ii,1,max(Pr(sdof_m_(ii))-Pr(jj_),0).* ...
                numel(sdof_m));
 moves = full(gradquotient*grad);
 
- % pressure plot
- figure(3), clf,
- Pr_ = full(U); Pr_(Adof) = Pr;
- trisurf(T(1:3,:)',P(1,:),P(2,:),Pr_);
+% pressure plot
+figure(3), clf,
+Pr_ = full(U); Pr_(Adof) = Pr;
+trisurf(T(1:3,:)',P(1,:),P(2,:),Pr_);
 
 % visualize rates
 figure(mesh_type), clf,

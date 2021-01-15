@@ -159,10 +159,19 @@ elseif strcmp(mx,'mexs64')
   mex('-outdir',s,[s '/source/tprod.c']); 
   
 elseif strcmp(mx,'mexw64')
+<<<<<<< HEAD
   mex('-outdir',s,[s '/source/tndims.c']);
   mex('-outdir',s,[s '/source/tsize.c']);
   mex('-outdir',s,[s '/source/tsum.c']);
   mex('-lmwblas','CFLAGS= -D"dgemm_=dgemm" ','-outdir',s,[s '/source/tprod.c']); 
+=======
+  mex('-outdir',s,[s '/source/tndims.c']);	  cflags = 'CFLAGS= -lmwblas -std=c99 ';
+  mex('-outdir',s,[s '/source/tsize.c']);	  mex(cflags, '-outdir',s,[s '/source/tndims.c']);
+  mex('-outdir',s,[s '/source/tsum.c']);	  mex(cflags, '-outdir',s,[s '/source/tsize.c']);
+  mex('-lmwblas','CFLAGS= -D"dgemm_=dgemm" ','-outdir',s,[s '/source/tprod.c']); 	  mex(cflags, '-outdir',s,[s '/source/tsum.c']);
+  mex([cflags '-D"dgemm_=dgemm" -D"BLASINT=size_t" '],'-outdir',s,[s '/source/tprod.c']); % '-lmwblas',
+
+>>>>>>> JoinedModel
 else
   warning('New platform. Trying default make.');
   mex('-outdir',s,[s '/source/tndims.c']);
