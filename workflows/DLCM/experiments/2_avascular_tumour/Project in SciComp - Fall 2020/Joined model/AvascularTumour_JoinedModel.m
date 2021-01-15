@@ -1,4 +1,4 @@
-% Simulation of an avascular tumour model.
+% Simulation of an avascular tumour model, PDE-model with Robin BC
 %
 %   Avascular tumour growth: An initial circular population cells (one
 %   per voxel) lie in a domain rich in oxygen. Cells consume oxygen at
