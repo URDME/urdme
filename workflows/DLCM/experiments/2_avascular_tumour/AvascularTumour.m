@@ -20,11 +20,7 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-<<<<<<< HEAD
-Tend = 1001;
-=======
 Tend = 1000;
->>>>>>> RobinBC
 tspan = linspace(0,Tend,101);
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 

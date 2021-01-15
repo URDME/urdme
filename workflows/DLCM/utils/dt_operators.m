@@ -1,4 +1,4 @@
-function [L,dM,N,M] = dt_operators(P,T)
+function [L,dM,N] = dt_operators(P,T)
 %DT_OPERATORS Operator assembly over (Delaunay) triangulation.
 %   [L,dM,N] = DT_OPERATORS(P,T) assembles minus the Laplacian L over
 %   the triangulation (P,T), along with the vector of voxel volumes
