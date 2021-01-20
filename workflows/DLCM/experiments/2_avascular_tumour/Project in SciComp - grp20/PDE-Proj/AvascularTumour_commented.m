@@ -1,4 +1,4 @@
-Simulation of an avascular tumour model.
+% Simulation of an avascular tumour model.
 %
 %   Avascular tumour growth: An initial circular population of cells (one
 %   per voxel) lie in a domain rich in oxygen. Cells consume oxygen at
@@ -6,7 +6,8 @@ Simulation of an avascular tumour model.
 %   cutoff_prol proliferate at a rate r_prol. Cells occupying
 %   voxels with an oxygen concentration below cutoff_die die at a
 %   rate r_die. Dead cells degrade and stop occupying space at a
-%   rate r_degrade.
+%   rate r_degrade. Voxels with cell concentrations above 1 are 
+%   over-occupied and cause pressure, which will cause movement of cells.
 
 % M.C. Jayaweera & A. Graf Brolund 2021-01(revision)
 % S. Engblom 2017-12-27 (revision)
