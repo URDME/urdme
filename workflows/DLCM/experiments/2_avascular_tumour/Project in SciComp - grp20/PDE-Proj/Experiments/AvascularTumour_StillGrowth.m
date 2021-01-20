@@ -1,21 +1,17 @@
 % Simulation of an avascular tumour model.
 %
-%   Avascular tumour growth: An initial circular population cells (one
-%   per voxel) lie in a domain rich in oxygen. Cells consume oxygen at
-%   a constant rate, lambda. Cells occupying a voxel with oxygen above
-%   cutoff_prol can proliferate at a rate r_prol. Cells occupying
-%   voxels with an oxygen concentration below cutoff_die can die at a
-%   rate r_die.  Dead cells are represented with a voxel with value
-%   -1, these dead cells can degrade and stop occupying space at a
+%   Avascular tumour growth, still growth experiment: An initial circular
+%   population cells (one per voxel) lie in a domain rich in oxygen. Cells 
+%   consume oxygen at a constant rate, cons. Cells occupying a voxel with 
+%   oxygen above cutoff_prol proliferate at a rate r_prol. Cells occupying
+%   voxels with an oxygen concentration below cutoff_die die at a
+%   rate r_die. Dead cells degrade and stop occupying space at a
 %   rate r_degrade.
-%
-%   Permeability: Drate1 describes the rate diffusion rate of tumour
-%   cells invading previously unvisited voxels. Drate2 is the rate
-%   cells move into previously occupied but currently empty
-%   voxels. Drate3 is the rate cells move into voxels that are already
-%   occupied.
+%   
+%   No movement of the cells is allowed. Pressure between cells is
+%   calculated but does not cause any actions.
 
-% C. Jayaweera & A. Graf Brolund 2020-12(revision)
+% C. Jayaweera & A. Graf Brolund 2021-01 (revision)
 % S. Engblom 2017-12-27 (revision)
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
@@ -31,12 +27,14 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 [P,E,T,gradquotient] = basic_mesh(1,Nvoxels); 
 [V,R] = mesh2dual(P,E,T,'voronoi');
 
-D=1; %D_rate 
+D = 1; % D_rate, the rate with which cells move in the domain. 
+        % currently the rate is the same for visited voxels and non-visited
 
 % simulation interval
 Tend = 100;
 tspan = linspace(0,Tend,101);
 timescaling = 0.005;
+
 % report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 % The user specified cutoff and rate parameters for the proliferation,
@@ -51,13 +49,13 @@ cutoff_deg = 0.0001;  % the minimum amount of dead cells in a voxel
 cutoff_remain = 0.01; % the minimum amount of alive cells in a voxel
 
 % Initial population: circular blob of living cells
-start_value = 1;
+start_value = 1; % cell concentrations in the initial blob
 radius = 0.25;
 r = sqrt(P(1,:).^2+P(2,:).^2);
 ii = find(r < radius); % radius of the initial blob
-U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
+U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]); % intialize
 U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]);      %Intialize
+U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]);      
 U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]);  
 
 % boundary conditions
@@ -111,12 +109,12 @@ while tt <= tspan(end)
     %Classification of the DOFs
     adof = find(U_and_U_dead); % all filled voxels 
     sdof = find(U > 1); % source voxels,concentration more than 1
-    % empty voxels touching occupied ones idof1 = find(Idof & ~VU);
+    % empty voxels touching occupied ones 
     Idof = (N*(U_and_U_dead ~= 0) > 0 & U_and_U_dead == 0);          
     idof1 = find(Idof & ~VU); % "external" OBC1
     idof2 = find(Idof & VU); % "internal" OBC2
     idof = find(Idof);
-    ddof = find(U_dead > 0); %degrading voxels
+    ddof = find(U_dead > 0); % degrading voxels
     
     % "All DOFs" = adof + idof, like the "hull of adof"
     Adof = [adof; idof];
@@ -163,13 +161,14 @@ while tt <= tspan(end)
     %degradation
     degrade_conc = U_deadnew(ddof)*r_degrade; 
     
-    %%  Calculate timestep dt    
-    dt_death = U_new(ind_die)./(dead_conc);
+    %%  Calculate time step dt    
+    % find the largest possible time step while avoiding U<0
+    dt_death = U_new(ind_die)./(dead_conc); 
 
-    dt = min([dt_death;(0.1*Tend)])*timescaling;
+    dt = min([dt_death;(0.1*Tend)])*timescaling; % scale dt smaller
    
-    %%  Save time series of current step
-    % Report back and save time series of current states 
+    %% Report back and save time series of current states
+ 
     if tspan(i+1) < tt+dt
         iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
 
@@ -183,6 +182,7 @@ while tt <= tspan(end)
     end
     
     %% Euler steps
+    
     %Proliferation
     U_new(ind_prol) = U_new(ind_prol)+prol_conc*dt;
 
@@ -203,28 +203,30 @@ while tt <= tspan(end)
     % update the visited sites
     VU = VU | U;
 end
-% report(tt,U,'done');
+% report(tt,U,'done'); 
 
 %% Create a GIF animation
 Mnormal = struct('cdata',{},'colormap',{});
-figure(1), clf,
+figure(1), clf, 
 
 Umat=full(cell2mat(Usave));
 colorbar
 caxis([min(min(Umat)) max(max(Umat))])
 colorlabel('Concentration of cells, U')
 for i = 1:numel(Usave)
-    
+    % background
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
         'EdgeColor','none');
     hold on,
     axis([-1 1 -1 1]); axis square, axis off
     
+    % colour living voxels after concentration level
     ii = find(Usave{i}>0);
     c = Umat(ii,i);
     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c, ... 
         'FaceColor','flat');     
 
+    % color (fully) dead voxels black
     ii = find(Usave{i} == 0 & Udsave{i} > 0);
     p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);
@@ -234,6 +236,7 @@ for i = 1:numel(Usave)
     drawnow;
     Mnormal(i) = getframe(gcf);
 end
-% saves the GIF
+
+% save the GIF
 movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'Tumour.gif', ...
           'delaytime',0.1,'loopcount',0);

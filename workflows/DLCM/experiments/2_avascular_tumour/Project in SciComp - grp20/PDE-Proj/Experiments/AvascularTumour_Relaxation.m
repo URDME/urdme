@@ -1,21 +1,13 @@
 % Simulation of an avascular tumour model.
 %
-%   Avascular tumour growth: An initial circular population cells (one
-%   per voxel) lie in a domain rich in oxygen. Cells consume oxygen at
-%   a constant rate, lambda. Cells occupying a voxel with oxygen above
-%   cutoff_prol can proliferate at a rate r_prol. Cells occupying
-%   voxels with an oxygen concentration below cutoff_die can die at a
-%   rate r_die.  Dead cells are represented with a voxel with value
-%   -1, these dead cells can degrade and stop occupying space at a
-%   rate r_degrade.
+%   Avascular tumour growth, relaxation experiment: An initial circular 
+%   population of cells lie crowded together (concentration>1). When 
+%   released, the pressure exerted between the cells will have them move 
+%   out in the domain.
 %
-%   Permeability: Drate1 describes the rate diffusion rate of tumour
-%   cells invading previously unvisited voxels. Drate2 is the rate
-%   cells move into previously occupied but currently empty
-%   voxels. Drate3 is the rate cells move into voxels that are already
-%   occupied.
+%   No proliferation, death, or degradation is allowed.  
 
-% C. Jayaweera & A. Graf Brolund 2020-12(revision)
+% C. Jayaweera & A. Graf Brolund 2021-01 (revision)
 % S. Engblom 2017-12-27 (revision)
 % D. B. Wilson 2017-09-05
 % S. Engblom 2017-02-11
@@ -31,7 +23,8 @@ Nvoxels = 121; % odd so the BC for oxygen can by centered
 [P,E,T,gradquotient] = basic_mesh(1,Nvoxels);  %gradquotient=1 for... 
 [V,R] = mesh2dual(P,E,T,'voronoi');             %cartesian mesh
 
-D=1; %D_rate 
+D = 1; % D_rate, the rate with which cells move in the domain. 
+        % currently the rate is the same for visited voxels and non-visited
 
 % simulation interval
 Tend = 100;
@@ -39,18 +32,17 @@ tspan = linspace(0,Tend,101);
 timescaling = 0.005;
 
 % initial population: circular blob of living cells    
-start_value = 10;
+start_value = 10; % cell concentrations in the initial blob
 radius = 0.07;
 r = sqrt(P(1,:).^2+P(2,:).^2);
 ii = find(r < radius); % radius of the initial blob
-U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]); %initialize
+U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]); % initialize
 U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initialize
+U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); 
 U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); 
 
 % parameters
-cons = 0.0015;        % consumption of oxygen by cells
-cutoff_bdof = 0.1;      % lower bound for bdof
+cutoff_bdof = 0.1;    % lower bound for bdof
 
 % boundary conditions
 OBC1 = 0; % BC for the oxygen equation for unvisited boundary
@@ -61,7 +53,7 @@ OBC2 = 0; % BC for the visited boundary
 [L,dM,N] = dt_operators(P,T);       %N gives the neighbours 
 neigh = full(sum(N,2));
 
-N_vec = zeros(size(N,1),4);         % Matrix used to find sdof_m
+N_vec = zeros(size(N,1),4);          % neighbour matrix used to find sdof_m
 for k = 1:size(N,1)
     temp = find(N(k,:));
     if length(temp) == 2
@@ -72,14 +64,6 @@ for k = 1:size(N,1)
     N_vec(k,:) = temp;
 end
 
-% dofs for the sources at the extreme outer circular boundary
-[xc,yc] = getmidpointcircle(1/2*(Nvoxels+1),1/2*(Nvoxels+1),1/2* ...
-    (Nvoxels-1));
-irem = find(xc < 1 | yc < 1 | xc > Nvoxels | yc > Nvoxels);
-xc(irem) = [];
-yc(irem) = [];
-extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
-
 % visit marker matrix: 1 for voxels who have been occupied
 VU = (U ~= 0);
 
@@ -89,8 +73,7 @@ Usave{1} = U;
 Udsave = cell(1,numel(tspan));
 Udsave{1} = U_dead;
 
-% keeps track of oxygen and dofs for figures and understanding
-Oxysave = cell(1,numel(tspan));
+% keeps track of dofs for figures and understanding
 bdofsave = cell(1,numel(tspan));
 sdofsave = cell(1,numel(tspan));
 sdofbsave = cell(1,numel(tspan));
@@ -98,13 +81,6 @@ sdofbsave = cell(1,numel(tspan));
 tt = tspan(1);
 i = 1;
 La = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
-OLa = struct('X',0,'L',0,'U',0,'p',0,'q',0,'R',0);
-
-% oxygen Laplacian
-OLa.X = L;
-OLai = fsparse(extdof,extdof,1,size(OLa.X));
-OLa.X = OLa.X-OLai*OLa.X+OLai;   
-[OLa.L,OLa.U,OLa.p,OLa.q,OLa.R] = lu(OLa.X,'vector');
 
 while tt <= tspan(end)
     U = U_new;
@@ -127,7 +103,7 @@ while tt <= tspan(end)
     % voxels with more than concentration 1 in them which may move, 
     % with a voxel containing a lower concentrations next to it:
     sdof_m = find(U - min(U(N_vec),[],2) > 0 & U>1);
-    % empty voxels touching occupied ones idof1 = find(Idof & ~VU); 
+    % empty voxels touching occupied ones  
     Idof = (N*(U_and_U_dead ~= 0) > 0 & U_and_U_dead == 0);      
     idof1 = find(Idof & ~VU);         % "external" OBC1
     idof2 = find(Idof & VU);          % "internal" OBC2
@@ -143,8 +119,7 @@ while tt <= tspan(end)
     [bdof_m_,sdof_,sdof_m_,idof1_,idof2_,idof_,adof_, sdof_b_] = ...          
       map(Adof_,Adof,bdof_m,sdof,sdof_m,idof1,idof2,idof,adof,sdof_b);
     
-    %% Calculate Pressure and Oxygen systems
-    %Pressure and oxygen calculation
+    %% Calculate Pressure
 
     % pressure Laplacian
     La.X = L(Adof,Adof);
@@ -158,68 +133,32 @@ while tt <= tspan(end)
         [size(La.X,1) 1]));   % RHS first...                           
     Pr(La.q) = La.U\(La.L\(La.R(:,La.p)\Pr)); % ..then the solution
 
-    % RHS source term proportional to the over-occupancy and BCs
-    Oxy = full(fsparse([extdof; adof],1, ...
-        [ones(size(extdof)); ...
-        -cons*full(U(adof)./dM(adof))], ... 
-        [size(OLa.X,1) 1]));
-    Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
-
-    %% Move calculations
-    %sdof and bdof movement calculations
+    %% Movement calculations
     
-    %sdof_m  
+    % movement of cells in sources, sdof_m
     rates_sdof = zeros(length(Adof),1);
-    [ii,jj_] = find(N(sdof_m,Adof)); % neighbours...
+    [ii,jj_] = find(N(sdof_m,Adof)); % neighbours
+    % pressure difference between cells and its neighbours    
     Pr_diff__ = max(Pr(sdof_m_(ii))-Pr(jj_),0);   
     grad_sdof = fsparse(ii,1,Pr_diff__*D, numel(sdof_m));
-    rates_sdof(sdof_m_) = -gradquotient*grad_sdof;
+    rates_sdof(sdof_m_) = -gradquotient*grad_sdof; % sources lose cells
     grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof));
-    rates_sdof = rates_sdof + gradquotient*grad_N;
-    
-%     % bdof_m
-%     rates_bdof = zeros(length(Adof),1);
-% 
-%     %check if boundary is updated. If no bdofs exist, skip bdof calculation
-%     if sum(bdof_m) == 0
-%         updLU = true;
-%         return          %!Check this expression if integrated into larger code
-%     else
-%        
-    % bdof_m
+    rates_sdof = rates_sdof + gradquotient*grad_N; % neighbours gain cells
+           
+    % movement of cells on the boundary, not over-occupied, bdof_m
     rates_bdof = zeros(length(Adof),1);
-    %check if boundary is updated. If no bdofs exist, skip bdof calculation
-%         for ind=1:length(bdof_m_)
-%             % movement of a boundary (singly occupied) voxel
-%             ix = bdof_m(ind);
-%             ix_ = bdof_m_(ind);
-% 
-%             jx_ = find(N(ix,Adof));
-%             % (will only move into an empty voxel:)
-%             jx_ = jx_(U_and_U_dead(Adof(jx_)) == 0);
-%             Pr_diff = max(Pr(ix_)-Pr(jx_),0);
-% 
-%             rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
-%             rates_bdof(ix_) = -sum(D*Pr_diff); 
-%         end
-        
     for ind=1:length(bdof_m_)
-        % movement of a boundary (singly occupied) voxel
         ix = bdof_m(ind);
         ix_ = bdof_m_(ind);
 
-        jx_ = find(N(ix,Adof));
-        % (will only move into an empty voxel:)
-        jx_ = jx_(U_and_U_dead(Adof(jx_)) == 0);
-        %jx_ = jx_(U(Adof(jx_)) == 0 & U_dead(Adof(jx_)) == 0);
-        Pr_diff = max(Pr(ix_)-Pr(jx_),0);
+        jx_ = find(N(ix,Adof)); % neighbour to the voxel
+        jx_ = jx_(U_and_U_dead(Adof(jx_)) == 0); % empty neighbours
+        Pr_diff = max(Pr(ix_)-Pr(jx_),0); % pressure difference
 
-        rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff;
-        rates_bdof(ix_) = -sum(D*Pr_diff); 
+        rates_bdof(ix_) = -sum(D*Pr_diff); % loses cells        
+        rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff; % gain cells
     end
 
-    
-        
 %         rates_bdof = zeros(length(Adof),1);
 %         [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
 %         %keep = find(U(Adof(jj_)) < 1);   % ...to move to
@@ -234,30 +173,28 @@ while tt <= tspan(end)
 %     
 %         grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof)); 
 %         rates_bdof = rates_bdof + gradquotient*grad_N;
-% %         updLU = true;
-        
-%     end
  
-    ind_rates_sdof_n = find(rates_sdof(sdof_m_)<0);
+    %%  Calculate timestep dt 
+    
+    ind_rates_sdof_n = find(rates_sdof(sdof_m_)<0); % affected voxels
     ind_rates_bdof_n = find(rates_bdof(bdof_m_)<0);
 
+    % find the largest possible time step while avoiding U<0
     dt_sdof = U_new(sdof_m(ind_rates_sdof_n))./ ... 
         (-rates_sdof(sdof_m_(ind_rates_sdof_n)));
     dt_bdof = U_new(bdof_m(ind_rates_bdof_n))./ ... 
         (-rates_bdof(bdof_m_(ind_rates_bdof_n)));
 
-    dt = min([dt_sdof; dt_bdof;(0.1*Tend)])*timescaling;
+    dt = min([dt_sdof; dt_bdof;(0.1*Tend)])*timescaling; % scale dt smaller
    
-    %%  Save time series of current step
-    % Report back and save time series of current states 
+    %% Report back and save time series of current states 
+
     if tspan(i+1) < tt+dt
         iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
 
         % save relevant values 
         Usave(i+1:iend) = {U};
         Udsave(i+1:iend) = {U_dead};
-
-        Oxysave(i+1:iend) = {Oxy};
 
         bdofsave(i+1:iend) = {bdof_m};
         sdofsave(i+1:iend) = {sdof_m};
@@ -268,10 +205,10 @@ while tt <= tspan(end)
     
     %% Euler forward step
     
-    % sdof_m
+    % movement of cells in sources, sdof_m
     U_new(Adof) = U_new(Adof) + rates_sdof.*dt;
 
-    % bdof_m
+    % movement of cells in boundary voxels, bdof_m
     U_new(Adof) = U_new(Adof) + rates_bdof*dt;
     
     tt = tt+dt;
@@ -291,17 +228,19 @@ colorbar
 caxis([0 max(max(Umat))])
 colorlabel('Concentration of cells, U')
 for i = 1:numel(Usave)
-    
+    % background
     patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9], ...
         'EdgeColor','none');
     hold on,
     axis([-1 1 -1 1]); axis square, axis off
     
+    % colour living voxels after concentration level
     ii = find(Usave{i}>0);
     c = Umat(ii,i);
     patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c, ... 
         'FaceColor','flat');     
-
+    
+    % color (fully) dead voxels black
     ii = find(Usave{i} == 0 & Udsave{i} > 0);
     p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);
@@ -311,7 +250,7 @@ for i = 1:numel(Usave)
     drawnow;
     Mnormal(i) = getframe(gcf);
 end
-% saves the GIF
+
+% save the GIF
 movie2gif(Mnormal,{Mnormal([1:2 end]).cdata},'Tumour.gif', ...
           'delaytime',0.1,'loopcount',0);
-
