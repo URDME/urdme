@@ -171,7 +171,7 @@ while tt <= tspan(end)
         [size(OLa.X,1) 1]));
     Oxy(OLa.q) = OLa.U\(OLa.L\(OLa.R(:,OLa.p)\Oxy));
 
-%% Movement calculations
+    %% Movement calculations
     
     % movement of cells in sources, sdof_m  
     rates_sdof = zeros(length(Adof),1);
@@ -213,7 +213,7 @@ while tt <= tspan(end)
 %         grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof)); 
 %         rates_bdof = rates_bdof + gradquotient*grad_N;
 
-%%  Change calculation
+    %%  Change calculation
     %Change calculation of proliferation, death and degradation
 
     % proliferation
@@ -242,7 +242,7 @@ while tt <= tspan(end)
     dt_unscaled = (min([dt_death; dt_sdof; dt_bdof;(0.1*Tend)]));
     dt = dt_unscaled*timescaling; % scale dt smaller
 
-%%  Report back and save time series of current states
+    %%  Report back and save time series of current states
     
     if tspan(i+1) < tt+dt
         iend = i+find(tspan(i+1:end) < tt+dt,1,'last');
@@ -259,7 +259,7 @@ while tt <= tspan(end)
         i = iend;
     end
 
-%%  Euler forward step
+    %%  Euler forward step
 
     %Proliferation
     U_new(ind_prol)=U_new(ind_prol)+prol_conc*dt;
@@ -281,7 +281,7 @@ while tt <= tspan(end)
     U_new(Adof) = U_new(Adof) + rates_bdof*dt;
 
 
-%% Step in time
+    %% Step in time
     tt = tt+dt; 
 %     report(tt,U,'');
     
