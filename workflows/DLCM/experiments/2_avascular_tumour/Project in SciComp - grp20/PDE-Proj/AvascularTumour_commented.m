@@ -22,6 +22,7 @@ close all;
                   %computationally heavy
 
 %% Initial experiment setup
+
 % cells live in a square of Nvoxels-by-Nvoxels
 Nvoxels = 121; % odd so the BC for oxygen can by centered
 
@@ -88,7 +89,6 @@ xc(irem) = [];
 yc(irem) = [];
 extdof = find(sparse(xc,yc,1,Nvoxels,Nvoxels));
 
-%%
 % visit marker matrix: 1 for voxels who have been occupied 
 VU = (U ~= 0);
 
