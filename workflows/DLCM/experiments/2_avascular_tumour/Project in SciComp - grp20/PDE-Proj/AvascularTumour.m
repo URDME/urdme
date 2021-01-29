@@ -30,7 +30,7 @@ D = 1; % D_rate, the rate with which cells move in the domain.
         % currently the rate is the same for visited voxels and non-visited
 
 % simulation interval
-Tend = 11;                  % final time step
+Tend = 101;                  % final time step
 tspan = linspace(0,Tend,101);
 timescaling=0.005;          % time scaling
 
