@@ -1,5 +1,0 @@
-cutoff_deg=0.0001
-cutoff_remain=0.01
-
-not scaled (sdof&bdof)
-T=100

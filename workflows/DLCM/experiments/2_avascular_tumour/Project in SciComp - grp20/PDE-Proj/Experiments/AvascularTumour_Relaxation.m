@@ -144,8 +144,11 @@ while tt <= tspan(end)
     rates_sdof(sdof_m_) = -gradquotient*grad_sdof; % sources lose cells
     grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof));
     rates_sdof = rates_sdof + gradquotient*grad_N; % neighbours gain cells
-           
+                         
     % movement of cells on the boundary, not over-occupied, bdof_m
+    % this loop is similar to what is done above for sdof and can be 
+    % rewritten in a similar fashion. Since this calculation is less 
+    % common, it is not a big concern for efficiency
     rates_bdof = zeros(length(Adof),1);
     for ind=1:length(bdof_m_)
         ix = bdof_m(ind);
@@ -158,21 +161,6 @@ while tt <= tspan(end)
         rates_bdof(ix_) = -sum(D*Pr_diff); % loses cells        
         rates_bdof(jx_) = rates_bdof(jx_) + D*Pr_diff; % gain cells
     end
-
-%         rates_bdof = zeros(length(Adof),1);
-%         [ii,jj_] = find(N(bdof_m,Adof)); % neighbours...
-%         %keep = find(U(Adof(jj_)) < 1);   % ...to move to
-%         %ii = reshape(ii(keep),[],1); jj_ = reshape(jj_(keep),[],1);
-%         % remove any possibly remaining negative rates
-%         %Pr_diff__ = max(Pr(bdof_m_(ii))-Pr(jj_),0).*(U(bdof_m(ii))-1);    %proportionellt mot over-occupancy
-%         Pr_diff__ = max(Pr(bdof_m_(ii))-Pr(jj_),0);    %proportionellt mot over-occupancy
-% 
-%         grad_bdof = fsparse(ii,1,Pr_diff__*D, numel(bdof_m)); 
-%         %moves = full(gradquotient*grad);
-%         rates_bdof(bdof_m_) = -gradquotient*grad_bdof;
-%     
-%         grad_N = fsparse(jj_,1, Pr_diff__*D, numel(Adof)); 
-%         rates_bdof = rates_bdof + gradquotient*grad_N;
  
     %%  Calculate timestep dt 
     
