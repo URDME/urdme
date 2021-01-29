@@ -39,7 +39,7 @@ D = 1; % D rate, the rate of which cells move in the domain
 Drate_ = [0.01;25];
 
 % simulation interval
-Tend = 100;
+Tend = 10;
 tspan = linspace(0,Tend,101);
 timescaling=0.005;
 report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
@@ -48,94 +48,27 @@ report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 alpha = 1e+4; % weighting parameter for Robin BC
 alpha_inv = 1/alpha; % inverse is the value used in simulation
 
-% Set which experiment to use
-exp = 0;
-
-%Experiments
-if exp == 0
-    % Normal run------------------------------------
-    start_value = 1;
-    radius = 0.05;
-    
-    cons = 0.0015;        % consumption of oxygen by cells
-    cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0.125;       % rate of proliferation of singly occupied voxels
-    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.125;        % rate of death
-    r_degrade = 0.01;     % rate of degradation for already dead cells
-    
-    % Initial population: circular blob of living cells
-    r = sqrt(P(1,:).^2+P(2,:).^2);
-    ii = find(r < radius); % radius of the initial blob
-    U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-    U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-    U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]);      %Intialize
-    U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]);   %Initialize
-    
-elseif exp ==1
-    % Initial: relaxation---------------------------
-    start_value = 10;
-    radius = 0.07;
-    
-    cons = 0.0015;        % consumption of oxygen by cells
-    cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0;       % rate of proliferation of singly occupied voxels
-    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0;        % rate of death
-    r_degrade = 0;     % rate of degradation for already dead cells
-    
-    % initial population: circular blob of living cells
-    r = sqrt(P(1,:).^2+P(2,:).^2);
-    ii = find(r < radius); % radius of the initial blob
-    U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-    U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-    U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initialize
-    U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initialize
-elseif exp==2 
-    %initial: simulation---------------------------
-    start_value = 1;
-    radius = 0.15;
-    
-    cons = 0.0015;        % consumption of oxygen by cells
-    cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0.125;       % rate of proliferation of singly occupied voxels
-    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.125;        % rate of death
-    r_degrade = 0.01;     % rate of degradation for already dead cells 
-    
-    % initial population: circular blob of living cells
-    r = sqrt(P(1,:).^2+P(2,:).^2);
-    ii = find(r < radius); % radius of the initial blob
-    U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-    U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-    U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initialize
-    U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initialize
-    
-elseif exp==3 
-    %initial: Quick, concentrated------------------
-    start_value = 1;
-    radius = 0.09;
-    
-    %Tend=30;
-    cons = 0.15;        % consumption of oxygen by cells
-    cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
-    r_prol = 0.3;       % rate of proliferation of singly occupied voxels
-    cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
-    r_die = 0.3;        % rate of death
-    r_degrade = 0.05;     % rate of degradation for already dead cells 
-    
-    % initial population: circular blob of living cells
-    r = sqrt(P(1,:).^2+P(2,:).^2);
-    ii = find(r < radius); % radius of the initial blob
-    U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-    U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
-    U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
-    U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]); %initiera
-end
+cons = 0.0015;        % consumption of oxygen by cells
+cutoff_prol = 0.65;   % the minimum amount of oxygen for proliferation
+r_prol = 0.125;       % rate of proliferation of singly occupied voxels
+cutoff_die = 0.55;    % the maximum amount of oxygen where cells can die
+r_die = 0.125;        % rate of death
+r_degrade = 0.01;     % rate of degradation for already dead cells
 
 cutoff_bdof = 0.1;
 cutoff_deg = 0.0001;
 cutoff_remain = 0.01;
+
+% Initial population: circular blob of living cells
+start_value = 1;
+radius = 0.05;
+r = sqrt(P(1,:).^2+P(2,:).^2);
+ii = find(r < radius); % radius of the initial blob
+U = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
+U_new = fsparse(ii(:),1,start_value,[Nvoxels^2 1]);
+U_dead = fsparse(ii(:),1,0,[Nvoxels^2 1]);      %Intialize
+U_deadnew = fsparse(ii(:),1,0,[Nvoxels^2 1]);   %Initialize
+
 
 %% Other simulation setup
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
@@ -235,38 +168,33 @@ while tt <= tspan(end)
     
     %% Calculate Pressure and Oxygen systems
     %Pressure and oxygen calculation
-%     if ~isempty(idof2) 
-%         disp("JAH!");
-%         pause
-%     end
-    if updLU
-        % pressure Laplacian
-        La.X = L(Adof,Adof);
-        %%% ADD BC to LHS
-        % Robin to external idof (idof1)
-        Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
+    % pressure Laplacian
+    La.X = L(Adof,Adof);
+    %%% ADD BC to LHS
+    % Robin to external idof (idof1)
+    Lai1 = fsparse(idof1_,idof1_,1,size(La.X));
 %         Lai2 = fsparse(idof2_,idof2_,1,size(La.X));
-        a_Lai1 = speye(size(Lai1)) - Lai1;
+    a_Lai1 = speye(size(Lai1)) - Lai1;
 
-        % Scale Laplacian on boundary
-        La.X = La.X - Lai1.*La.X;
-        La.X = La.X - diag(sum(Lai1*La.X,2));
+    % Scale Laplacian on boundary
+    La.X = La.X - Lai1.*La.X;
+    La.X = La.X - diag(sum(Lai1*La.X,2));
 %         La.X = La.X - Lai2*La.X + Lai2;
 
-        % Get local Mgamma for all active dofs
-        Mgamma_b = Mgamma(Adof,Adof);
+    % Get local Mgamma for all active dofs
+    Mgamma_b = Mgamma(Adof,Adof);
 
-        % Get only idof1 part of Mgamma_b and set the diagonal as the sum of
-        % all non-diagonal elements times 2
-        Mgamma_b = Lai1*Mgamma_b*Lai1 - Mgamma_b.*Lai1;
-        Mgamma_b = Mgamma_b + diag(2*sum(Mgamma_b,2));
+    % Get only idof1 part of Mgamma_b and set the diagonal as the sum of
+    % all non-diagonal elements times 2
+    Mgamma_b = Lai1*Mgamma_b*Lai1 - Mgamma_b.*Lai1;
+    Mgamma_b = Mgamma_b + diag(2*sum(Mgamma_b,2));
 
-        % Put together the LHS and remove the connection from adof to idof1
-        % (this sets Dirichlet for adof but keeps the Robin for the boundary)
-        La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai1;
-        % LU-factorize
-        [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
-    end
+    % Put together the LHS and remove the connection from adof to idof1
+    % (this sets Dirichlet for adof but keeps the Robin for the boundary)
+    La.X = La.X + alpha_inv*Mgamma_b - a_Lai1*La.X*Lai1;
+    % LU-factorize
+    [La.L,La.U,La.p,La.q,La.R] = lu(La.X,'vector');
+
 
     % RHS source term proportional to the over-occupancy and BCs
     Pr = full(fsparse(sdof_,1,(U(sdof)-1)./dM(sdof), ...     % Take U_dead into consideration?
@@ -312,15 +240,11 @@ while tt <= tspan(end)
         end
     end
     
-%     if sum(rates_bdof(idof_)) > 0
-%         disp("Hold up");
-%     end
     
     %% Change calculation
     %proliferation-----------------------------
     ind_prol = find((Oxy > cutoff_prol));
     prol_conc = r_prol*U(ind_prol);
-    
     
     %death--------------------------------------
     ind_die = find(Oxy < cutoff_die); %index for dying cells
@@ -357,6 +281,7 @@ while tt <= tspan(end)
     end
     dt_test = (min([dt_death; dt_sdof; dt_bdof;(0.1*Tend)]));
     dt = dt_test*timescaling;
+    
     %% Save time series of current step
     % Report back and save time series 
     if tspan(i+1) < tt+dt
@@ -409,8 +334,30 @@ while tt <= tspan(end)
 end
 report(tt,U,'done');
 
-%%
-TumorGraphicsResult;
+%% Generate graphics
+
+figure(1), clf
+set(gca,'color','none');
+Umat=full(cell2mat(Usave));
+colorbar('southoutside')
+caxis([0 1.2])
+% caxis([0 max(max(Umat))])
+colorlabel('Concentration of cells, U')
+axis([-1 1 -1 1]); axis square, axis off
+hold on
+for i = 1:numel(Usave)
+    ii = find(Usave{i}>0);
+    c = Umat(ii,i);
+    patch('Faces',R(ii,:),'Vertices',V,'FaceVertexCData',c,'FaceColor','flat','Edgecolor','none');     
+
+    ii = find(Usave{i} == 0 & Udsave{i} > 0);
+    p_dead = patch('Faces',R(ii,:),'Vertices',V, ...
+        'FaceColor',[0 0 0]);
+    title(sprintf('Time = %d',tspan(i)));
+    drawnow;
+end
+hold off;
+
 
 %% SAVE DATA
 saveData = struct('U', {U}, 'VU', {VU}, 'Usave', {Usave}, 'tspan', {tspan}, ...
