@@ -72,6 +72,17 @@ while tt <= tspan(end)
 % $$$   patch('Faces',R(jj,:),'Vertices',V,'FaceColor',[1 0 0]);
 % $$$   drawnow;
 
+    % visualization (somewhat slow)
+    figure(1), clf,
+    patch('Faces',R,'Vertices',V,'FaceColor',[0.9 0.9 0.9]);
+    hold on,
+    axis([-1 1 -1 1]); axis square, axis off
+    ii = find(U == 1);
+    patch('Faces',R(ii,:),'Vertices',V,'FaceColor',[0 1 0]);
+    jj = find(U > 1);
+    patch('Faces',R(jj,:),'Vertices',V,'FaceColor',[1 0 0]);
+    drawnow;
+
   % classify the DOFs
 
   adof = find(U);

@@ -20,9 +20,9 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-Tend = 1000;
+Tend = 11;
 tspan = linspace(0,Tend,101);
-report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
+%report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
 
 % The user specified cutoff and rate parameters for the proliferation,  
 % death, degradation and consumption rules.
@@ -264,10 +264,9 @@ while tt <= tspan(end)
   % update the visited sites
   VU = VU | U;
 end
-
 report(tt,U,'done');
 
-return;
+% return;
 
 % create a GIF animation
 
@@ -280,14 +279,19 @@ for i = 1:numel(Usave)
   hold on,
   axis([-1 1 -1 1]); axis square, axis off
   ii = find(Usave{i} == 1);
-  patch('Faces',R(ii,:),'Vertices',V, ...
+  single = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',graphics_color('bluish green'));
+  
   ii = find(Usave{i} == 2);
-  patch('Faces',R(ii,:),'Vertices',V, ...
+  double = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',graphics_color('vermillion'));
+  
   ii = find(Usave{i} == -1);
-  patch('Faces',R(ii,:),'Vertices',V, ...
+  dead = patch('Faces',R(ii,:),'Vertices',V, ...
         'FaceColor',[0 0 0]);
+    
+  legend([single, double, dead],'single','double', 'dead');
+  
   title(sprintf('Time = %d, Ncells = %d',tspan(i),full(sum(abs(Usave{i})))));
   drawnow;
   M(i) = getframe(gcf);
@@ -313,6 +317,7 @@ p4.Color = graphics_color('bluish green');
 ylim([0 max(y)]);
 xlabel('time')
 ylabel('N cells')
+legend('total', 'dead','double','single');
 
 return;
 

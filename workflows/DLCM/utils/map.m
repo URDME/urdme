@@ -20,5 +20,5 @@ Gi = cat(1,varargin{:});
 str = cumsum([1 cellfun('prodofsize',varargin)]);
 varargout = cell(1,numel(varargin));
 for i = 1:numel(varargout)
-  varargout{i} = L(ix(str(i):str(i+1)-1));
+    varargout{i} = L(ix(str(i):str(i+1)-1));
 end
