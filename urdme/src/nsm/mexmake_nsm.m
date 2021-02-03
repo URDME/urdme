@@ -10,6 +10,7 @@ if nargin > 1, error('NSM does not accept make arguments.'); end
 
 % global defines, if any
 define = [];
+definew = [];
 
 % path = location of this make
 path = mfilename('fullpath');
@@ -35,6 +36,7 @@ source = {[path 'mexnsm.c'] ...
           [path '../inline.c'] ...
           [path '../report.c']};
 define = [define '-DMALLOC\(n\)=mxMalloc\(n\) -DFREE\(p\)=mxFree\(p\)'];
+definew = [definew '-D"MALLOC(n)=mxMalloc(n)" -D"FREE(p)=mxFree(p)" -D"srand48(k)=srand(k)" -D"drand48()=rand()"'];
 
 % mex extension
 mx = mexext;
@@ -50,6 +52,11 @@ if strcmp(mx,'mexa64')
 elseif strcmp(mx,'mexmaci64')
   cflags = 'CFLAGS= -std=c99 ';
   mex('-silent','-largeArrayDims',[cflags define], ...
+      include{:},link{:},source{:});
+elseif strcmp(mx,'mexw64')
+   cflags = ['CFLAGS=-fPIC -fno-omit-frame-pointer -std=c99 -O3 ' ...
+            '-D_GNU_SOURCE -pthread -fexceptions '];
+  mex('-v','-largeArrayDims',[cflags definew], ... % [mexflags define],
       include{:},link{:},source{:});
 else
   error(['Platform not yet supported. Your MEX file extension is ' ...

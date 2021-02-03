@@ -139,7 +139,7 @@ The output is a matrix U (Ndofs X length(tspan)).
 {
   double tt;
   double rdelta,rrdelta;
-  double rand,cum,old;
+  double randd,cum,old;
   double *srrate,*rrate;
   double *sdrate,*Ddiag;
   double *rtimes;
@@ -259,16 +259,16 @@ The output is a matrix U (Ndofs X length(tspan)).
 
       /* First check if it is a reaction or a diffusion event. */
       totrate = srrate[subvol]+sdrate[subvol];
-      rand = drand48();
+      randd = drand48();
 
-      if (rand*totrate <= srrate[subvol]) {
+      if (randd*totrate <= srrate[subvol]) {
 	/* Reaction event. */
 	event = -1;
 
 	/* a) Determine the reaction re that did occur (direct SSA). */
-	rand *= totrate;
+	randd *= totrate;
 	for (re = 0, cum = rrate[subvol*Mreactions]; 
-	     re < Mreactions && rand > cum; 
+	     re < Mreactions && randd > cum; 
 	     re++, cum += rrate[subvol*Mreactions+re]);
 
 	/* elaborate floating point fix: */
@@ -319,10 +319,10 @@ The output is a matrix U (Ndofs X length(tspan)).
 	event = 1;
 
 	/* a) Determine which species... */
-	rand *= totrate;        
-	rand -= srrate[subvol];
+	randd *= totrate;        
+	randd -= srrate[subvol];
 	for (spec = 0, dof = subvol*Mspecies, cum = Ddiag[dof]*xx[dof]; 
-	     spec < Mspecies && rand > cum;
+	     spec < Mspecies && randd > cum;
 	     spec++, cum += Ddiag[dof+spec]*xx[dof+spec]);
 
 	/* elaborate floating point fix: */
@@ -344,11 +344,11 @@ The output is a matrix U (Ndofs X length(tspan)).
 
 	/* b) and then the direction of diffusion. */
 	col = dof+spec;
-	rand = drand48()*Ddiag[col];
+	randd = drand48()*Ddiag[col];
 
 	/* Search for diffusion direction. */
 	for (i = jcD[col], cum = 0.0; i < jcD[col+1]; i++)
-	  if (irD[i] != col && (cum += prD[i]) > rand) break;
+	  if (irD[i] != col && (cum += prD[i]) > randd) break;
 
 	/* simple floating point fix: */
 	if (i >= jcD[col+1]) i = jcD[col+1]-1;
