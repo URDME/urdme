@@ -20,8 +20,8 @@ if nargin > 0 && ~isempty(propensity_file)
   % propensity_file is a relative path
   propensity_source = [pwd '/' propensity_file];
 else
-  % can also compile mexnsm without propensity_file, using inline
-  % propensities only
+  % can also compile without propensity_file, using inline propensities
+  % only
   propensity_source = [path '../propensities.c'];
 end
 
@@ -48,7 +48,7 @@ if strcmp(mx,'mexa64')
   mex('-silent','-largeArrayDims',cc,[cflags define], ...
       include{:},link{:},source{:});
 elseif strcmp(mx,'mexmaci64')
-  cflags = 'CFLAGS= -std=c99 ';
+  cflags = 'CFLAGS= -std=c99 -mmacosx-version-min=10.15 ';
   mex('-silent','-largeArrayDims',[cflags define], ...
       include{:},link{:},source{:});
 else

@@ -12,6 +12,9 @@ function uds
 %               {odeset('RelTol',1e-4,
 %                'AbsTol',0.1)}
 %
+%   jacobian    {0} | 1                   Use exact Jacobian (requires all 
+%                                         propensities to be inline).
+%
 %   finish      {''}                      Play sound when done. Portable 
 %                                         choices include 'handel', 'gong' 
 %                                         and 'splat'. See AUDIOVIDEO.
@@ -34,23 +37,20 @@ function uds
 %     umod.sd = ones(1,n);
 %
 %     % bimolecular model
-%     [K,I,N,G] = rparse_inline( ...
-%                   {'@ > k > X','@ > k > Y','X+Y > mu > @'}, ...
-%                   {'X' 'Y'},{'k' 1e2 'mu' 1e-2});
-%     umod.N = N;
-%     umod.G = G;
-%     umod.inline_propensities = struct('K',K,'I',I);
+%     umod = rparse_inline(umod, ...
+%              {'@ > k > X','@ > k > Y','X+Y > mu > @'}, ...
+%              {'X' 'Y'},{'k' 1e2 'mu' 1e-2});
 %
 %     % initial state u0 and time interval
 %     umod.u0 = 50*ones(2,n);
 %     umod.tspan = linspace(0,10,100);
 %
 %     % compile and solve once...
-%     umod = urdme(umod,'solver','uds');
+%     umod = urdme(umod,'solver','uds','solverargs',{{'jacobian' 1}});
 %     U1 = umod.U;
 %
 %     % ...solve with NSM
-%     umod.inline_propensities = struct('K',K,'I',I);
+%     umod.solverargs = {};
 %     umod = urdme(umod,'solver','nsm');
 %     U2 = umod.U;
 %
@@ -65,6 +65,7 @@ function uds
 %     Solutions of the Master Equation", 
 %     Appl. Math. Comput. 18(2):498--515 (2006).
 
+% S. Engblom 2020-02-21 (Revision, Jacobian)
 % S. Engblom 2019-11-27 (Revision, inline propensities)
 % S. Engblom 2017-02-28
 

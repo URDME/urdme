@@ -1,4 +1,5 @@
-/* mexrhs.c - Mex-interface for use with the UDS solver in URDME. */
+/* mexrhs.c - Mex-interface of propensity evaluation for use with the
+   UDS solver. */
 
 /* S. Engblom 2019-11-27 (Revision, inline propensities) */
 /* S. Engblom 2019-11-06 (Revision, now using URDMEstate_t) */
@@ -19,7 +20,7 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   if (nrhs != 10) mexErrMsgTxt("Wrong number of arguments.");
 
   /* load arguments */
-  const double tt = mxGetScalar(prhs[0]);
+  const mxArray *mxTspan = prhs[0];
   const mxArray *mxU0 = prhs[1];
   const size_t Mreactions = (size_t)mxGetScalar(prhs[2]);
   const mxArray *mxVol = prhs[3];
@@ -31,12 +32,16 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   const mxArray *mxS = prhs[9];
 
   /* get problem dimensions */
+  const size_t Nreplicas = mxGetNumberOfDimensions(mxU0) == 3
+    ? mxGetDimensions(mxU0)[2] : 1;
+  const size_t tlen = mxGetNumberOfElements(mxTspan);
   const size_t Ncells = mxGetNumberOfElements(mxVol);
-  const size_t Ndofs = mxGetNumberOfElements(mxU0);
+  const size_t Ndofs = mxGetNumberOfElements(mxU0)/tlen/Nreplicas;
   const size_t Mspecies = Ndofs/Ncells;
   const size_t dsize = mxGetM(mxLData);  
-
+  
   /* pointers to non-sparse objects */
+  const double *tspan = mxGetPr(mxTspan);
   const double *vol = mxGetPr(mxVol);
   const double *ldata = mxGetPr(mxLData);
   const double *gdata = mxGetPr(mxGData);
@@ -49,8 +54,9 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   /* since URDMEstate_t == double */
 #else
   const double *u0_double = mxGetPr(mxU0);
-  URDMEstate_t *u0 = mxMalloc(Ndofs*sizeof(URDMEstate_t));
-  for (int i = 0; i < Ndofs; i++) u0[i] = (URDMEstate_t)u0_double[i];
+  URDMEstate_t *u0 = mxMalloc(mxGetNumberOfElements(mxU0)*sizeof(URDMEstate_t));
+  for (int i = 0; i < mxGetNumberOfElements(mxU0); i++)
+    u0[i] = (URDMEstate_t)u0_double[i];
 #endif
 
   /* typecast from double to int */
@@ -91,24 +97,38 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
     jcS = mxCalloc(M1+1,sizeof(mwIndex));
 
   /* result matrix R */
-  plhs[0] = mxCreateDoubleMatrix(Mreactions,Ncells,mxREAL);
+  if (Nreplicas == 1)
+    plhs[0] = mxCreateDoubleMatrix(Mreactions*Ncells,tlen,mxREAL);
+  else {
+    const mwSize dims[] = {Mreactions*Ncells,tlen,Nreplicas};
+    plhs[0] = mxCreateNumericArray(3,dims,mxDOUBLE_CLASS,mxREAL);
+  }
   double *R = mxGetPr(plhs[0]);
 
   /* fetch the propensities */
   PropensityFun *rfun;
   rfun = ALLOC_propensities(Mreactions-M1);
 
-  for (int subvol = 0; subvol < Ncells; subvol++) {
-    size_t j;
-    for (j = 0; j < M1; j++)
-      R[Mreactions*subvol+j] = 
-	inlineProp(&u0[Mspecies*subvol],&K[j*3],&I[j*3],&prS[jcS[j]],
-		   jcS[j+1]-jcS[j],vol[subvol],sd[subvol]);
-    for (; j < Mreactions; j++)
-      R[Mreactions*subvol+j] = 
-	(*rfun[j-M1])(&u0[Mspecies*subvol],tt,vol[subvol],
-		      &ldata[subvol*dsize],gdata,sd[subvol]);
-  }
+  /* immediate loops */
+  for (int k = 0; k < Nreplicas; k++)
+    for (int j = 0; j < tlen; j++)
+      for (int subvol = 0; subvol < Ncells; subvol++) {
+	size_t i;
+	for (i = 0; i < M1; i++)
+	  R[tlen*Ncells*Mreactions*k+Ncells*Mreactions*j+Mreactions*subvol+i] = 
+	    inlineProp(&u0[tlen*Ncells*Mspecies*k+
+			   Ncells*Mspecies*j+
+			   Mspecies*subvol],
+		       &K[i*3],&I[i*3],&prS[jcS[i]],
+		       jcS[i+1]-jcS[i],vol[subvol],sd[subvol]);
+	for (; i < Mreactions; i++)
+	  R[tlen*Ncells*Mreactions*k+Ncells*Mreactions*j+Mreactions*subvol+i] = 
+	    (*rfun[i-M1])(&u0[tlen*Ncells*Mspecies*k+
+			      Ncells*Mspecies*j+
+			      Mspecies*subvol],
+			  tspan[j],vol[subvol],
+			  &ldata[subvol*dsize],gdata,sd[subvol]);
+      }
   FREE_propensities(rfun);
 
   /* deallocate */

@@ -14,6 +14,7 @@ function mexmake_uds(propensity_file,varargin)
 %   include      string              Include path.
 %   link         string              Linker path.
 
+% S. Engblom 2020-02-21 (Revision, mexjac)
 % S. Engblom 2019-12-03 (Revision, make arguments)
 % S. Engblom 2019-11-06 (Revision, now using URDMEstate_t)
 % S. Engblom 2017-02-24
@@ -60,7 +61,10 @@ link =    {['-L' path] ['-L' path '../']};
 if ~isempty(opts.link)
   link = [link ['-L' opts.link]];
 end
-source = {[path 'mexrhs.c'] ...
+% compiles two mexFunction():
+sourceMEX = {[path 'mexrhs.c'] ...
+             [path 'mexjac.c']};
+source = {[] ... % (place to insert one of the above)
           propensity_source ...
           [path '../inline.c']};
 if ~isempty(opts.source)
@@ -83,10 +87,18 @@ if strcmp(mx,'mexa64')
   cflags = ['CFLAGS=-fPIC -fno-omit-frame-pointer -std=c99 -O3 ' ...
             '-D_GNU_SOURCE -pthread -fexceptions '];
   
+  source{1} = sourceMEX{1};
+  mex('-silent','-largeArrayDims',cc,[cflags define], ...
+      include{:},link{:},source{:});
+  source{1} = sourceMEX{2};
   mex('-silent','-largeArrayDims',cc,[cflags define], ...
       include{:},link{:},source{:});
 elseif strcmp(mx,'mexmaci64')
-  cflags = 'CFLAGS= -std=c99 ';
+  cflags = 'CFLAGS= -std=c99 -mmacosx-version-min=10.15 ';
+  source{1} = sourceMEX{1};
+  mex('-silent','-largeArrayDims',[cflags define], ...
+      include{:},link{:},source{:});
+  source{1} = sourceMEX{2};
   mex('-silent','-largeArrayDims',[cflags define], ...
       include{:},link{:},source{:});
 else

@@ -12,6 +12,7 @@ function U = mexuds(tspan,u0,D,N,G,vol,ldata,gdata,sd,reportl,seed,K,I,S,solvera
 optdef.odesolv = @ode23s;
 optdef.odeopts = odeset('RelTol',1e-4,'AbsTol',1e-1);
 optdef.report = 0;
+optdef.jacobian = 0;
 optdef.finish = '';
 
 % input options
@@ -31,12 +32,19 @@ opts = optdef;
 if opts.report
   opts.odeopts.OutputFcn = @l_report;
 end
+if opts.jacobian
+  opts.odeopts.Jacobian = @l_jacobian;
+  NN = kron(eye(numel(vol)),N);
+else
+  % unused in this case:
+  NN = N;
+end
 
 % solve
 U = zeros(numel(u0(:,:,1)),numel(tspan),size(u0,3));
 for k = 1:size(u0,3)
   l_report(0,[k size(u0,3)],'init_replica');
-  [foo,U_] = opts.odesolv(@l_rhs,tspan,u0(:,:,k),opts.odeopts,N,D,vol, ...
+  [foo,U_] = opts.odesolv(@l_rhs,tspan,u0(:,:,k),opts.odeopts,N,NN,G,D,vol, ...
                           ldata,gdata,sd,K,I,S);
   % fix for singular behaviour
   if numel(tspan) == 2
@@ -52,13 +60,21 @@ if ~isempty(opts.finish)
 end
 
 %--------------------------------------------------------------------------
-function dy = l_rhs(t,y,N,D,vol,ldata,gdata,sd,K,I,S)
+function dy = l_rhs(t,y,N,NN,G,D,vol,ldata,gdata,sd,K,I,S)
 %L_RHS Reaction-transport equations.
-%  DY = L_RHS(T,Y,N,D,VOL,...) returns the rate DY for the
-%  reaction-transport model at time T. The system is described by the
-%  reactions N and the transport rates D in voxel volumes VOL.
+%  DY = L_RHS(...) returns the rate DY for the reaction-transport
+%  model.
 
-dy = reshape(N*mexrhs(t,y,size(N,2),vol,ldata,gdata,sd,K,I,S),[],1)+D*y;
+dy = N*reshape(mexrhs(t,y,size(N,2),vol,ldata,gdata,sd,K,I,S),size(N,2),[]);
+dy = dy(:)+D*y;
+
+%--------------------------------------------------------------------------
+function J = l_jacobian(t,y,N,NN,G,D,vol,ldata,gdata,sd,K,I,S)
+%L_JACOBIAN Jacobian of L_RHS.
+%  J = L_JACOBIAN(...) returns the Jacobian of L_RHS for the same
+%  arguments. All propensities must be inline for this to work.
+
+J = NN*mexjac(t,y,size(N,2),G,vol,ldata,gdata,sd,K,I,S)+D;
 
 %--------------------------------------------------------------------------
 function status = l_report(t,y,s,varargin)

@@ -103,7 +103,7 @@ elseif strcmp(mx,'mexmaci64')
     warning('OpenMP not supported on this platform.');
     link = link(2:end); % current fix: simply remove omp_link
   end
-  cflags = 'CFLAGS= -std=c99 ';
+  cflags = 'CFLAGS= -std=c99 -mmacosx-version-min=10.15 ';
   mex('-silent','-largeArrayDims',[cflags define], ...
       include{:},link{:},source{:});
 else

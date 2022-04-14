@@ -14,16 +14,13 @@ function aem
 %     % diffusion
 %     umod.D = sparse([-1 1 0; 1 -2 1; 0 1 -1])';
 %
-%     % scaling
+%     % scaling & subdomains
 %     umod.vol = ones(1,3);
 %     umod.sd = ones(1,3);
 %
 %     % linear birth-death model
-%     [K,I,N,G] = rparse_inline({'@ > k > X','X > mu > @'}, ...
+%     umod = rparse_inline(umod,{'@ > k > X','X > mu > @'}, ...
 %                               {'X'},{'k' 1e2 'mu' 1e1});
-%     umod.N = N;
-%     umod.G = G;
-%     umod.inline_propensities = struct('K',K,'I',I);
 %
 %     % initial state u0 and time interval
 %     umod.u0 = zeros(1,3);

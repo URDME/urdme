@@ -18,13 +18,9 @@ function ssa
 %     umod.D = sparse(numel(umod.vol),numel(umod.vol));
 %
 %     % dimarization model
-%     [K,I,N,G] = rparse_inline({'@ > k > X','X+X > nu > @'}, ...
+%     umod = rparse_inline(umod,{'@ > k > X','X+X > nu > @'}, ...
 %                               {'X'},{'k' 1e2 'nu' 2e1});
-%     umod.N = N;
-%     umod.G = G;
-%     umod.inline_propensities = struct('K',K,'I',I);
-%
-%     % subdomain
+%     % subdomains
 %     umod.sd = ones(size(umod.vol));
 %
 %     % initial state u0 and time interval
