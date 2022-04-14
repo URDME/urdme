@@ -12,9 +12,10 @@ function umod = urdme(umod,varargin)
 %   file 'mymodel.c' for the reactions.
 %
 %   Comsol Java objects are conventionally stored in UMOD.comsol and
-%   PDE Toolbox structures in UMOD.pde. After simulating the resulting
-%   object may be loaded back into Comsol (or PDE Toolbox) for
-%   visualization and postprocessing. See URDME2COMSOL and URDME2PDE.
+%   PDE Toolbox structures in UMOD.pde. After simulating, the
+%   resulting object may be loaded back into Comsol (or PDE Toolbox)
+%   for visualization and postprocessing. See URDME2COMSOL and
+%   URDME2PDE.
 %
 %   Property        Value/{Default}         Description
 %   -----------------------------------------------------------------------
@@ -66,7 +67,7 @@ function umod = urdme(umod,varargin)
 %   vol                  Voxel volumes
 %   sd                   Subdomain numbers
 %
-%   Usually passed as options to URDME:
+%   Required, usually passed as options to URDME:
 %
 %   solver               Solver
 %   propensities         Propensity source file
@@ -180,7 +181,13 @@ if umod.compile
   if ~isempty(umod.propensities) && ~any(umod.propensities == '.')
     umod.propensities = [umod.propensities '.c'];
   end
-  feval(['mexmake_' umod.solver],umod.propensities,umod.makeargs{:});
+  mexmake = ['mexmake_' umod.solver];
+  if exist(mexmake) ~= 2
+    warning('URDME:noMake', ...
+            sprintf('It seems there is no make for solver = ''%s.''.', ...
+                    umod.solver));
+  end
+  feval(mexmake,umod.propensities,umod.makeargs{:});
 else
   l_info(umod.report,2,'Compilation turned off.\n');
 end
@@ -189,7 +196,14 @@ end
 if umod.solve
   if umod.report >= 2, solver_timer = tic; end 
   l_info(umod.report,1,'Starting simulation...\n');
-  umod.U = feval(['mex' umod.solver], ...
+  mexsolve = ['mex' umod.solver];
+  exist_mexsolve = exist(mexsolve);
+  if exist_mexsolve ~= 2 && exist_mexsolve ~= 3
+    warning('URDME:noMex', ...
+            sprintf(['It seems there is no .mex/.m-executable ' ...
+                     'for solver = ''%s''.'],umod.solver));
+  end
+  umod.U = feval(mexsolve, ...
                  umod.tspan,umod.u0,umod.D,umod.N,umod.G, ...
                  umod.vol,umod.ldata,umod.gdata,umod.sd, ...
                  umod.report,umod.seed, ...

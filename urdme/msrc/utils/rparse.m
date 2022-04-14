@@ -109,9 +109,15 @@ end
 
 r = reshape(r,1,[]);
 spec = reshape(spec,1,[]);
-rate = reshape(rate,1,[]);
-ratedef = rate(2:2:end);
-rate = rate(1:2:end);
+% also allow rates defined by a struct
+if isstruct(rate)
+  ratedef = struct2cell(rate)';
+  rate = fieldnames(rate)';
+else
+  rate = reshape(rate,1,[]);
+  ratedef = rate(2:2:end);
+  rate = rate(1:2:end);
+end
 
 % some checks
 if ~all(cellfun('isclass',spec,'char'))
@@ -229,13 +235,14 @@ Frate = '';
 for i = 1:size(rate,2)
   % local/global data?
   if ischar(ratedef{i})
-    if strcmp(ratedef{i},'ldata')
+    if strcmp(ratedef{i}(:)','ldata')
+      % (note: seqexpand produces column strings)
       if isempty(ldenum)
         ldenum = 'enum ldataRATE {';
       end
       ldenum = [ldenum sprintf('\n  %s,',char(rate{i}))];
       ldrate = [ldrate rate{i}];
-    elseif strcmp(ratedef{i},'gdata')
+    elseif strcmp(ratedef{i}(:)','gdata')
       if isempty(gdenum)
         gdenum = 'enum gdataRATE {';
       end

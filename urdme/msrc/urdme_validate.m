@@ -1,7 +1,7 @@
 function urdme_validate(umod)
-% URDME_VALIDATE Validate URDME struct.
-%    URDME_VALIDATE(UMOD) attempts to validate the fields in UMOD and
-%    throws an error if a field is missing or has an incorrect format.
+%URDME_VALIDATE Validate URDME struct.
+%   URDME_VALIDATE(UMOD) attempts to validate the fields in UMOD and
+%   throws an error if a field is missing or has an incorrect format.
 %
 %    See also URDME.
 

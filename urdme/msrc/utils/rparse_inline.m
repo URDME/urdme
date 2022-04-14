@@ -86,9 +86,15 @@ end
 
 r = reshape(r,1,[]);
 spec = reshape(spec,1,[]);
-rate = reshape(rate,1,[]);
-ratedef = rate(2:2:end);
-rate = rate(1:2:end);
+% also allow rates defined by a struct
+if isstruct(rate)
+  ratedef = struct2cell(rate)';
+  rate = fieldnames(rate)';
+else
+  rate = reshape(rate,1,[]);
+  ratedef = rate(2:2:end);
+  rate = rate(1:2:end);
+end
 
 % some checks
 if ~all(cellfun('isclass',spec,'char'))
@@ -112,6 +118,7 @@ if nargin > (3+isstruct(umod))
 end
 
 K = zeros(3,size(r,2));
+ixRate = zeros(1,size(r,2));
 I = ones(3,size(r,2));
 N = sparse(size(spec,2),size(r,2));
 H = sparse(size(spec,2),size(r,2));
@@ -163,6 +170,7 @@ for i = 1:size(r,2)
     error(['Unknown rate in reaction #' num2str(i) '.']);
   end
   K(3-numel(ifrom),i) = ratedef{irate};
+  ixRate(i) = irate;
 
   % index of involved species
   switch numel(ifrom)
@@ -184,10 +192,15 @@ if isstruct(umod)
   umod.inline_propensities.S = sparse(0,size(K,2));
   umod.N = N;
   umod.G = G;
-  umpd.private.Reactions = r;
+  umod.private.Reactions = r;
   umod.private.Species = spec;
   umod.private.RateNames = rate;
-  umod.private.RateVals = ratedef;
+  umod.private.RateVals = cat(2,ratedef{:});
+  umod.private.ixK = find(umod.inline_propensities.K(:))';
+  umod.private.ixRate = ixRate;
+  % the relation here is
+  %   K(umod.private.ixK) = RateVals(umod.private.ixRate)
+  % and can be used to easily modify rates in K on the fly
   K = umod;
 end
 
