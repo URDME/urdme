@@ -4,8 +4,9 @@
 
 % link = location of this startup.m
 link = mfilename('fullpath');
-link = link(1:end-7); % s-t-a-r-t-u-p is 7 chars
+link = link(1:end-numel(mfilename)); % remove 'startup'
 
 % path to urdme/ folders
 addpath(genpath([link 'urdme/']));
 addpath(genpath([link 'workflows/']));
+addpath(genpath([link 'examples/']));

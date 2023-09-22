@@ -68,11 +68,20 @@ Vol = 16; iVol = 1/Vol; % (imagined) system volume
 maxdt = 0.5/Tdn;
 
 % simulation interval
-Tend = 100;
+if ~exist('Tend','var')
+  Tend = 100;
+end
 % solution recorded at this grid:
 tspan = linspace(0,Tend,61);
 
-report(tspan,U,'init');
+if ~exist('report_progress','var')
+  report_progress = true;
+end
+if report_progress
+  report(tspan,U,'init');
+else
+  report(tspan,U,'none');
+end
 
 % representation of solution: cell-vector of sparse matrices
 Usave = cell(1,numel(tspan));
@@ -271,6 +280,8 @@ while tt <= tspan(end)
   report(tt,U,'');
 end
 report(tt,U,'done');
+
+return;
 
 % display final frame
 figure(1),

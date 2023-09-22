@@ -5,14 +5,15 @@
 % S. Engblom 2016-12-09 (hexagonal mesh)
 % S. Engblom 2016-11-14
 
-clear all;
-Nruns = 100;
+if ~exist('Nruns','var')
+  Nruns = 100;
+end
 report_progress = false;
 
 % Cartesian
 mesh_type = 1;
 for irun = 1:Nruns
-  irun
+  if report_progress, irun, end
   rng(irun);
   basic_test;
   if irun == 1
@@ -33,7 +34,7 @@ V1 = V; R1 = R;
 % hexagonal
 mesh_type = 2;
 for irun = 1:Nruns
-  irun
+  if report_progress, irun, end
   rng(irun);
   basic_test;
   if irun == 1
@@ -50,6 +51,8 @@ Vstats = full(Vstats/Nruns);
 P2Astats_hex = P2Astats_hex/Nruns;
 P2Astats_hex_var = P2Astats_hex_var/(Nruns-1)-Nruns/(Nruns-1)*P2Astats_hex.^2;
 V2 = V; R2 = R;
+
+return;
 
 % uncomment to save:
 save('experiments/1_basic_test/basic_test','Ustats','Vstats', ...

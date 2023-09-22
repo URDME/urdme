@@ -20,9 +20,18 @@
 % S. Engblom 2017-02-11
 
 % simulation interval
-Tend = 1000;
+if ~exist('Tend','var')
+  Tend = 1000;
+end
 tspan = linspace(0,Tend,101);
-report(tspan,'timeleft','init'); % (this estimator gets seriously confused!)
+if ~exist('report_progress','var')
+  report_progress = true;
+end
+if report_progress
+  report(tspan,'timeleft','init'); % (this estimator gets seriously confused)
+else
+  report([],[],'none');
+end
 
 % The user specified cutoff and rate parameters for the proliferation,  
 % death, degradation and consumption rules.

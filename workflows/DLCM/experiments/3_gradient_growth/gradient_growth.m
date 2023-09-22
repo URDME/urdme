@@ -39,7 +39,9 @@ YY = XX';
 U = 3*((XX-Nvoxels/2).^2+(YY-Nvoxels/2).^2 < 100);
 
 % simulation interval
-Tend = 1000;
+if ~exist('Tend','var')
+  Tend = 1000;
+end
 % solution recorded at this grid:
 tspan = linspace(0,Tend,100);
 
