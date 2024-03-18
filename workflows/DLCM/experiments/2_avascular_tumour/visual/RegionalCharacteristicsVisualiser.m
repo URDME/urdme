@@ -10,8 +10,8 @@
 
 %% Regional volume characteristics
 
-%plotleft = false; 
-show_full_time = true; % show until final tspan or tstamp
+plotleft = false; 
+show_full_time = false; % show until final tspan or tstamp
 
 % filtering roundness only
 sgf_wind = 21;   % savitzky-golay filter window
@@ -34,7 +34,7 @@ radial_discriminant = reg_char.discr;
 tspan_analytical = reg_char.tspan;
 
 % plot in same units of time
-tscale = 2.5;       % timescale factor
+tscale = 2.7;       % timescale factor
 tspan_analytical_scaled = tscale.*tspan_analytical;
 
 if PDE
@@ -48,11 +48,16 @@ figure(4)
 colororder({'k', '[0 0.4470 0.7410]' })
 
 % Plot 2D numerical dynamics
+% % !!! JUST FOR FIG 4.1
+% rp = sqrt(Vp/pi);
+% rq = sqrt(Vq/pi);
+% rn = sqrt(Vn/pi);
+% % !!!
 tint = round(length(tspan_scaled)/20); 
-p5 = plot(tspan_scaled(2:tint:end), rp(2:tint:end).*rp(2:tint:end)*pi, '--*', 'LineWidth', 1);
+p5 = plot(tspan_scaled([2:tint:end end]), rp([2:tint:end end]).*rp([2:tint:end end])*pi, '--*', 'LineWidth', 1);
 hold on
-p6 = plot(tspan_scaled(2:tint:end), rq(2:tint:end).*rq(2:tint:end)*pi, '--.', 'LineWidth', 1, 'MarkerSize', 15);
-plot(tspan_scaled(2:tint:end), rn(2:tint:end).*rn(2:tint:end)*pi, 'k--x', 'LineWidth', 1);
+p6 = plot(tspan_scaled([2:tint:end end]), rq([2:tint:end end]).*rq([2:tint:end end])*pi, '--.', 'LineWidth', 1, 'MarkerSize', 15);
+plot(tspan_scaled([2:tint:end end]), rn([2:tint:end end]).*rn([2:tint:end end])*pi, 'k--x', 'LineWidth', 1);
 p5.Color = graphics_color('vermillion');
 p6.Color = graphics_color('bluish green');
 
@@ -75,13 +80,13 @@ plot([t_frames(3) t_frames(3)], [min(Vn) max(Vp)*1.8], 'k-.', 'LineWidth', 1.25)
 
 %title('Tumor regional characteristics',  'Interpreter','latex')
 
-%if plotleft
-    xlabel('Time [$\mu_{\textrm{prol}}^{-1}$]', 'Interpreter','latex')
+if plotleft
+    xlabel('Time [$\mu_{\mathrm{prol}}^{-1}$]', 'Interpreter','latex')
     ylabel('Volume [$\pi R^2$]', 'Interpreter','latex')
-%else
-    xlabel('Time [$\mu_{\textrm{prol}}^{-1}$]', 'Interpreter','latex')
-    %set(gca,'ytick',[])
-%end
+else
+    xlabel('Time [$\mu_{\mathrm{prol}}^{-1}$]', 'Interpreter','latex')
+    set(gca,'ytick',[])
+end
 
 if show_full_time
     axis([0, tspan_scaled(end), 0, 0.5])
@@ -92,7 +97,11 @@ end
 yyaxis right
 % filter roundness
 % roundness not defined after tumor splits
-final_idx = find(diff(roundness) < -10);
+if plotleft
+    final_idx = find(diff(roundness) < -10);  % different noise levels
+else
+    final_idx = find(diff(roundness) < -1);   % different noise levels
+end
 if isempty(final_idx)
     final_idx = numel(tspan_scaled);
 end
@@ -117,20 +126,23 @@ else % show until final tstamp
     axis([0,tspan_scaled(tstamps(end)), 0, 1])
 end
 
-%if plotleft
-    %set(gca,'ytick',[]) % some whitespace left?
-%else
+if plotleft
+    set(gca,'ytick',[]) % some whitespace left?
+else
     ylabel('Roundness',  'Interpreter','latex')
-%end
+end
 
 lgd = legend('$V_p$', '$V_q$', ...
     '$V_n$', 'Interpreter','latex');
 
-%lgd.NumColumns = 2;
+yyaxis left
+axis([0, 40.5, 0, 0.5])
 
+%lgd.NumColumns = 2;
+%set(gca,'xtick',[10 20 30 40])
 set(gcf,'PaperPositionMode','auto');
 set(gcf,'Position',[100 100 340/sqrt(2) 240/sqrt(2)]);
-set(gca, 'fontname', 'Roman', 'FontSize', 10.0)
+set(gca, 'fontname', 'Roman', 'FontSize', 9.0)
 % uncomment to save
 % exportgraphics(gca,'regionaldynamics_test10.pdf')
 
@@ -138,98 +150,95 @@ set(gca, 'fontname', 'Roman', 'FontSize', 10.0)
 % Update this to use function GrowthFactors.m
 %error('Boundary perturbation section under construction!')
 
-% % estimate Lambda(k) from numerical boundary perturbation
-% J = 10;
-% tint = 1; % time intervals
-% sgf_wind = 21;   % savitzky-golay filter window
-% sgf_deg = 3;
-% lam_est = zeros(floor((numel(tspan)-2)/tint),J);
-% amp_k = zeros(numel(tspan)-1,J);
-% amp_k_sgf = zeros(numel(tspan)-1,J);
-% 
-% % find lambda estimates for each mode k = j
-% for j = 1:J    % j=0 should correspond to volume growth?
-% for i = 2:numel(tspan)
-%     amp_k(i-1,j) = BFTsave{i}(2,j+1);   % find amplitude evolution ...
-%     %Namp_k(i-1,j) = BFTsaveN{i}(2,j+1);     % only for testing, N, Q perts
-%     %Qamp_k(i-1,j) = BFTsaveQ{i}(2,j+1); 
-% end
-% amp_k_sgf(:,j) = sgolayfilt(amp_k(:,j), sgf_deg, sgf_wind); % ... and filter it
-% 
-% % if negative amplutides in filtering
-% if min(amp_k_sgf(:,j)) < 0
-%     warning('k = ' + string(j) + ' not filtered due to it resulting in negative amplitudes')
-%     amp_k_sgf(:,j) = amp_k(:,j);
-% end
-% 
-% % estimate lambda using the amplitude of mode j
-% lam_est(:,j) = log(amp_k_sgf(1+tint:tint:end, j) ./ amp_k_sgf(1:tint:end-tint, j)) ... 
-%                 ./diff(tspan(2:tint:end)');
-% end
-% 
-% % moving standard deviation window
-% std_wind = 7;
-% 
-% i = 2;   % subfigure index
-% check_modes = [1 2 3 4];
-% % for all modes in checkmodes
-% for j = check_modes
-% % estimate 'analytical' Lambda(k) directly from numerical regional volumes
-% 
-% % get estimated regional perturbations
-% rqc = -1./j*rp.*(rp.^-j - rp.^j)./(rn.^-j - rn.^j).*rq./ ... 
-%     (rq.^2 - rn.^2).*(rn.^j./rq.^j - rq.^j./rn.^j);
-% rnc = rp./rn.*(rp.^-j - rp.^j)./(rn.^-j - rn.^j);
-% rqc(isnan(rqc)) = 0;    % remove NaN
-% rnc(isnan(rnc)) = 0;
-% oxypert = -rp.^(-j-1).*rq.^(j+1)*mu_prol.*rqc - ...  % oxygen perturbation effect
-%        rp.^(-j-1).*rn.^(j+1)*mu_death.*rnc;
-% 
-% LAM = mu_prol*0.5*(mu_death/mu_prol*rn.^2.*(1+j) + rq.^2.*(1+j) ...
-%                  + rp.^2.*(1-j))./rp.^2 - sigma*j.*(j.^2-1)./rp.^3 ...
-%                  + oxypert;
-% 
-% LAM(1) = []; % 'pop' the first reduntant entry (with rp = 0)
-% % get associated moving standard deviation for errorshade
-% LAMj_std = movstd(LAM,std_wind);
-% lam_estj_std = movstd(lam_est(:,j),std_wind);
-% 
-% % apply Savitzky-Golay filter on analytical lambda estimate
-% LAMj_sgf = sgolayfilt(LAM, sgf_deg, sgf_wind);
-% %LAMj_sgf = LAMj_sgf(half_sgf_wind:end);
-% lam_estj_sgf = sgolayfilt(lam_est(:,j), sgf_deg, sgf_wind);
-% %lam_estj_sgf = lam_estj_sgf(half_sgf_wind:end);
-% 
-% % plot for k = all j
-% figure(i)
-% colororder({'[0 0.4470 0.7410]', '[0.8500 0.3250 0.0980]', '[0 0.4470 0.7410]'})
-% plot(tspan(2:end), LAMj_sgf, 'lineWidth', 2)
-% hold on
-% error_color = [0 0.4470 0.7410];
-% errorshade(tspan(2:end), LAMj_sgf - LAMj_std, LAMj_sgf + LAMj_std, error_color)
-% 
-% % note: lam_est is evaluated in a simple manner at the left node
-% plot(tspan(2:tint:end-1), lam_estj_sgf, '--', 'lineWidth', 2)
-% error_color = [0.8500 0.3250 0.0980];
-% errorshade(tspan(2:tint:end-1), lam_estj_sgf' - lam_estj_std', lam_estj_sgf' + lam_estj_std', error_color)
-% 
-% title('k = ' + string(j), 'Interpreter','latex')
-% xlabel('Time [$\mu_{prol.}^{-1}$]', 'Interpreter','latex')
-% ylabel('$\Lambda(k;t)$ [$\rho_{prol.}$]', 'Interpreter','latex')
-% axis([0, tspan(end), min(lam_est(:,j))*1.0, max(lam_est(:,j))*1.2])
-% 
+% estimate Lambda(k) from numerical boundary perturbation
+J = 10;
+tint = 5; % time intervals
+sgf_wind = 21;   % savitzky-golay filter window
+sgf_deg = 7;
+lam_est = zeros(floor((numel(tspan)-2)/tint),J);
+amp_k = zeros(numel(tspan)-1,J);
+amp_k_sgf = zeros(numel(tspan)-1,J);
+
+% find lambda estimates for each mode k = j
+for j = 1:J    % j=0 should correspond to volume growth?
+for i = 2:numel(tspan)
+    amp_k(i-1,j) = BFTsave{i}(2,j+1);   % find amplitude evolution ...
+    %Namp_k(i-1,j) = BFTsaveN{i}(2,j+1);     % only for testing, N, Q perts
+    %Qamp_k(i-1,j) = BFTsaveQ{i}(2,j+1); 
+end
+amp_k_sgf(:,j) = sgolayfilt(amp_k(:,j), sgf_deg, sgf_wind); % ... and filter it
+
+% if negative amplutides in filtering
+if min(amp_k_sgf(:,j)) < 0
+    warning('k = ' + string(j) + ' not filtered due to it resulting in negative amplitudes')
+    amp_k_sgf(:,j) = amp_k(:,j);
+end
+
+% estimate lambda using the amplitude of mode j
+lam_est(:,j) = log(amp_k_sgf(1+tint:tint:end, j) ./ amp_k_sgf(1:tint:end-tint, j)) ... 
+                ./diff(tspan(2:tint:end)');
+end
+
+% moving standard deviation window
+std_wind = 7;
+
+i = 2;   % subfigure index
+check_modes = [1 2 3 4];
+% estimate 'analytical' Lambda(k) directly from numerical regional volumes
+
+% get estimated regional perturbations
+rqc = -1./j*rp.*(rp.^-j - rp.^j)./(rn.^-j - rn.^j).*rq./ ... 
+    (rq.^2 - rn.^2).*(rn.^j./rq.^j - rq.^j./rn.^j);
+rnc = rp./rn.*(rp.^-j - rp.^j)./(rn.^-j - rn.^j);
+rqc(isnan(rqc)) = 0;    % remove NaN
+rnc(isnan(rnc)) = 0;
+oxypert = -rp.^(-j-1).*rq.^(j+1)*mu_prol.*rqc - ...  % oxygen perturbation effect
+       rp.^(-j-1).*rn.^(j+1)*mu_death.*rnc;
+
+LAM = mu_prol*0.5*(mu_death/mu_prol*rn.^2.*(1+j) + rq.^2.*(1+j) ...
+                 + rp.^2.*(1-j))./rp.^2 - sigma*j.*(j.^2-1)./rp.^3 ...
+                 + oxypert;
+
+LAM(1) = []; % 'pop' the first reduntant entry (with rp = 0)
+% get associated moving standard deviation for errorshade
+LAMj_std = movstd(LAM,std_wind);
+lam_estj_std = movstd(lam_est(:,j),std_wind);
+
+% apply Savitzky-Golay filter on analytical lambda estimate
+LAMj_sgf = sgolayfilt(LAM, sgf_deg, sgf_wind);
+%LAMj_sgf = LAMj_sgf(half_sgf_wind:end);
+lam_estj_sgf = sgolayfilt(lam_est(:,j), sgf_deg, sgf_wind);
+%lam_estj_sgf = lam_estj_sgf(half_sgf_wind:end);
+
+% plot for k = all j
+figure(i)
+colororder({'[0 0.4470 0.7410]', '[0.8500 0.3250 0.0980]', '[0 0.4470 0.7410]'})
+plot(tspan(2:end-1), LAMj_sgf, 'lineWidth', 2)
+hold on
+error_color = [0 0.4470 0.7410];
+errorshade(tspan(2:end-1), LAMj_sgf - LAMj_std, LAMj_sgf + LAMj_std, error_color)
+
+% note: lam_est is evaluated in a simple manner at the left node
+plot(tspan(2:tint:end-1), lam_estj_sgf, '--', 'lineWidth', 2)
+error_color = [0.8500 0.3250 0.0980];
+errorshade(tspan(2:tint:end-1), lam_estj_sgf' - lam_estj_std', lam_estj_sgf' + lam_estj_std', error_color)
+
+title('k = ' + string(j), 'Interpreter','latex')
+xlabel('Time [$\mu_{prol.}^{-1}$]', 'Interpreter','latex')
+ylabel('$\Lambda(k;t)$ [$\rho_{prol.}$]', 'Interpreter','latex')
+axis([0, tspan(end), min(lam_est(:,j))*1.0, max(lam_est(:,j))*1.2])
+
 % yyaxis right
 % p7 = plot(tspan(2:end), roundness(2:end), 'LineWidth', 1);
 % p7.Color = graphics_color('sky blue');
 % ylabel('Perimiter$^2/(4\pi*$Area$)$', 'Interpreter','latex')
 % 
 % legend('expected ', 'numerical', 'boundary roundness', 'Location','northwest', 'Interpreter','latex')
-% 
-% %sgtitle('Boundary perturbation dynamics, IC: k = ' + string(k), 'Interpreter','latex')
-% set(gcf,'PaperPositionMode','auto');
-% set(gcf,'Position',[100 100 340/sqrt(2) 240/sqrt(2)]);
-% set(gca, 'fontname', 'Roman', 'FontSize', 10.0)
-% 
-% i = i+1;    % next figure
-%end
+
+%sgtitle('Boundary perturbation dynamics, IC: k = ' + string(k), 'Interpreter','latex')
+set(gcf,'PaperPositionMode','auto');
+set(gcf,'Position',[100 100 340/sqrt(2) 240/sqrt(2)]);
+set(gca, 'fontname', 'Roman', 'FontSize', 10.0)
+
+i = i+1;    % next figure
 

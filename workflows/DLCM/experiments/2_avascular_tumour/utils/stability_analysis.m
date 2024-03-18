@@ -21,7 +21,7 @@ syms c1 c2 d1 d2 e1 e2
 
 % general solutions with different source terms
 % Pout = 0
-Pp = -rho_pD*r^2/4+d1*log(r)+d2;
+Pp = -rho_pD*r^2/4+c1*log(r)+c2;
 Pq = d1*log(r)+d2;
 Pn = +rho_dD*r^2/4+e1*log(r)+e2;
 % (rho_pD = rho_p/D, rho_dD = rho_d/D)
@@ -31,10 +31,10 @@ e1 = 0; % regularity
 
 % gradient continuity at r_n and r_q
 d1 = eval(solve(subs(diff(Pn,r)-diff(Pq,r),r,r_n),d1));
-d1 = eval(solve(subs(diff(Pq,r)-diff(Pp,r),r,r_q),d1));
+c1 = eval(solve(subs(diff(Pq,r)-diff(Pp,r),r,r_q),c1));
 
 % outer boundary condition = P0 = p0-sigma*C
-d2 = eval(solve(subs(Pp,r,r_p)-P0,d2));
+c2 = eval(solve(subs(Pp,r,r_p)-P0,c2));
 
 % continuity at r_q and r_n
 d2 = eval(solve(subs(Pq-Pp,r,r_q),d2));
@@ -106,7 +106,7 @@ syms b1 b2 c1 c2 d1 d2 e1 e2
 
 % general solutions with different source terms
 Pout = b1*log(r) + b2;
-Pp = -rho_pD*r^2/4+d1*log(r)+d2;
+Pp = -rho_pD*r^2/4+c1*log(r)+c2;
 Pq = d1*log(r)+d2;
 Pn = +rho_dD*r^2/4+e1*log(r)+e2;
 % (rho_pD = rho_p/D, rho_dD = rho_d/D)
@@ -116,14 +116,14 @@ e1 = 0; % regularity
 
 % gradient continuity at r_n and r_q
 d1 = eval(solve(subs(diff(Pn,r)-diff(Pq,r),r,r_n),d1));
-d1 = eval(solve(subs(diff(Pq,r)-diff(Pp,r),r,r_q),d1));
+c1 = eval(solve(subs(diff(Pq,r)-diff(Pp,r),r,r_q),c1));
 b1 = eval(solve(subs(D*diff(Pp,r)-D_out*diff(Pout,r),r,r_p),b1));
 
 % outermost BC: Pout = P0
 b2 = eval(solve(subs(Pout,r,R)-P0,b2));
 
 % tumor-external tissue boundary condition: Pp = Pout-sigma*C
-d2 = eval(solve(subs(Pp,r,r_p)-(subs(Pout,r,r_p)-sigma*C),d2));
+c2 = eval(solve(subs(Pp,r,r_p)-(subs(Pout,r,r_p)-sigma*C),d2));
 
 % continuity at r_q and r_n
 d2 = eval(solve(subs(Pq-Pp,r,r_q),d2));

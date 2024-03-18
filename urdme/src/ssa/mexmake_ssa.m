@@ -98,7 +98,7 @@ if strcmp(mx,'mexa64')
   
   mex('-silent','-largeArrayDims',cc,[cflags define], ...
       include{:},link{:},source{:});
-elseif strcmp(mx,'mexmaci64')
+elseif strcmp(mx,'mexmaci64') || strcmp(mx,'mexmaca64') 
   if opts.openmp
     warning('OpenMP not supported on this platform.');
     link = link(2:end); % current fix: simply remove omp_link

@@ -15,6 +15,13 @@ Avascular tumor models, both PDE and DLCM models.
 * **AThallmarks_longrun.mat** - Contains data from experiment in [1].
     Load and run section Plots in `AvascularTumor_hallmarks.m` for the
     figures in [1].
+* **morphology_X#.mat** - Contains data from experiments in [2] for the
+    X = DLCM or X = PDE model respectively, and # = 1 (rad. symmetry) 
+    or # = 2 (splits in two). Load and run section Plots in corresponding 
+    model code for figures.
+* **growth_rate_comparison_exp.mat** - Contains morphological data from the
+    growth rate experiments in [2]. 20 samples per mode for modes 
+    k = 1, ..., 8. Analyzed in `get_growth_factors.m`.
 
 ### Analysis
 utils/
@@ -25,6 +32,9 @@ utils/
 utils/
 * **animate_growth.m** - animates tumor growth simulation from datafile
 * **curvature2D.m** - evaluates curvature of contourline
+* **compare_growth_rates.m** - 1st section evaluates analytical and 
+    experimental growth rates from data in `morph_k#1_exp#2.mat`.
+    2nd section plots the corresponding figure from [2].
 * **connect_boundary.m** - connects FEM mesh boundary
 * **errorshade.m** - plots moving std from data as shade
 * **get_growth_factors.m** - evaluates Lambda(k) from tumor geometry [2]

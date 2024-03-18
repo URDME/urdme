@@ -17,6 +17,9 @@ Models
      - Run with sigma = 32*1e-4 for stable circular growth with
         creeping effect (migration towards oxygen source)
      - Run with sigma = 5*1e-4 for tumor that begins to split in two
+     - Load 'morphology_DLCM1.mat' or 'morphology_DLCM2.mat' and run the
+        section 'Plots' to get figures from the first two experiments in 
+        §4.2 in [2]
      
     3) AvascularTumorPDE.m - PDE avascular tumor model as
     effective model of the one in AvascularTumor_updated.m [2]
@@ -25,9 +28,12 @@ Models
      - Run as is for simulation corresponding to AvascularTumor_updated.m
         in the first example above. Also gives similar results for the 
         suggested sigma values.
+     - Load 'morphology_PDE1.mat' or 'morphology_PDE2.mat' and run the
+        section 'Plots' to get figures from the first two experiments in 
+        §4.2 in [2]
 
     4) RegionalDynamics2D_run.m - Runs RegionalDynamics2D.m example
-    of PDE model under assumption of radial symmetry and plots
+    of PDE model in [2] under assumption of radial symmetry and plots
     volumetric growth and perturbation growth factors at stationary state.
 
     5) AvascularTumor_hallmarks.m - DLCM avascular tumor model from [1]

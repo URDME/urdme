@@ -93,7 +93,7 @@ if strcmp(mx,'mexa64')
   source{1} = sourceMEX{2};
   mex('-silent','-largeArrayDims',cc,[cflags define], ...
       include{:},link{:},source{:});
-elseif strcmp(mx,'mexmaci64')
+elseif strcmp(mx,'mexmaci64') || strcmp(mx,'mexmaca64') 
   cflags = 'CFLAGS= -std=c99 -mmacosx-version-min=10.15 ';
   source{1} = sourceMEX{1};
   mex('-silent','-largeArrayDims',[cflags define], ...
