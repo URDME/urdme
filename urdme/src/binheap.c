@@ -1,15 +1,12 @@
-/* binheap.c */
+/* binheap.c - URDME binary heap */
 
 /* S. Engblom 2017-02-16 */
 /* J. Cullhed 2008-08-04. */
-
-/* Binary heap needed by the NRM and NSM. */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include "binheap.h"
-
 
 /* This is an indexed heap. If node is the index of an element in
    "data", the place in the heap is given by INDEX[node]. The place in

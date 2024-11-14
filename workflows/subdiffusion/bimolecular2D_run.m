@@ -6,6 +6,14 @@
 % S. Engblom 2017-02-20 (Revision)
 % S. Engblom 2014-05-09
 
+if ~exist('report','var')
+  report = 1;
+end
+if ~exist('t','var')
+  Tend = 20;
+  t = linspace(0,Tend,101);
+end
+
 clear umod;
 
 if ~exist('Kcase','var'), error('Define Kcase first.'); end
@@ -57,10 +65,7 @@ umod.u0([igammamax Nstates+igammamax],:) = vmod.u0(1:2,:);
 
 %% (4) form the reaction model: a single bimolecular reaction
 k0 = 1e-4;
-[K,I,N,G] = rparse_inline({'A+B > k0 > C'},{'A' 'B' 'C'},{'k0' k0});
-vmod.solverargs = {'K' K 'I' I};
-vmod.N = N;
-vmod.G = G;
+vmod = rparse_inline(vmod,{'A+B > k0 > C'},{'A' 'B' 'C'},{'k0' k0});
 
 % subdiffusive model for reactions Ai+Bj --> C with rate K0(i,j)
 K0 = zeros(Nstates);   % K0(i,j) is the rate for Ai+Bj
@@ -80,32 +85,19 @@ end
 % normalization to be comparable to non-subdiffusive model
 K0 = k0/(p'*K0*p)*K0;
 
-[K,I,N] = rparse_inline({'A$i+B$j > K0_$i_$j > C'}, ...
-                        {'A$i' 'B$j' 'C'}, ...
-                        {'K0_$i_$j' K0}, ...
-                        {'i' 1:Nstates 'j' 1:Nstates});
-
-% remove all void reactions
-ikeep = find(K(1,:));
-K = K(:,ikeep);
-I = I(:,ikeep);
-N = N(:,ikeep);
-umod.N = N;
-umod.solverargs = {'K' K 'I' I};
-
-% dependency graph G
-umod.G = G_inline(K,I,umod.N);
+umod = rparse_inline(umod,{'A$i+B$j > K0_$i_$j > C'}, ...
+                     {'A$i' 'B$j' 'C'}, ...
+                     {'K0_$i_$j' K0}, ...
+                     {'i' 1:Nstates 'j' 1:Nstates});
 
 % output times
-Tend = 20;
-t = linspace(0,Tend,101);
 umod.tspan = t;
 vmod.tspan = t;
 
 % solve
-umod = urdme(umod,'report',1);
+umod = urdme(umod,'report',report);
 if Kcase == 1
-  vmod = urdme(vmod,'report',1);
+  vmod = urdme(vmod,'report',report);
 end
 
 % visualize

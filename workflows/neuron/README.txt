@@ -10,7 +10,7 @@ tools to simulate synaptic transmission from two different model
 synapses taken from [2] and described in [4].
 
 This is the first release intended for URDME 1.4. A more mature
-interface is scheduled for release with URDME 1.5.
+interface is intended for a future release.
 
 There are minor dependencies on the TREES Toolbox,
 www.treestoolbox.org, on STENGLIB, www.stenglib.org, and on Comsol,

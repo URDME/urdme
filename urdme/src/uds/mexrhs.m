@@ -1,9 +1,10 @@
 function R = mexrhs
 %MEXRHS Right-hand side evaluation of URDME propensities.
-%   R = MEXRHS(tspan,X,size(N,2),VOL,LDATA,GDATA,SD,K,I,S) returns an
-%   (Mreactions*Ncells)-by-NUMEL(tspan) matrix R such that R(:,k)
-%   contains the values of all Mreactions propensities in all Ncells
-%   voxels at time tspan(k). Let R_ =
+%   R = MEXRHS(MEXHASH,tspan,X,size(N,2),VOL,LDATA,GDATA, ...
+%     LDATA_TIME,GDATA_TIME,SD,K,I,S)
+%   returns an (Mreactions*Ncells)-by-NUMEL(tspan) matrix R such that
+%   R(:,k) contains the values of all Mreactions propensities in all
+%   Ncells voxels at time tspan(k). Let R_ =
 %   reshape(R(:,k),Mreactions,Ncells). Then R_(i,j) contains the value
 %   of propensity #i in voxel j.
 %

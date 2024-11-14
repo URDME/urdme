@@ -57,9 +57,9 @@ end
 % URDME set-up
 try
   % validate umod: potentially compile and parse, but no solve
-  umod = urdme(umod,'solve',0);
+  umod = urdme(umod,'solve',0,'modelname','neuron_solver');
   if umod.compile
-    unix(['mv mexssa.' mexext ' mexssa_neuron_solver.' mexext]);
+    %unix(['mv mexssa.' mexext ' mexssa_neuron_solver.' mexext]);
     umod.solver = 'ssa_neuron_solver';
   end
   umod.solve = 1;
@@ -82,9 +82,9 @@ catch
   umod.ldata = zeros(1,size(channels.Erest,1));
 
   % URDME parse and compile:
-  umod = urdme(umod,'solver','ssa','solve',0);
+  umod = urdme(umod,'solver','ssa','solve',0,'modelname','neuron_solver');
   % avoid name clash with synaptic_solver:
-  unix(['mv mexssa.' mexext ' mexssa_neuron_solver.' mexext]);
+  %unix(['mv mexssa.' mexext ' mexssa_neuron_solver.' mexext]);
   umod.solver = 'ssa_neuron_solver';
   % solve next time:
   umod.solve = 1;

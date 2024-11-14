@@ -10,6 +10,7 @@
 
 #include "inline.h"
 #include "propensities.h"
+#include "report.h"
 
 /*----------------------------------------------------------------------*/
 double Diff_inlineProp(const URDMEstate_t *xx,const double *k,const int *i,
@@ -42,31 +43,38 @@ double Diff_inlineProp(const URDMEstate_t *xx,const double *k,const int *i,
 void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
 {
   /* check syntax */
-  if (nrhs != 11) mexErrMsgTxt("Wrong number of arguments.");
+  if (nrhs != 14) mexErrMsgTxt("Wrong number of arguments.");
+  if (*(unsigned *)mxGetData(prhs[0]) != MEXHASH)
+    PERROR("Mex hashkey mismatch.");
 
   /* load arguments */
-  const double tt = mxGetScalar(prhs[0]);
-  const mxArray *mxU0 = prhs[1];
-  const size_t Mreactions = (size_t)mxGetScalar(prhs[2]);
-  const mxArray *mxG = prhs[3];
-  const mxArray *mxVol = prhs[4];
-  const mxArray *mxLData = prhs[5];
-  const mxArray *mxGData = prhs[6];
-  const mxArray *mxSd = prhs[7];
-  const mxArray *mxK = prhs[8];
-  const mxArray *mxI = prhs[9];
-  const mxArray *mxS = prhs[10];
+  const double tt = mxGetScalar(prhs[1]);
+  const mxArray *mxU0 = prhs[2];
+  const size_t Mreactions = (size_t)mxGetScalar(prhs[3]);
+  const mxArray *mxG = prhs[4];
+  const mxArray *mxVol = prhs[5];
+  const mxArray *mxLData = prhs[6];
+  const mxArray *mxGData = prhs[7];
+  const mxArray *mxLDataTime = prhs[8];
+  const mxArray *mxGDataTime = prhs[9];
+  const mxArray *mxSd = prhs[10];
+  const mxArray *mxK = prhs[11];
+  const mxArray *mxI = prhs[12];
+  const mxArray *mxS = prhs[13];
 
   /* get problem dimensions */
   const size_t Ncells = mxGetNumberOfElements(mxVol);
   const size_t Ndofs = mxGetNumberOfElements(mxU0);
   const size_t Mspecies = Ndofs/Ncells;
-  const size_t dsize = mxGetM(mxLData);  
+  const size_t ldsize = mxGetM(mxLData);
+  const size_t ldtsize = mxGetM(mxLDataTime);
   
   /* pointers to non-sparse objects */
   const double *vol = mxGetPr(mxVol);
   const double *ldata = mxGetPr(mxLData);
   const double *gdata = mxGetPr(mxGData);
+  const double *ldata_time = mxGetPr(mxLDataTime);
+  const double *gdata_time = mxGetPr(mxGDataTime);
   const double *sd_double = mxGetPr(mxSd);
 
   /* "typecast" from double to URDMEstate_t */
@@ -103,8 +111,6 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
     for (int i = 0; i < 3*M1; i++)
       I[i] = (int)I_double[i]-1;
   }
-  if (M1 < Mreactions)
-    mexErrMsgTxt("MEXJAC requires all propensities to be defined as inline.");
 
   /* get sparse matrix S, if any */
   if (!emptyS) {
@@ -120,10 +126,23 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
     jcS = mxCalloc(M1+1,sizeof(mwIndex));
 
   /* dependency matrix G - only the diffusion part is used since this
-     tells us the dependency of reaction upon species */
+     tells us the dependency of reactions upon species */
   const mwIndex *jcG = mxGetJc(mxG);
   const mwIndex *irG = mxGetIr(mxG);
   const size_t nnzG = jcG[Mspecies]-jcG[0];
+
+  /* working memory to hold Jacobian of compiled propensities */
+  double *val = NULL;
+#ifdef JAC_
+  if (M1 < Mreactions)
+    val = mxMalloc(nnzG*sizeof(double));
+#else
+    if (M1 < Mreactions)
+      mexErrMsgTxt("Attempt to compute Jacobian of propensities with "	\
+		   "no symbolic differentiation available. Compile " \
+		   "with JAC_ #defined and ensure that the propensity " \
+		   "file defines GET_jacobian().");
+#endif
 
   /* allocate Jacobian sparse matrix JAC */
   plhs[0] = mxCreateSparse(Mreactions*Ncells,Mspecies*Ncells,
@@ -135,36 +154,55 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   /* sparsity pattern deduced from G */
   memcpy(&jcJAC[0],&jcG[0],(Mspecies+1)*sizeof(mwIndex));
   memcpy(&irJAC[0],&irG[jcG[0]],nnzG*sizeof(mwIndex));
-  for (int j = 0; j < Mspecies; j++)
-    for (int i = jcJAC[j]; i < jcJAC[j+1]; i++) {
-      const int reaction = irJAC[i]%Mreactions;
-      prJAC[i] =
-	Diff_inlineProp(&u0[0],
-			&K[reaction*3],&I[reaction*3],&prS[jcS[reaction]],
-			jcS[reaction+1]-jcS[reaction],j,
-			vol[0],sd[0]);
-    }
   /* the global sparsity pattern is a simple block-diagonal shift of
-     the pattern in the first subvolume: loop over subvolumes... */
-  for (int subvol = 1; subvol < Ncells; subvol++)
-    /* ...loop over columns/species in this subvolume... */
-    for (int j = 0; j < Mspecies; j++) {
-      jcJAC[j+subvol*Mspecies+1] = jcJAC[j+(subvol-1)*Mspecies+1]+nnzG;
+     the pattern in the first subvolume: so loop over subvolumes and
+     repeat pattern from previous block while adding an offset */
+  for (int subvol = 1; subvol < Ncells; subvol++) {
+    /* columns */
+    memcpy(&jcJAC[subvol*Mspecies+1],&jcJAC[(subvol-1)*Mspecies+1],
+	   Mspecies*sizeof(mwIndex));
+    for (int j = 0; j < Mspecies; j++)
+      jcJAC[j+subvol*Mspecies+1] += nnzG;
+    /* rows */
+    memcpy(&irJAC[subvol*nnzG],&irJAC[(subvol-1)*nnzG],
+	   nnzG*sizeof(mwIndex));
+    for (int i = 0; i < nnzG; i++)
+      irJAC[i+subvol*nnzG] += Mreactions;
+  }
+
+  /* once the parsity pattern is in place, perform the
+     differentiation */
+  for (int subvol = 0; subvol < Ncells; subvol++) {
+    /* get the Jacobian from all compiled propensities */
+    int valix = 0;
+#ifdef JAC_
+    GET_jacobian(val,&u0[Mspecies*subvol],tt,vol[subvol],
+		 &ldata[subvol*ldsize],gdata,
+		 &ldata_time[subvol*ldtsize],gdata_time,
+		 sd[subvol]);
+#endif
+
+    /* loop over columns/species in this subvolume... */
+    for (int j = 0; j < Mspecies; j++)
       /* ...and loop over nonzero rows/reactions */
       for (int i = jcJAC[j+subvol*Mspecies]; i < jcJAC[j+subvol*Mspecies+1];
 	   i++) {
-  	irJAC[i] = irJAC[i-nnzG]+Mreactions;
 	/* after figuring out the reaction, compute the derivative */
 	const int reaction = irJAC[i]%Mreactions;
-	prJAC[i] =
-	  Diff_inlineProp(&u0[Mspecies*subvol],
-			  &K[reaction*3],&I[reaction*3],&prS[jcS[reaction]],
-			  jcS[reaction+1]-jcS[reaction],j,
-			  vol[subvol],sd[subvol]);
+	if (reaction < M1)
+	  prJAC[i] =
+	    Diff_inlineProp(&u0[Mspecies*subvol],
+			    &K[reaction*3],&I[reaction*3],&prS[jcS[reaction]],
+			    jcS[reaction+1]-jcS[reaction],j,
+			    vol[subvol],sd[subvol]);
+	else
+	  prJAC[i] = val[valix++];
       }
-    }
+  }
 
   /* deallocate */
+  if (M1 < Mreactions)
+    mxFree(val);
   if (M1 > 0) {
     mxFree(I);
     mxFree(prS);

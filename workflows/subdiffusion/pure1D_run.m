@@ -75,6 +75,8 @@ V = reshape(vmod.U,Nstates,Nmesh,[]);
 W1 = wmod1.U;
 W2 = wmod2.U;
 
+if exist('plotting_off','var') && plotting_off, return; end
+
 figure(1), clf
 M = struct('cdata',{},'colormap',{});
 for i = 1:numel(t)

@@ -1,6 +1,7 @@
 /* mexrhs.c - Mex-interface of propensity evaluation for use with the
    UDS solver. */
 
+/* S. Engblom 2024-05-13 (ldata_time, gdata_time) */
 /* S. Engblom 2019-11-27 (Revision, inline propensities) */
 /* S. Engblom 2019-11-06 (Revision, now using URDMEstate_t) */
 /* S. Engblom 2017-02-24 */
@@ -12,24 +13,29 @@
 
 #include "inline.h"
 #include "propensities.h"
+#include "report.h"
 
 /*----------------------------------------------------------------------*/
 void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
 {
   /* check syntax */
-  if (nrhs != 10) mexErrMsgTxt("Wrong number of arguments.");
+  if (nrhs != 13) mexErrMsgTxt("Wrong number of arguments.");
+  if (*(unsigned *)mxGetData(prhs[0]) != MEXHASH)
+    PERROR("Mex hashkey mismatch.");
 
   /* load arguments */
-  const mxArray *mxTspan = prhs[0];
-  const mxArray *mxU0 = prhs[1];
-  const size_t Mreactions = (size_t)mxGetScalar(prhs[2]);
-  const mxArray *mxVol = prhs[3];
-  const mxArray *mxLData = prhs[4];
-  const mxArray *mxGData = prhs[5];
-  const mxArray *mxSd = prhs[6];
-  const mxArray *mxK = prhs[7];
-  const mxArray *mxI = prhs[8];
-  const mxArray *mxS = prhs[9];
+  const mxArray *mxTspan = prhs[1];
+  const mxArray *mxU0 = prhs[2];
+  const size_t Mreactions = (size_t)mxGetScalar(prhs[3]);
+  const mxArray *mxVol = prhs[4];
+  const mxArray *mxLData = prhs[5];
+  const mxArray *mxGData = prhs[6];
+  const mxArray *mxLDataTime = prhs[7];
+  const mxArray *mxGDataTime = prhs[8];
+  const mxArray *mxSd = prhs[9];
+  const mxArray *mxK = prhs[10];
+  const mxArray *mxI = prhs[11];
+  const mxArray *mxS = prhs[12];
 
   /* get problem dimensions */
   const size_t Nreplicas = mxGetNumberOfDimensions(mxU0) == 3
@@ -38,13 +44,16 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   const size_t Ncells = mxGetNumberOfElements(mxVol);
   const size_t Ndofs = mxGetNumberOfElements(mxU0)/tlen/Nreplicas;
   const size_t Mspecies = Ndofs/Ncells;
-  const size_t dsize = mxGetM(mxLData);  
+  const size_t ldsize = mxGetM(mxLData);
+  const size_t ldtsize = mxGetM(mxLDataTime);
   
   /* pointers to non-sparse objects */
   const double *tspan = mxGetPr(mxTspan);
   const double *vol = mxGetPr(mxVol);
   const double *ldata = mxGetPr(mxLData);
   const double *gdata = mxGetPr(mxGData);
+  const double *ldata_time = mxGetPr(mxLDataTime);
+  const double *gdata_time = mxGetPr(mxGDataTime);
   const double *sd_double = mxGetPr(mxSd);
 
   /* "typecast" from double to URDMEstate_t */
@@ -127,7 +136,9 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
 			      Ncells*Mspecies*j+
 			      Mspecies*subvol],
 			  tspan[j],vol[subvol],
-			  &ldata[subvol*dsize],gdata,sd[subvol]);
+			  &ldata[subvol*ldsize],gdata,
+			  &ldata_time[subvol*ldtsize],gdata_time,
+			  sd[subvol]);
       }
   FREE_propensities(rfun);
 

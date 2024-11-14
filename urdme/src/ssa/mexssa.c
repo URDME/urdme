@@ -1,5 +1,6 @@
 /* mexssa.c - Mex-interface SSA solver for use with URDME. */
 
+/* S. Engblom 2024-05-07 (data_time, ldata_time, gdata_time) */
 /* S. Engblom 2019-11-27 (Revision, inline propensities) */
 /* S. Engblom 2019-11-15 (Nreplicas, multiple seeds syntax) */
 /* S. Engblom 2017-02-22 */
@@ -13,40 +14,44 @@
 #include "ssa.h"
 #include "report.h"
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 /*----------------------------------------------------------------------*/
 void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
 { 
   /* check syntax */
-  if (nrhs != 15 || nlhs != 1)
+  if (nrhs != 19 || nlhs != 1)
     mexErrMsgTxt("Wrong number of arguments.");
+  if (*(unsigned *)mxGetData(prhs[0]) != MEXHASH)
+    mexErrMsgTxt("Mex hashkey mismatch.");
 
   /* load arguments */
-  const mxArray *mxTspan = prhs[0];
-  const mxArray *mxU0 = prhs[1];
-  const mxArray *mxD = prhs[2];
-  const mxArray *mxN = prhs[3];
-  const mxArray *mxG = prhs[4];
-  const mxArray *mxVol = prhs[5];
-  const mxArray *mxLData = prhs[6];
-  const mxArray *mxGData = prhs[7];
-  const mxArray *mxSd = prhs[8];
-  const mxArray *mxREPORT = prhs[9];
-  const mxArray *mxSEED = prhs[10];
-  const mxArray *mxK = prhs[11];
-  const mxArray *mxI = prhs[12];
-  const mxArray *mxS = prhs[13];
-  const mxArray *mxSOLVEARGS = prhs[14];
+  const mxArray *mxTspan = prhs[1];
+  const mxArray *mxU0 = prhs[2];
+  const mxArray *mxD = prhs[3];
+  const mxArray *mxN = prhs[4];
+  const mxArray *mxG = prhs[5];
+  const mxArray *mxVol = prhs[6];
+  const mxArray *mxLData = prhs[7];
+  const mxArray *mxGData = prhs[8];
+  const mxArray *mxDataTime = prhs[9];
+  const mxArray *mxLDataTime = prhs[10];
+  const mxArray *mxGDataTime = prhs[11];
+  const mxArray *mxSd = prhs[12];
+  const mxArray *mxREPORT = prhs[13];
+  const mxArray *mxSEED = prhs[14];
+  const mxArray *mxK = prhs[15];
+  const mxArray *mxI = prhs[16];
+  const mxArray *mxS = prhs[17];
+  const mxArray *mxSOLVEARGS = prhs[18];
 
   /* get dimensions */
   const size_t tlen = mxGetNumberOfElements(mxTspan);
   const size_t Ncells = mxGetNumberOfElements(mxVol);
   const size_t Mspecies = mxGetM(mxN);
   const size_t Mreactions = mxGetN(mxN);
-  const size_t dsize = mxGetM(mxLData);  
+  const size_t ldsize = mxGetM(mxLData);
+  const size_t ldtsize = mxGetM(mxLDataTime);
+  const size_t gdtsize = mxGetM(mxGDataTime);
+  const size_t dtlen =  mxGetN(mxGDataTime);
   const size_t Ndofs = Ncells*Mspecies;
 
   /* Get pointers to non-sparse objects. */
@@ -57,6 +62,9 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
   const double *vol = mxGetPr(mxVol);
   const double *ldata = mxGetPr(mxLData);
   const double *gdata = mxGetPr(mxGData);
+  const double *data_time = mxGetPr(mxDataTime);
+  const double *ldata_time = mxGetPr(mxLDataTime);
+  const double *gdata_time = mxGetPr(mxGDataTime);
   const double *sd_double = mxGetPr(mxSd);
   const double *seed_double = mxGetPr(mxSEED);
 
@@ -142,9 +150,9 @@ void mexFunction(int nlhs,mxArray *plhs[],int nrhs,const mxArray *prhs[])
       (const size_t *)irN,(const size_t *)jcN,prN,
       (const size_t *)irG,(const size_t  *)jcG,
       tspan,tlen,Nreplicas,
-      U,vol,ldata,gdata,sd,
+      U,vol,ldata,gdata,data_time,ldata_time,gdata_time,sd,
       Ncells,Mspecies,Mreactions,
-      dsize,
+      ldsize,ldtsize,gdtsize,dtlen,
       report_level,seed_long,
       K,I,(const size_t *)jcS,prS,M1
       );

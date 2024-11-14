@@ -1,5 +1,6 @@
 /* aem.c - URDME AEM solver. */
 
+/* S. Engblom 2024-05-10 (data_time, ldata_time, gdata_time) */
 /* S. Engblom 2019-11-12 (Nreplicas syntax) */
 /* S. Engblom 2017-02-17 (Major revision, URDME 1.3, Comsol 5) */
 /* P. Bauer and S. Engblom 2012-05-10 */
@@ -38,14 +39,15 @@ void aem(const PropensityFun *rfun,
 	 const double *tspan,const size_t tlen,const size_t Nreplicas,
 	 int *U,
 	 const double *vol,const double *ldata,const double *gdata,
-	 const int *sd,
-	 const size_t Ncells,
+	 const double *data_time,const double *ldata_time,const double *gdata_time,
+	 const int *sd,const size_t Ncells,
 	 const size_t Mspecies,const size_t Mreactions,
-	 const size_t dsize,
+	 const size_t ldsize,const size_t ldtsize,const size_t gdtsize,
+	 const size_t dtlen,
 	 int report_level,const unsigned *seed_uint,
 	 const double *K,const int *I,
-	 const size_t *jcS,const int *prS,const size_t M1)
-
+	 const size_t *jcS,const int *prS,const size_t M1
+	 )
 /* Specification of the inputs, see nsm.c */
 {
   double tt;
@@ -53,7 +55,7 @@ void aem(const PropensityFun *rfun,
   double *Ddiag,*isdrate2;
   double *reactTimes,*diffTimes,*reactInf,*diffInf;
 
-  double oldrate;
+  double oldrate = 0.0;
 
   int *reactNode,*reactHeap,*diffNode,*diffHeap,*xx;
   int *jcE,*irE,*jvec;
@@ -65,7 +67,7 @@ void aem(const PropensityFun *rfun,
   long total_diffusion = 0,total_reactions = 0;
 
   int subvol,spec,to_vol,to_spec;
-  size_t i,j,it,k;
+  size_t i,j,it,k,timeix;
   const size_t Ndofs = Ncells*Mspecies;
 
   seeds *reactSeeds,*diffSeeds;
@@ -149,6 +151,9 @@ void aem(const PropensityFun *rfun,
     /* Set xx to the initial state. */
     memcpy(xx,&u0[k*Ndofs],Ndofs*sizeof(int));
 
+    /* Pointer into data_time, ldata_time, gdata_time. */
+    timeix = 0;
+
     /* set new master seed */
     srand(seed_uint[k]);
 
@@ -156,8 +161,7 @@ void aem(const PropensityFun *rfun,
     for (i = 0; i < reactHeapSize; i++)
       for (j = 0; j < 3; j++)
 	reactSeeds[i][j] = rand()%65535;
-
-    /* diffusions */
+    /* ...diffusions */
     for (i = 0; i < diffHeapSize; i++)
       for (j = 0; j < 3; j++)
 	diffSeeds[i][j] = rand()%65535;
@@ -170,8 +174,12 @@ void aem(const PropensityFun *rfun,
 	  inlineProp(&xx[i*Mspecies],&K[j*3],&I[j*3],&prS[jcS[j]],
 		     jcS[j+1]-jcS[j],vol[i],sd[i]);
       for (; j < Mreactions; j++)
-	rrate[i*Mreactions+j] = (*rfun[j-M1])(&xx[i*Mspecies],tt,vol[i],
-					      &ldata[i*dsize],gdata,sd[i]);
+	rrate[i*Mreactions+j] =
+	  (*rfun[j-M1])(&xx[i*Mspecies],tt,vol[i],
+			&ldata[i*ldsize],gdata,
+			&ldata_time[(timeix*Ncells+i)*ldtsize],
+			&gdata_time[timeix*gdtsize],
+			sd[i]);
     }
 
     /* times to next reaction event */
@@ -193,7 +201,7 @@ void aem(const PropensityFun *rfun,
     /* queue all non-diagonal entries of D as diffusion events */
     for (cnt = 0, i = 0; i < Ndofs; i++) {
       jcE[i] = cnt;
-      for (j = jcD[i]; j < jcD[i + 1]; j++)
+      for (j = jcD[i]; j < jcD[i+1]; j++)
 	if (irD[j] != i) {
 	  diffNode[cnt] = diffHeap[cnt] = cnt;
 	  isdrate2[cnt] = xx[i]*prD[j];
@@ -217,13 +225,48 @@ void aem(const PropensityFun *rfun,
     initialize_heap(diffTimes,diffNode,diffHeap,diffHeapSize);
 
     /* Main loop. */
-    for ( ; ;) {
+    for ( ; ; ) {
 
       /* determine next event */
       if (reactTimes[0] <= diffTimes[0])
 	tt = reactTimes[0];
       else
 	tt = diffTimes[0];
+
+      /* rather increase timeix first? */
+      if (timeix+1 < dtlen && tt >= data_time[timeix+1]) {
+	tt = data_time[++timeix];
+ 
+	/* ldata_time and/or gdata_time was updated: recalculate
+	   reaction rates in all voxels using the dependency graph */
+	for (subvol = 0; subvol < Ncells; subvol++) {
+	  for (i = jcG[Mspecies+Mreactions]; i < jcG[Mspecies+Mreactions+1]; i++) {
+	    j = irG[i];
+	    oldrate = rrate[subvol*Mreactions+j];
+	    if (j < M1)
+	      rrate[subvol*Mreactions+j] = 
+		inlineProp(&xx[subvol*Mspecies],
+			   &K[j*3],&I[j*3],&prS[jcS[j]],
+			   jcS[j+1]-jcS[j],vol[subvol],sd[subvol]);
+	    else
+	      rrate[subvol*Mreactions+j] =
+		(*rfun[j-M1])(&xx[subvol*Mspecies],tt,
+			      vol[subvol],&ldata[subvol*ldsize],gdata,
+			      &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+			      &gdata_time[timeix*gdtsize],
+			      sd[subvol]);
+
+	    /* update times and reorder the heap */
+	    calcTimes(&reactTimes[reactHeap[subvol*Mreactions+j]],
+		      &reactInf[subvol*Mreactions+j],tt,oldrate,
+		      rrate[subvol*Mreactions+j],
+		      reactSeeds[subvol*Mreactions+j]);
+	    update(reactHeap[subvol*Mreactions+j],reactTimes,reactNode,
+		   reactHeap,reactHeapSize);
+	  }
+	}
+	oldrate = -1.0; /* signal nil event */
+      }
 
       /* report data */
       if (tt >= tspan[it] || isinf(tt)) {
@@ -237,6 +280,12 @@ void aem(const PropensityFun *rfun,
 	  memcpy(&U[k*Ndofs*tlen+Ndofs*it],xx,Ndofs*sizeof(int));
 	}
 	if (it >= tlen) break; /* main exit */
+      }
+
+      /* catch nil event: done reporting, so go for next event */
+      if (oldrate == -1.0) {
+	oldrate = 0.0;
+	continue;
       }
 
       if (reactTimes[0] <= diffTimes[0]) {
@@ -284,7 +333,10 @@ void aem(const PropensityFun *rfun,
 	    else
 	      rrate[subvol*Mreactions+j] =
 		(*rfun[j-M1])(&xx[subvol*Mspecies],tt,
-			      vol[subvol],&ldata[subvol*dsize],gdata,sd[subvol]);
+			      vol[subvol],&ldata[subvol*ldsize],gdata,
+			      &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+			      &gdata_time[timeix*gdtsize],
+			      sd[subvol]);
 
 	    /* update times and reorder the heap */
 	    calcTimes(&reactTimes[reactHeap[subvol*Mreactions+j]],
@@ -309,7 +361,10 @@ void aem(const PropensityFun *rfun,
 	else
 	  rrate[subvol*Mreactions+j] =
 	    (*rfun[j-M1])(&xx[subvol*Mspecies],tt,
-			  vol[subvol],&ldata[subvol*dsize],gdata,sd[subvol]);
+			  vol[subvol],&ldata[subvol*ldsize],gdata,
+			  &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+			  &gdata_time[timeix*gdtsize],
+			  sd[subvol]);
 
 	calcTimes(&reactTimes[reactHeap[subvol*Mreactions+j]],
 		  &reactInf[subvol*Mreactions+j],tt,oldrate,
@@ -328,6 +383,8 @@ void aem(const PropensityFun *rfun,
 	for (i = 0; diffNode[0] >= jcE[i]; i++)
 	  ;
 
+	/* note: both pairs (subvol,to_vol) and (spec,to_spec) are
+	   allowed to be non-equal */
 	subvol = (i-1)/Mspecies;
 	spec = (i-1)%Mspecies;
 	to_vol = irE[diffNode[0]]/Mspecies;
@@ -338,7 +395,9 @@ void aem(const PropensityFun *rfun,
 	if (xx[subvol*Mspecies+spec] < 0) errcode = 2;
 	xx[to_vol*Mspecies+to_spec]++;
 
-	/* Recalculate the reaction rates using dependency graph G. */
+	/* Recalculate the reaction rates in subvolume subvol that are
+	   affected by species spec changing, using the dependency
+	   graph G. */
 	for (i = jcG[spec]; i < jcG[spec+1]; i++) {
 	  j = irG[i];
 	  oldrate = rrate[subvol*Mreactions+j];
@@ -351,7 +410,10 @@ void aem(const PropensityFun *rfun,
 	  else
 	    rrate[subvol*Mreactions+j] =
 	      (*rfun[j-M1])(&xx[subvol*Mspecies],tt,
-			    vol[subvol],&ldata[subvol*dsize],gdata,sd[subvol]);
+			    vol[subvol],&ldata[subvol*ldsize],gdata,
+			    &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+			    &gdata_time[timeix*gdtsize],
+			    sd[subvol]);
 
 	  /* Update reaction waiting time in outgoing subvolume */
 	  calcTimes(&reactTimes[reactHeap[subvol*Mreactions+j]],
@@ -360,6 +422,14 @@ void aem(const PropensityFun *rfun,
 		    reactSeeds[subvol*Mreactions+j]);
 	  update(reactHeap[subvol*Mreactions+j],reactTimes,reactNode,
 		 reactHeap,reactHeapSize);
+	  diff2react++;
+	}
+
+	/* Recalculate the reaction rates in subvolume to_vol that are
+	   affected by species to_spec changing, using the dependency
+	   graph G. */
+	for (i = jcG[to_spec]; i < jcG[to_spec+1]; i++) {
+	  j = irG[i];
 
 	  oldrate = rrate[to_vol*Mreactions+j];
 	  if (j < M1)
@@ -371,7 +441,10 @@ void aem(const PropensityFun *rfun,
 	  else
 	    rrate[to_vol*Mreactions+j] =
 	      (*rfun[j-M1])(&xx[to_vol*Mspecies],tt,
-			    vol[to_vol],&ldata[to_vol*dsize],gdata,sd[to_vol]);
+			    vol[to_vol],&ldata[to_vol*ldsize],gdata,
+			    &ldata_time[(timeix*Ncells+to_vol)*ldtsize],
+			    &gdata_time[timeix*gdtsize],
+			    sd[to_vol]);
 
 	  /* Update reaction waiting time in incoming subvolume */
 	  calcTimes(&reactTimes[reactHeap[to_vol*Mreactions+j]],
@@ -380,35 +453,34 @@ void aem(const PropensityFun *rfun,
 		    reactSeeds[to_vol*Mreactions+j]);
 	  update(reactHeap[to_vol*Mreactions+j],reactTimes,reactNode,
 		 reactHeap,reactHeapSize);
-	  diff2react += 2;
+	  diff2react++;
 	}
 
 	/* Update all diffusion events of affected species in the
 	   outgoing subvolume */
-	for (cnt = jcE[subvol * Mspecies + spec];
-	     cnt < jcE[subvol * Mspecies + spec + 1]; cnt++) {
+	for (cnt = jcE[subvol*Mspecies+spec];
+	     cnt < jcE[subvol*Mspecies+spec+1]; cnt++) {
 	  oldrate = isdrate2[cnt];
 	  isdrate2[cnt] -= prD[jvec[cnt]];
 
-	  calcTimes(&diffTimes[diffHeap[cnt]], &diffInf[cnt], tt, oldrate,
-		    isdrate2[cnt], diffSeeds[cnt]);
+	  calcTimes(&diffTimes[diffHeap[cnt]],&diffInf[cnt],tt,oldrate,
+		    isdrate2[cnt],diffSeeds[cnt]);
 
-	  update(diffHeap[cnt], diffTimes, diffNode, diffHeap, diffHeapSize);
+	  update(diffHeap[cnt],diffTimes,diffNode,diffHeap,diffHeapSize);
 	  diff2diff++;
 	}
 
 	/* Update all diffusion events of affected species in the
 	   incoming subvolume */
-	for (cnt = jcE[to_vol * Mspecies + spec];
-	     cnt < jcE[to_vol * Mspecies + spec + 1]; cnt++) {
+	for (cnt = jcE[to_vol*Mspecies+to_spec];
+	     cnt < jcE[to_vol*Mspecies+to_spec+1]; cnt++) {
 	  oldrate = isdrate2[cnt];
-
 	  isdrate2[cnt] += prD[jvec[cnt]];
 
-	  calcTimes(&diffTimes[diffHeap[cnt]], &diffInf[cnt], tt, oldrate,
-		    isdrate2[cnt], diffSeeds[cnt]);
+	  calcTimes(&diffTimes[diffHeap[cnt]],&diffInf[cnt],tt,oldrate,
+		    isdrate2[cnt],diffSeeds[cnt]);
 
-	  update(diffHeap[cnt], diffTimes, diffNode, diffHeap, diffHeapSize);
+	  update(diffHeap[cnt],diffTimes,diffNode,diffHeap,diffHeapSize);
 	  diff2diff++;
 	}
 

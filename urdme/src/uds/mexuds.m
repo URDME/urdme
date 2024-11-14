@@ -1,7 +1,10 @@
-function U = mexuds(tspan,u0,D,N,G,vol,ldata,gdata,sd,reportl,seed,K,I,S,solverargs)
+function U = mexuds(mexhash,tspan,u0,D,N,G,vol,ldata,gdata, ...
+                    data_time,ldata_time,gdata_time, ...
+                    sd,reportl,seed,K,I,S,solverargs)
 
 % (for help, type 'help uds')
 
+% S. Engblom 2024-05-13 (data_time, ldata_time, gdata_time)
 % S. Engblom 2019-11-27 (Revision, inline propensities)
 % S. Engblom 2019-11-17 (Revision, Nreplicas)
 % S. Engblom 2017-02-24 (mexuds)
@@ -11,6 +14,7 @@ function U = mexuds(tspan,u0,D,N,G,vol,ldata,gdata,sd,reportl,seed,K,I,S,solvera
 % default solver options
 optdef.odesolv = @ode23s;
 optdef.odeopts = odeset('RelTol',1e-4,'AbsTol',1e-1);
+optdef.mexname = 'mexuds';
 optdef.report = 0;
 optdef.jacobian = 0;
 optdef.finish = '';
@@ -26,9 +30,13 @@ opts.report = reportl;
 % merge defaults with actual inputs
 fn = fieldnames(opts);
 for i = 1:length(fn)
-  optdef = setfield(optdef,fn{i},getfield(opts,fn{i}));
+  if ~isfield(optdef,fn{i})
+      error(sprintf('Unrecognized property ''%s''.',fn{i}));
+    end
+  optdef.(fn{i}) = opts.(fn{i});
 end
 opts = optdef;
+
 if opts.report
   opts.odeopts.OutputFcn = @l_report;
 end
@@ -40,12 +48,19 @@ else
   NN = N;
 end
 
+% create function handles
+mexrhs = str2func([opts.mexname '_mexrhs']);
+mexjac = str2func([opts.mexname '_mexjac']);
+
 % solve
 U = zeros(numel(u0(:,:,1)),numel(tspan),size(u0,3));
 for k = 1:size(u0,3)
   l_report(0,[k size(u0,3)],'init_replica');
-  [foo,U_] = opts.odesolv(@l_rhs,tspan,u0(:,:,k),opts.odeopts,N,NN,G,D,vol, ...
-                          ldata,gdata,sd,K,I,S);
+  [foo,U_] = opts.odesolv(@l_rhs,tspan,u0(:,:,k),opts.odeopts,mexhash, ...
+                          N,NN,G,D,vol,ldata,gdata, ...
+                          data_time,ldata_time,gdata_time, ...
+                          sd,K,I,S, ...
+                          mexrhs,mexjac);
   % fix for singular behaviour
   if numel(tspan) == 2
     U_ = U_([1 end],:);
@@ -60,21 +75,41 @@ if ~isempty(opts.finish)
 end
 
 %--------------------------------------------------------------------------
-function dy = l_rhs(t,y,N,NN,G,D,vol,ldata,gdata,sd,K,I,S)
+function dy = l_rhs(t,y,mexhash,N,NN,G,D,vol,ldata,gdata, ...
+                    data_time,ldata_time,gdata_time, ...
+                    sd,K,I,S, ...
+                    mexrhs,mexjac)
 %L_RHS Reaction-transport equations.
 %  DY = L_RHS(...) returns the rate DY for the reaction-transport
 %  model.
 
-dy = N*reshape(mexrhs(t,y,size(N,2),vol,ldata,gdata,sd,K,I,S),size(N,2),[]);
+% if there is a table of times given, find the relevant place in
+% (ldata_time,gdata_time)
+if numel(data_time) > 1
+  [~,ix] = histc(t,[data_time(:).' inf]);
+  ldata_time = ldata_time(:,:,ix);
+  gdata_time = gdata_time(:,ix);
+end
+dy = N*reshape(mexrhs(mexhash,t,y,size(N,2),vol,ldata,gdata, ...
+                      ldata_time,gdata_time,sd,K,I,S), ...
+               size(N,2),numel(vol));
 dy = dy(:)+D*y;
 
 %--------------------------------------------------------------------------
-function J = l_jacobian(t,y,N,NN,G,D,vol,ldata,gdata,sd,K,I,S)
+function J = l_jacobian(t,y,mexhash,N,NN,G,D,vol,ldata,gdata, ...
+                        data_time,ldata_time,gdata_time, ...
+                        sd,K,I,S, ...
+                        mexrhs,mexjac)
 %L_JACOBIAN Jacobian of L_RHS.
 %  J = L_JACOBIAN(...) returns the Jacobian of L_RHS for the same
-%  arguments. All propensities must be inline for this to work.
-
-J = NN*mexjac(t,y,size(N,2),G,vol,ldata,gdata,sd,K,I,S)+D;
+%  arguments.
+if numel(data_time) > 1
+  [~,ix] = histc(t,[data_time(:).' inf]);
+  ldata_time = ldata_time(:,:,ix);
+  gdata_time = gdata_time(:,ix);
+end
+J = NN*mexjac(mexhash,t,y,size(N,2),G,vol,ldata,gdata, ...
+              ldata_time,gdata_time,sd,K,I,S)+D;
 
 %--------------------------------------------------------------------------
 function status = l_report(t,y,s,varargin)

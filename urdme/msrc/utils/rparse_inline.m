@@ -1,19 +1,10 @@
-function [K,I,N,G] = rparse_inline(umod,r,spec,rate,seq)
+function umod = rparse_inline(umod,r,spec,rate,seq)
 %RPARSE_INLINE URDME inline reaction propensity parser.
 %   UMOD = RPARSE_INLINE(UMOD,R,SPEC,RATE,SEQ) creates/augments the
 %   URDME structure UMOD with fields describing the reactions R with
-%   species SPEC, and rate constants RATE. The sequence expansion
+%   species SPEC, and rate constants RATE. If the input UMOD is empty
+%   the structure is simultaneously created. The sequence expansion
 %   argument SEQ is optional, see functionality below.
-%
-%   Specific syntaxes and descriptions now follow. Note: adding a
-%   (possible empty) URDME structure UMOD to the inputs as in the main
-%   call above implies that this structure is
-%   created/augmented. Otherwise the results are returned in the
-%   various outputs as specified below.
-%
-%   [K,I] = RPARSE_INLINE(R,SPEC,RATE) constructs inline propensities
-%   (K,I) for the reactions R with species SPEC and rate-constants
-%   RATE.
 %
 %   R is a cell-vector containing reactions on the form 'X+Y+... >
 %   rate constant k > U+V+...' The left (right) side is the initial
@@ -38,51 +29,41 @@ function [K,I,N,G] = rparse_inline(umod,r,spec,rate,seq)
 %   values, for example,
 %     RATE = {'k' 1 'mu' 0.5e-7}.
 %
-%   [K,I,N,G] = RPARSE_INLINE(...) additionally outputs the
-%   stoichiometric matrix N and the dependency graph G, to be placed
-%   in the fields umod.N and umod.G of the URDME structure.
+%   The field UMOD.private.rpinl contains the various inputs to
+%   RPARSE_INLINE as well as some additionally created information.
 %
 %   Examples:
 %     % linear birth-death example
-%     [K1,I1] = rparse_inline({'@ > k > X' 'X > mu > @' }, ...
-%                             {'X'},{'k' 1 'mu' 1e-3});
+%     umod = rparse_inline([],{'@ > k > X' 'X > mu > @' }, ...
+%                          {'X'},{'k' 1 'mu' 1e-3});
 %
 %     % 2 reacting species
-%     [K2,I2,N,G] = rparse_inline({'@ > k > X' ...
-%                                  '@ > k > Y' ...
-%                                  'X > mu > @' ...
-%                                  'Y > mu > @' ...
-%                                  'X+Y > kk > @'}, ...
-%                                  {'X' 'Y'},{'k' 1 'mu' 1e-3 'kk' 1e-4});
+%     vmod = rparse_inline([],{'@ > k > X' ...
+%                           '@ > k > Y' ...
+%                           'X > mu > @' ...
+%                           'Y > mu > @' ...
+%                           'X+Y > kk > @'}, ...
+%                           {'X' 'Y'},{'k' 1 'mu' 1e-3 'kk' 1e-4});
 %
 %   See also NSM, RPARSE, URDME.
 
+% S. Engblom 2024-06-14 (removed old calling sequence)
 % S. Engblom 2019-11-26 (Revision, now creating/augmenting URDME structure)
 % S. Engblom 2017-03-01
 
-% umod-in-umod-out syntax?
-if ~iscell(umod) && nargout <= 1
-  % rparse(umod,r,spec,rate,[seq])
-  if ~isstruct(umod)
-    if ~isempty(umod)
-      error('URDME structure expected as first argument.');
-    end
-    umod = struct; % (rparse used as constructor)
-  end
-  if nargin < 4
-    error('Minimum 4 arguments required to create/augment URDME structure.');
-  end
-else
-  % rparse(umod,r,spec,rate,seq) --> rparse(r,spec,rate,[seq])
-  if nargin > 3
-    seq = rate;
-  end
-  rate = spec;
-  spec = r;
-  r = umod;
-  umod = [];
+% syntax
+if nargout > 1
+  error('One output only.');
 end
-% from now on, just ignore umod until the end
+if nargin < 4
+  error('Minimum 4 input arguments required.');
+end
+if ~isstruct(umod)
+  if ~isempty(umod)
+    error('URDME structure expected as first argument.');
+  end
+  umod = struct; % (rparse_inline used as constructor)
+end
 
 r = reshape(r,1,[]);
 spec = reshape(spec,1,[]);
@@ -183,26 +164,59 @@ end
 G = [H' H'*abs(N)]; % [diffusion reaction]-parts of G
 G = double(G ~= 0);
 
-% umod-in-umod-out syntax?
-if isstruct(umod)
-  % output: UMOD.{inline_propensities.{K I S} N G 
-  % private.{Reactions Species RateNames RateVals}}
-  umod.inline_propensities.K = K;
-  umod.inline_propensities.I = I;
-  umod.inline_propensities.S = sparse(0,size(K,2));
+% suspicious:
+ghost_species = find(~(any(H,2) | any(N,2)));
+if ~isempty(ghost_species)
+  ghosts = sprintf('{ %s}',sprintf('#%d ',ghost_species));
+  warning('rparse_inline:ghost_species', ...
+          ['One or more species ' ghosts ' do not participate in any reactions ' ...
+           'and are not affected by any reactions.']);
+end
+ghost_rates = find(~sparse(1,ixRate,1,1,numel(rate)));
+if ~isempty(ghost_rates)
+  ghosts = sprintf('{ %s}',sprintf('#%d ',ghost_rates));
+  warning('rparse_inline:ghost_rates', ...
+          ['One or more rates ' ghosts ' do not participate in any reactions.']);
+end
+
+% output: UMOD.{inline_propensities.{K I S} N G 
+% private.rpinl.{Reactions Species RateNames RateVals ixK ixRate}}
+umod.inline_propensities.K = K;
+umod.inline_propensities.I = I;
+umod.inline_propensities.S = sparse(0,size(K,2));
+% augment non-empty structure?
+if isfield(umod,'N') || isfield(umod,'G')
+  % when augmenting; by convention, put inline propensities first:
+  try
+    Nr1 = size(N,2);
+    Nr2 = size(umod.N,2);
+    umod.N = [N umod.N];
+    Nspecies = size(umod.N,1);
+    % how old/new (Nr1/Nr2) reactions affect new/old (Nr2/Nr1) ones we
+    % cannot know without parsin, so we have to assume a full
+    % coupling:
+    sp1 = sparse(ones(Nr2,Nr1));
+    umod.G = [[G(:,1:Nspecies); umod.G(:,1:Nspecies)] ...
+              [[G(:,Nspecies+1:end); sp1] ...
+               [sp1'; umod.G(:,Nspecies+1:end)]]];
+  catch
+    error(['Unable to augment URDME structure; existing species ' ...
+           'seem to mismatch.']);
+  end
+else
   umod.N = N;
   umod.G = G;
-  umod.private.Reactions = r;
-  umod.private.Species = spec;
-  umod.private.RateNames = rate;
-  umod.private.RateVals = cat(2,ratedef{:});
-  umod.private.ixK = find(umod.inline_propensities.K(:))';
-  umod.private.ixRate = ixRate;
-  % the relation here is
-  %   K(umod.private.ixK) = RateVals(umod.private.ixRate)
-  % and can be used to easily modify rates in K on the fly
-  K = umod;
 end
+% save rparse_inline-description in "rpinl"-struct:
+umod.private.rpinl.Reactions = r;
+umod.private.rpinl.Species = spec;
+umod.private.rpinl.RateNames = rate;
+umod.private.rpinl.RateVals = cat(2,ratedef{:});
+umod.private.rpinl.ixK = find(umod.inline_propensities.K(:))';
+umod.private.rpinl.ixRate = ixRate;
+% the relation here is
+%   K(ixK) = RateVals(ixRate)
+% and can be used to easily modify rates in K on the fly
 
 %---------------------------------------------------------------------------
 function c = l_split(s,d)
@@ -221,5 +235,4 @@ c = cell(1,size(ii,2)-1);
 for i = 1:size(ii,2)-1
   c{i} = s(ii(i)+1:ii(i+1)-1);
 end
-
 %---------------------------------------------------------------------------

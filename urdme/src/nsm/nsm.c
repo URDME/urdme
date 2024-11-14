@@ -1,5 +1,7 @@
 /* nsm.c - URDME NSM solver. */
 
+/* S. Engblom 2024-05-08 (data_time, ldata_time, gdata_time) */
+/* S. Engblom 2024-04-11 (generalized diffusion) */
 /* S. Engblom 2019-11-12 (multiple seeds) */
 /* S. Engblom 2018-02-10 (Nreplicas syntax) */
 /* S. Engblom 2017-02-16 (Major revision, URDME 1.3, Comsol 5) */
@@ -23,7 +25,7 @@
 #endif
 
 /*----------------------------------------------------------------------*/
-void nsm(const PropensityFun *rfun, 
+void nsm(const PropensityFun *rfun,
 	 const size_t *irD,const size_t *jcD,const double *prD,
 	 const int *u0,
 	 const size_t *irN,const size_t *jcN,const int *prN,
@@ -31,10 +33,12 @@ void nsm(const PropensityFun *rfun,
 	 const double *tspan,const size_t tlen,const size_t Nreplicas,
 	 int *U,
 	 const double *vol,const double *ldata,const double *gdata,
-	 const int *sd,
-	 const size_t Ncells,
+	 const double *data_time,const double *ldata_time,const double *gdata_time,
+	 const int *sd,const size_t Ncells,
 	 const size_t Mspecies,const size_t Mreactions,
-	 const size_t dsize,int report_level,const long *seed_long,
+	 const size_t ldsize,const size_t ldtsize,const size_t gdtsize,
+	 const size_t dtlen,
+	 int report_level,const long *seed_long,
 	 const double *K,const int *I,
 	 const size_t *jcS,const int *prS,const size_t M1
 	 )
@@ -152,7 +156,7 @@ The output is a matrix U (Ndofs X length(tspan)).
   int dof,col;
         
   int subvol,event,re,spec,to_spec;
-  size_t i,j,it,k;
+  size_t i,j,it,k,timeix;
   size_t to_node,to_vol = 0;
   const size_t Ndofs = Ncells*Mspecies;
 
@@ -200,6 +204,9 @@ The output is a matrix U (Ndofs X length(tspan)).
     /* Set xx to the initial state. */
     memcpy(xx,&u0[k*Ndofs],Ndofs*sizeof(int));
 
+    /* Pointer into data_time, ldata_time, gdata_time. */
+    timeix = 0;
+
     /* set new master seed */
     srand48(seed_long[k]);
 
@@ -216,7 +223,10 @@ The output is a matrix U (Ndofs X length(tspan)).
       }
       for (; j < Mreactions; j++) {
 	rrate[i*Mreactions+j] = 
-	  (*rfun[j-M1])(&xx[i*Mspecies],tt,vol[i],&ldata[i*dsize],gdata,sd[i]);
+	  (*rfun[j-M1])(&xx[i*Mspecies],tt,vol[i],&ldata[i*ldsize],gdata,
+			&ldata_time[(timeix*Ncells+i)*ldtsize],
+			&gdata_time[timeix*gdtsize],
+			sd[i]);
 	srrate[i] += rrate[i*Mreactions+j];
       }
     }
@@ -243,6 +253,49 @@ The output is a matrix U (Ndofs X length(tspan)).
       tt = rtimes[0];
       subvol = node[0];
 
+      /* rather increase timeix first? */
+      if (timeix+1 < dtlen && tt >= data_time[timeix+1]) {
+	tt = data_time[++timeix];
+ 
+	/* ldata_time and/or gdata_time was updated: recalculate
+	   srrate and rrate in all voxels using the dependency
+	   graph */
+	for (subvol = 0; subvol < Ncells; subvol++) {
+	  for (i = jcG[Mspecies+Mreactions], rdelta = 0.0; i < jcG[Mspecies+Mreactions+1]; i++) {
+	    old = rrate[subvol*Mreactions+irG[i]];
+	    j = irG[i];
+	    if (j < M1)
+	      rdelta += (rrate[subvol*Mreactions+j] = 
+			 inlineProp(&xx[subvol*Mspecies],
+				    &K[j*3],&I[j*3],&prS[jcS[j]],
+				    jcS[j+1]-jcS[j],vol[subvol],sd[subvol]))-old;
+	    else
+	      rdelta += 
+		(rrate[subvol*Mreactions+j] = 
+		 (*rfun[j-M1])(&xx[subvol*Mspecies],tt,vol[subvol],
+			       &ldata[subvol*ldsize],gdata,
+			       &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+			       &gdata_time[timeix*gdtsize],
+			       sd[subvol]))-old;
+	  }
+	  old = srrate[subvol]+sdrate[subvol];
+	  srrate[subvol] += rdelta;
+	  totrate = old+rdelta;
+	  if (totrate > 0.0) {
+	    if (!isinf(rtimes[heap[subvol]]))
+	      rtimes[heap[subvol]] = old/totrate*(rtimes[heap[subvol]]-tt)+tt;
+	    else
+	      /* generate a new waiting time */
+	      rtimes[heap[subvol]] = -log(1.0-drand48())/totrate+tt;
+	  }
+	  else
+	    rtimes[heap[subvol]] = INFINITY;
+
+	  update(heap[subvol],rtimes,node,heap,Ncells);
+	}
+	subvol = -1; /* signal nil event */
+      }
+
       /* report data */
       if (tt >= tspan[it] || isinf(tt)) {
 	for (; it < tlen && (tt >= tspan[it] || isinf(tt)); it++) {
@@ -256,6 +309,9 @@ The output is a matrix U (Ndofs X length(tspan)).
 	}
 	if (it >= tlen) break; /* main exit */
       }
+
+      /* catch nil event: done reporting, so go for next event */
+      if (subvol == -1) continue;
 
       /* First check if it is a reaction or a diffusion event. */
       totrate = srrate[subvol]+sdrate[subvol];
@@ -308,7 +364,10 @@ The output is a matrix U (Ndofs X length(tspan)).
 	    rdelta += 
 	      (rrate[subvol*Mreactions+j] = 
 	       (*rfun[j-M1])(&xx[subvol*Mspecies],tt,vol[subvol],
-			     &ldata[subvol*dsize],gdata,sd[subvol]))-old;
+			     &ldata[subvol*ldsize],gdata,
+			     &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+			     &gdata_time[timeix*gdtsize],
+			     sd[subvol]))-old;
 	}
 	srrate[subvol] += rdelta;
 
@@ -342,7 +401,7 @@ The output is a matrix U (Ndofs X length(tspan)).
 	  }
 	}
 
-	/* b) and then the direction of diffusion. */
+	/* b) ...and then the direction of diffusion. */
 	col = dof+spec;
 	rand = drand48()*Ddiag[col];
 
@@ -353,104 +412,76 @@ The output is a matrix U (Ndofs X length(tspan)).
 	/* simple floating point fix: */
 	if (i >= jcD[col+1]) i = jcD[col+1]-1;
 
-	/* note: only one of the pairs (subvol,to_vol) and
-	   (spec,to_spec) are allowed to be non-equal */
+	/* note: both pairs (subvol,to_vol) and (spec,to_spec) are
+	   allowed to be non-equal */
 	to_node = irD[i];
 	to_vol = to_node/Mspecies;
 	to_spec = to_node%Mspecies;
-	if (subvol != to_vol && spec != to_spec) errcode = -1;
+	/* hence this errorcode is no longer used: */
+	/* if (subvol != to_vol && spec != to_spec) errcode = -1; */
 
 	/* c) Execute the diffusion event (check for negative elements). */
 	xx[subvol*Mspecies+spec]--;
 	if (xx[subvol*Mspecies+spec] < 0) errcode = 2;
 	xx[to_node]++;
 
-	if (subvol != to_vol) {
-	  /* Save reaction and diffusion rates. */
-	  old_rrate = srrate[to_vol];
-	  old_drate = sdrate[to_vol];
+	/* Save reaction and diffusion rates. */
+	old_rrate = srrate[to_vol];
+	old_drate = sdrate[to_vol];
 
-	  /* d) Recalculate the reaction rates using dependency graph G. */
-	  for (i = jcG[spec], rdelta = 0.0, rrdelta = 0.0; i < jcG[spec+1]; i++) {
-	    old = rrate[subvol*Mreactions+irG[i]];
-	    j = irG[i];
+	/* d.i) Recalculate the reaction rates in subvolume subvol
+	   that are affected by species spec changing, using the
+	   dependency graph G. */
+	for (i = jcG[spec], rdelta = 0.0; i < jcG[spec+1]; i++) {
+	  old = rrate[subvol*Mreactions+irG[i]];
+	  j = irG[i];
 
-	    if (j < M1) {
-	      rdelta += (rrate[subvol*Mreactions+j] = 
-			 inlineProp(&xx[subvol*Mspecies],
-				    &K[j*3],&I[j*3],
-				    &prS[jcS[j]],jcS[j+1]-jcS[j],
-				    vol[subvol],sd[subvol]))-old;
-	      old = rrate[to_vol*Mreactions+j];
-	      rrdelta += (rrate[to_vol*Mreactions+j] = 
-			  inlineProp(&xx[to_vol*Mspecies],
-				     &K[j*3],&I[j*3],&prS[jcS[j]],
-				     jcS[j+1]-jcS[j],
-				     vol[to_vol],sd[to_vol]))-old;
-	    }
-	    else{
-	      rdelta += 
-		(rrate[subvol*Mreactions+j] = 
-		 (*rfun[j-M1])(&xx[subvol*Mspecies],tt,vol[subvol],
-			       &ldata[subvol*dsize],gdata,sd[subvol]))-old;
-	      old = rrate[to_vol*Mreactions+j];
-	      rrdelta += 
-		(rrate[to_vol*Mreactions+j] = 
-		 (*rfun[j-M1])(&xx[to_vol*Mspecies],tt,vol[to_vol],
-			       &ldata[to_vol*dsize],gdata,sd[to_vol]))-old;
-	    }
-	  }
-
-	  srrate[subvol] += rdelta;
-	  srrate[to_vol] += rrdelta;
-
-	  /* Adjust diffusion rates. */
-	  sdrate[subvol] -= Ddiag[subvol*Mspecies+spec];
-	  sdrate[to_vol] += Ddiag[to_node];
+	  if (j < M1)
+	    rdelta += (rrate[subvol*Mreactions+j] = 
+		       inlineProp(&xx[subvol*Mspecies],
+				  &K[j*3],&I[j*3],
+				  &prS[jcS[j]],jcS[j+1]-jcS[j],
+				  vol[subvol],sd[subvol]))-old;
+	  else
+	    rdelta += 
+	      (rrate[subvol*Mreactions+j] = 
+	       (*rfun[j-M1])(&xx[subvol*Mspecies],tt,vol[subvol],
+			     &ldata[subvol*ldsize],gdata,
+			     &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+			     &gdata_time[timeix*gdtsize],
+			     sd[subvol]))-old;
 	}
-	else {
-	  /* d) Recalculate the reaction rates using dependency graph G. */
-	  for (i = jcG[spec], rdelta = 0.0, rrdelta = 0.0; i < jcG[spec+1]; i++) {
-	    old = rrate[subvol*Mreactions+irG[i]];
-	    j = irG[i];
+	srrate[subvol] += rdelta;
 
-	    if (j < M1)
-	      rrdelta += (rrate[subvol*Mreactions+j] = 
-			  inlineProp(&xx[subvol*Mspecies],
-				     &K[j*3],&I[j*3],&prS[jcS[j]],
-				     jcS[j+1]-jcS[j],
-				     vol[subvol],sd[subvol]))-old;
-	    else
-	      rdelta += 
-		(rrate[subvol*Mreactions+j] = 
-		 (*rfun[j-M1])(&xx[subvol*Mspecies],tt,vol[subvol],
-			       &ldata[subvol*dsize],gdata,sd[subvol]))-old;
-	  }
-	  srrate[subvol] += rdelta;
+	/* Adjust diffusion rate. */
+	sdrate[subvol] -= Ddiag[subvol*Mspecies+spec];
 
-	  /* here spec != to_spec, so to_spec needs to be taken into account too */
-	  for (i = jcG[to_spec], rdelta = 0.0, rrdelta = 0.0; i < jcG[to_spec+1]; i++) {
-	    old = rrate[subvol*Mreactions+irG[i]];
-	    j = irG[i];
+	/* d.ii) Recalculate the reaction rates in subvolume to_vol
+	   that are affected by species to_spec changing, using the
+	   dependency graph G. */
+	for (i = jcG[to_spec], rdelta = 0.0; i < jcG[to_spec+1]; i++) {
+	  old = rrate[to_vol*Mreactions+irG[i]];
+	  j = irG[i];
 
-	    if (j < M1)
-	      rrdelta += (rrate[subvol*Mreactions+j] = 
-			  inlineProp(&xx[subvol*Mspecies],
-				     &K[j*3],&I[j*3],&prS[jcS[j]],
-				     jcS[j+1]-jcS[j],
-				     vol[subvol],sd[subvol]))-old;
-	    else
-	      rdelta += 
-		(rrate[subvol*Mreactions+j] = 
-		 (*rfun[j-M1])(&xx[subvol*Mspecies],tt,vol[subvol],
-			       &ldata[subvol*dsize],gdata,sd[subvol]))-old;
-	  }
-	  srrate[subvol] += rdelta;
-
-	  /* Adjust diffusion rates. */
-	  sdrate[subvol] -= Ddiag[subvol*Mspecies+spec];
-	  sdrate[to_vol] += Ddiag[to_node];
+	  if (j < M1)
+	    rdelta += (rrate[to_vol*Mreactions+j] = 
+		       inlineProp(&xx[to_vol*Mspecies],
+				  &K[j*3],&I[j*3],&prS[jcS[j]],
+				  jcS[j+1]-jcS[j],
+				  vol[to_vol],sd[to_vol]))-old;
+	  else
+	    rdelta += 
+	      (rrate[to_vol*Mreactions+j] = 
+	       (*rfun[j-M1])(&xx[to_vol*Mspecies],tt,vol[to_vol],
+			     &ldata[to_vol*ldsize],gdata,
+			     &ldata_time[(timeix*Ncells+to_vol)*ldtsize],
+			     &gdata_time[timeix*gdtsize],
+			     sd[to_vol]))-old;
 	}
+	srrate[to_vol] += rdelta;
+
+	/* Adjust diffusion rate. */
+	sdrate[to_vol] += Ddiag[to_node];
 
 	total_diffusion++; /* counter */
       }
@@ -482,8 +513,8 @@ The output is a matrix U (Ndofs X length(tspan)).
 	  rtimes[heap[to_vol]] = INFINITY;
 
 	update(heap[to_vol],rtimes,node,heap,Ncells);
-      } 
-        
+      }
+
       if (errcode) {
 	/* Report the error and exit. */
 	memcpy(&U[k*Ndofs*tlen+Ndofs*it],xx,Ndofs*sizeof(int));

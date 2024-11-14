@@ -37,9 +37,9 @@ umod.private.conc_func = @(V)L_max./(1+exp(-(V-Vp)./Kp));
 
 try
   % validate umod: potentially compile and parse, but no solve
-  umod = urdme(umod,'solve',0);
+  umod = urdme(umod,'solve',0,'modelname','synaptic_solver');
   if umod.compile
-    unix(['mv mexssa.' mexext ' mexssa_synaptic_solver.' mexext]);
+    %unix(['mv mexssa.' mexext ' mexssa_synaptic_solver.' mexext]);
     umod.solver = 'ssa_synaptic_solver';
   end
   umod.solve = 1;
@@ -70,11 +70,11 @@ catch
   % URDME synapse simulation: "burn in"
   umod.tspan = [0 10];
   umod.seed = randi(intmax('uint32'));
-  umod = urdme(umod,'solver','ssa');
+  umod = urdme(umod,'solver','ssa','modelname','synaptic_solver');
   umod.u0 = reshape(umod.U(:,2),nSpecies,nVoxels);
 
   % avoid name clash with neuron_solver:
-  unix(['mv mexssa.' mexext ' mexssa_synaptic_solver.' mexext]);
+  %unix(['mv mexssa.' mexext ' mexssa_synaptic_solver.' mexext]);
   umod.solver = 'ssa_synaptic_solver';
   umod.compile = 0;
   umod.parse = 0;

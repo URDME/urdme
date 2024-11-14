@@ -1,5 +1,6 @@
 README for workflows/subdiffusion/
 
+S. Engblom 2024-05-06 (Minor revision)
 S. Engblom 2018-02-16 (Minor revision)
 S. Engblom 2017-05-16
 
@@ -39,8 +40,8 @@ Data:
 data/
   CoarseGrainedSD.mat	coarse-grained pre-computed data, from [1]
   bimolecular2D.mat	results from bimolecular2D_run 
-  originalrun.mat	results from mincde3D_run
-  subdrun.mat		(with and without subdiffusive behavior)
+  originalrun.mat		results from mincde3D_run
+  subdrun.mat			(with and without subdiffusive behavior)
 
 References:
   [1] S. Engblom, P.Lötstedt, and L. Meinecke: "Mesoscopic Modeling of

@@ -5,6 +5,10 @@
 % S. Engblom 2017-02-20 (Revision)
 % S. Engblom 2014-05-09
 
+if ~exist('report','var')
+  report = 1;
+end
+
 clear umod;
 
 % (1) create the geometry, here composed of a circle
@@ -64,8 +68,8 @@ t = linspace(0,Tend,101);
 umod.tspan = t;
 
 % solve
-umod = urdme(umod,'report',2,'solver','nsm');
-vmod = urdme(umod,'report',2,'solver','uds','solverargs',{{'odesolv',@ode23}});
+umod = urdme(umod,'report',report,'solver','nsm');
+vmod = urdme(umod,'report',report,'solver','uds','solverargs',{{'odesolv',@ode23}});
 
 % pure diffusion versions
 wmod = vmod;
@@ -85,6 +89,7 @@ V = squeeze(sum(V,1));
 W1 = wmod1.U;
 W2 = wmod2.U;
 
+if exist('plotting_off','var') && plotting_off, return; end
 figure(1), clf
 msdU = R*U./sum(U);
 msdV = R*V./sum(V);

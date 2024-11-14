@@ -19,12 +19,16 @@ N = 28;
 vol = 1;
 ldata = init_V;
 gdata = [];
+ldata_time = zeros(0,1,0);
+gdata_time = [];
 sd = 1;
 K = zeros(3,0);
 I = zeros(3,0);
 S = sparse(0,0);
 %   Get the transition probabilities for each reaction
-prop_vec = mexrhs(t, u0, N, vol, ldata, gdata, sd, K, I, S);
+prop_vec = mexuds_mexrhs(0, t, u0, N, vol, ldata, gdata, ...
+                         ldata_time, gdata_time, ...
+                         sd, K, I, S);
 
 R1a = prop_vec(1:2:8);
 R1b = prop_vec(2:2:8);

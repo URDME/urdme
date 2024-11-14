@@ -1,5 +1,6 @@
 /* ssa.c - URDME SSA solver. */
 
+/* S. Engblom 2024-05-07 (data_time, ldata_time, gdata_time) */
 /* S. Engblom 2019-11-15 (Nreplicas, multiple seeds syntax) */
 /* S. Engblom 2017-02-22 */
 
@@ -23,15 +24,16 @@ void ssa(const PropensityFun *rfun,
 	 const double *tspan,const size_t tlen,const size_t Nreplicas,
 	 int *U,
 	 const double *vol,const double *ldata,const double *gdata,
+	 const double *data_time,const double *ldata_time,const double *gdata_time,
 	 const int *sd,
 	 const size_t Ncells,
 	 const size_t Mspecies,const size_t Mreactions,
-	 const size_t dsize,
+	 const size_t ldsize,const size_t ldtsize,const size_t gdtsize,
+	 const size_t dtlen,
 	 int report_level,const long *seed_long,
 	 const double *K,const int *I,
 	 const size_t *jcS,const int *prS,const size_t M1
 	 )
-
 /* Specification of the inputs, see nsm.c */
 {
   /* reaction rates and sum of rates */
@@ -65,6 +67,9 @@ void ssa(const PropensityFun *rfun,
       double tt = tspan[0];
       memcpy(xx,&u0[Mspecies*subvol+k*Ndofs],Mspecies*sizeof(int));
 
+      /* Pointer into data_time, ldata_time, gdata_time. */
+      size_t timeix = 0;
+
       /* Calculate the propensity for every reaction. Store the sum of
 	 the reaction intensities in srrate. */
       size_t j;
@@ -76,7 +81,10 @@ void ssa(const PropensityFun *rfun,
       }
       for (; j < Mreactions; j++) {
 	rrate[j] = (*rfun[j-M1])(xx,tt,vol[subvol],
-				 &ldata[subvol*dsize],gdata,sd[subvol]);
+				 &ldata[subvol*ldsize],gdata,
+				 &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+				 &gdata_time[timeix*gdtsize],
+				 sd[subvol]);
 	srrate += rrate[j];
       }
 
@@ -84,7 +92,33 @@ void ssa(const PropensityFun *rfun,
       for ( ; ; ) {
 
 	/* time for next reaction */
-	tt -= log(1.0-drand48())/srrate;
+	double dt = -log(1.0-drand48())/srrate;
+
+	/* rather increase timeix first? */
+	if (timeix+1 < dtlen && tt+dt >= data_time[timeix+1]) {
+	  tt = data_time[++timeix];
+	  dt = -1.0; /* signal nil event */
+
+	  /* recalculate srrate and rrate using dependency graph */
+	  for (int i = jcG[Mspecies+Mreactions]; i < jcG[Mspecies+Mreactions+1]; i++) {
+	    const int j = irG[i];
+	    const double old = rrate[j];
+	    if (j < M1)
+	      srrate += (rrate[j] = 
+			 inlineProp(xx,&K[j*3],&I[j*3],&prS[jcS[j]],
+				    jcS[j+1]-jcS[j],
+				    vol[subvol],sd[subvol]))-old;
+	    else
+	      srrate += (rrate[j] = 
+			 (*rfun[j-M1])(xx,tt,vol[subvol],
+				       &ldata[subvol*ldsize],gdata,
+				       &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+				       &gdata_time[timeix*gdtsize],
+				       sd[subvol]))-old;
+	  }
+	}
+	else
+	  tt += dt;
 
 	/* Store solution if the global time counter tt has passed the
 	   next time in tspan. */
@@ -96,6 +130,9 @@ void ssa(const PropensityFun *rfun,
 	     next subvolume. */
 	  if (it >= tlen) break;
 	}
+
+	/* catch nil event: done reporting, so go for next event */
+	if (dt == -1.0) goto next_event;
 
 	/* a) Determine the reaction re that did occur. */
 	const double rand = drand48()*srrate;
@@ -138,8 +175,10 @@ void ssa(const PropensityFun *rfun,
 	  else
 	    srrate += (rrate[j] = 
 		       (*rfun[j-M1])(xx,tt,vol[subvol],
-				     &ldata[subvol*dsize],
-				     gdata,sd[subvol]))-old;
+				     &ldata[subvol*ldsize],gdata,
+				     &ldata_time[(timeix*Ncells+subvol)*ldtsize],
+				     &gdata_time[timeix*gdtsize],
+				     sd[subvol]))-old;
 	}
 
 	total_reactions++; /* counter */

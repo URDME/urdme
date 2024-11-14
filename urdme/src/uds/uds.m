@@ -12,12 +12,15 @@ function uds
 %               {odeset('RelTol',1e-4,
 %                'AbsTol',0.1)}
 %
-%   jacobian    {0} | 1                   Use exact Jacobian (requires all 
-%                                         propensities to be inline).
+%   jacobian    {0} | 1                   Use exact Jacobian.
 %
 %   finish      {''}                      Play sound when done. Portable 
 %                                         choices include 'handel', 'gong' 
 %                                         and 'splat'. See AUDIOVIDEO.
+%
+%   Using an exact Jacobian requires either that all propensities are
+%   inline or that the Jacobian is prepared in the propensity.c-file
+%   and compiled and linked. See MEXMAKE_UDS.
 %
 %   Example:
 %     % a basic bimolecular model in 10 volumes

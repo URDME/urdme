@@ -3,8 +3,11 @@ function urdme_validate(umod)
 %   URDME_VALIDATE(UMOD) attempts to validate the fields in UMOD and
 %   throws an error if a field is missing or has an incorrect format.
 %
-%    See also URDME.
+%   Consider to use URDME_VALIDATE_MODEL for model debugging purposes.
+%
+%   See also URDME, URDME_VALIDATE_MODEL.
 
+% S. Engblom 2024-05-07 (Revision, time-dependent data)
 % S. Engblom 2019-11-27 (Revision, inline propensities)
 % S. Engblom 2019-11-12 (Revision, multiple seeds)
 % S. Engblom 2018-02-10 (Revision, Nreplicas syntax)
@@ -13,8 +16,9 @@ function urdme_validate(umod)
 
 % fields checked
 req = {'tspan' 'u0' 'D' 'N' 'G' 'vol' 'sd' ...
-      'report' 'seed' 'inline_propensities' ...
-      'ldata' 'gdata' 'solverargs' 'makeargs'};
+       'report' 'seed' 'inline_propensities' ...
+       'ldata' 'gdata' 'data_time' 'ldata_time' 'gdata_time' ...
+       'solverargs' 'makeargs'};
 % check that fields exist first
 for i = 1:numel(req)
   if ~isfield(umod,req{i})
@@ -23,10 +27,9 @@ for i = 1:numel(req)
 end
 
 % Check tspan.
-tspan = reshape(umod.tspan,1,[]);
-if issparse(tspan) || ~isa(tspan,'double')
+if issparse(umod.tspan) || ~isa(umod.tspan,'double')
   error('Field .tspan must be a double vector.');
-elseif any(diff(tspan(:)) <= 0) || size(tspan,2) < 2
+elseif any(diff(umod.tspan(:)) <= 0) || numel(umod.tspan) < 2
   error('Field .tspan must be an increasing vector.');
 end
 
@@ -69,27 +72,30 @@ end
 % Check G.
 if ~issparse(umod.G) || ~isa(umod.G,'double')
   error('Dependency graph must be sparse.');
-elseif any(size(umod.G) ~= [Mreactions,Mreactions+Mspecies])
+elseif any(size(umod.G) ~= [Mreactions ...
+                      Mreactions+Mspecies+ ...
+                      (size(umod.ldata_time,1)+size(umod.gdata_time,1) ...
+                       > 0)])
+  % (note: 1st dim of .ldata_time and .gdata_time is the number of
+  % time-dependent local- and global rates, respectively)
   error('Wrong size of dependency graph.');
 end
 
 % Check vol.
-vol = reshape(umod.vol,1,[]);
-if issparse(vol) || ~isa(vol,'double')
+if issparse(umod.vol) || ~isa(umod.vol,'double')
   error('Volume must be a double vector.');
-elseif any(vol <= 0)
+elseif any(umod.vol <= 0,'all')
   error('Volume vector must be positive.');
-elseif size(vol,2) ~= Ncells
+elseif numel(umod.vol) ~= Ncells
   error('Wrong size of volume vector.');
 end
 
 % Check sd.
-sd = reshape(umod.sd,1,[]);
-if issparse(sd) || ~isa(sd,'double')
+if issparse(umod.sd) || ~isa(umod.sd,'double')
   error('Subdomain must be a double vector.');
-elseif size(sd,2) ~= Ncells
+elseif numel(umod.sd) ~= Ncells
   error('Wrong size of subdomain vector.');
-elseif any(sd ~= ceil(sd))
+elseif any(umod.sd ~= ceil(umod.sd),'all')
   error('Subdomain vector must be integer.');
 end
 
@@ -102,12 +108,11 @@ if ~isscalar(umod.report)
 end
 
 % Check seed.
-seed = reshape(umod.seed,1,[]);
-if issparse(seed) || ~isa(seed,'double')
+if issparse(umod.seed) || ~isa(umod.seed,'double')
   error('Seed must be a double vector.');
-elseif size(seed,2) ~= 1 && size(seed,2) ~= Nreplicas
+elseif numel(umod.seed) ~= 1 && numel(umod.seed) ~= Nreplicas
   error('Wrong size of seed vector.');
-elseif any(seed ~= ceil(seed))
+elseif any(umod.seed ~= ceil(umod.seed),'all')
   error('Seed vector must be integer.');
 end
 
@@ -119,7 +124,7 @@ end
 K = umod.inline_propensities.K;
 I = umod.inline_propensities.I;
 S = umod.inline_propensities.S;
-% (other fields will be rejected provided urdme parses umod)
+% (any other fields will be rejected provided urdme parses umod)
 M1 = 0;
 if ~isempty(K) || ~isempty(I)
   M1 = size(K,2);
@@ -141,7 +146,7 @@ if ~isempty(S)
 end
 
 % Check ldata.
-[ldsize,NN] = size(umod.ldata);
+[~,NN] = size(umod.ldata);
 if issparse(umod.ldata) || ~isa(umod.ldata,'double')
   error('Local data matrix must be a double matrix.');
 elseif NN ~= Ncells
@@ -153,6 +158,33 @@ if issparse(umod.gdata) || ~isa(umod.gdata,'double')
   error('Global data matrix must be a double vector.');
 end
 
+% Check data_time.
+if issparse(umod.data_time) || ~isa(umod.data_time,'double')
+  error('Field .data_time must be a double vector.');
+elseif any(diff(umod.data_time(:)) <= 0) || numel(umod.data_time) < 1
+  error('Field .data_time must be an increasing vector.');
+elseif umod.data_time(1) ~= umod.tspan(1)
+  error('Field .data_time(1) must be equal to .tspan(1).');
+end
+
+% Check ldata_time.
+[~,NN,Nt] = size(umod.ldata_time);
+if issparse(umod.ldata_time) || ~isa(umod.ldata_time,'double')
+  error('Local time-dependent data must be a double matrix.');
+elseif NN ~= Ncells
+  error('Wrong size of local time-dependent data matrix.');
+elseif Nt ~= numel(umod.data_time)
+  error('Last dimension of field .ldata_time must match field .data_time.');
+end
+
+% Check gdata_time.
+[~,Nt] = size(umod.gdata_time);
+if issparse(umod.gdata_time) || ~isa(umod.gdata_time,'double')
+  error('Global time-dependent data matrix must be a double matrix.');
+elseif Nt ~= numel(umod.data_time)
+  error('Last dimension of field .gdata_time must match field .data_time.');
+end
+
 % Check solverargs.
 if ~isfield(umod,'solverargs');
   error('No field .solverargs.');
@@ -160,7 +192,6 @@ end
 if ~iscell(umod.solverargs)
   error('Solver arguments must be a cell vector.');
 end
-umod.solverargs = reshape(umod.solverargs,1,[]);
 
 % Check makeargs.
 if ~isfield(umod,'makeargs');
@@ -169,4 +200,3 @@ end
 if ~iscell(umod.makeargs)
   error('Make arguments must be a cell vector.');
 end
-umod.makeargs = reshape(umod.makeargs,1,[]);

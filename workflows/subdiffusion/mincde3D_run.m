@@ -4,6 +4,13 @@
 % S. Engblom 2017-02-20 (Revision)
 % S. Engblom 2014-05-14
 
+if ~exist('report','var')
+  report = 1;
+end
+if ~exist('tspan','var')
+  tspan = 0:200;
+end
+
 %% (1) geometry: load Comsol model
 if exist('mli','dir')
   model = mphload('../../examples/mincde/coli.mph');
@@ -108,15 +115,17 @@ weights = linspace(1,1.3,Nstates);
 weights = weights/(weights*p);
 rates = {'NA' 6.022e23 'kd' 1.25e-8 'ke' 0.7 'kp' 0.5 ...
          'kdD' kdD*weights 'kde' kde};
-[~,umod.N,umod.G] = rparse({r1 r2 r3 r4 r5},species,rates, ...
-                           'mincde_subdiff.c',seq);
+umod_ = rparse([],{r1 r2 r3 r4 r5},species,rates, ...
+               'mincde_subdiff.c',seq);
+umod.N = umod_.N;
+umod.G = umod_.G;
 
 % output times
-umod.tspan = 0:200;
+umod.tspan = tspan;
 
 % solve
 umod.seed = 321;
-umod = urdme(umod,'propensities','mincde_subdiff.c','report',2);
+umod = urdme(umod,'propensities','mincde_subdiff.c','report',report);
 
 return;
 

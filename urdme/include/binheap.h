@@ -1,4 +1,4 @@
-/* binheap.h */
+/* binheap.h - URDME binary heap */
 
 /* J. Cullhed 2008-06-18. */
 
