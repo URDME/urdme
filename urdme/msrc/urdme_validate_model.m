@@ -5,7 +5,7 @@ function urdme_validate_model(umod,rd)
 %   missformed.
 %
 %   URDME_VALIDATE_MODEL(UMOD,'r') investigates the reactions only and
-%   throws and error if a reaction which decreases species counts is
+%   throws an error if a reaction which decreases species counts is
 %   associated with a positive rate at one of the domain boundaries.
 %
 %   The approach is to first compile the UDS-solver and then perform
@@ -16,7 +16,7 @@ function urdme_validate_model(umod,rd)
 %   only and throws an error or displays a warning if the diffusion
 %   matrix is incorrect.
 %
-%   URDME_VALIDATE_MODEL(UMOD,'rd') performs both the above
+%   URDME_VALIDATE_MODEL(UMOD,'rd') performs both of the above
 %   checks. This is the default.
 %
 %   Example:

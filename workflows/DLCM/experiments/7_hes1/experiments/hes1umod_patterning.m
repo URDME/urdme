@@ -154,7 +154,7 @@ set(gcf,'Position',[100 100 280 180]);
 set(gca,'TickLabelInterpreter',...
         'latex');
 xlabel('Cell Volume $\left[\mu m^3\right]$','Interpreter','latex');
-ylabel('$p$','Interpreter','latex');
+ylabel('patterning coefficient $p$','Interpreter','latex');
 ylim([0.3 0.7]);
 box on
 

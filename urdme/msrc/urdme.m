@@ -295,6 +295,24 @@ if umod.solve
                  umod.inline_propensities.I, ...
                  umod.inline_propensities.S, ...
                  solverargs);
+  if strcmp(umod.solver,'dlcm')
+    % Singular behavior for the dlcm-solver: force the output to be
+    % compatible with the input. Outputs both cell data _and_
+    % micro-environment data, also distinguish the cell's internal
+    % states from the external states; output the former in the
+    % mumod-struct.
+    Ninternal = 0; % number of internal states
+    idx = find(strcmp([umod.solverargs(:)],'mumod'))+1;
+    if ~isempty(umod.solverargs{idx})
+      % save internal state dynamics, in mumod.U:
+      Ninternal = size(umod.solverargs{idx}.u0,1);
+      umod.solverargs{idx}.U = umod.U(end-Ninternal-1:end-2,:,:);
+    end
+    % save cell global indices in private struct:
+    umod.private.dlcm.glix = umod.U(end-1:end,:,:);
+    % output cell types _and_ micro-environment quantities:
+    umod.U = umod.U(1:end-Ninternal-2,:,:);
+  end
   l_info(umod.report,1,'   ...done.\n');
   if umod.report >= 2
     fprintf('Solver execution time = %gs.\n',toc(solver_timer));

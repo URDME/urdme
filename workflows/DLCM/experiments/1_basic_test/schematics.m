@@ -1,4 +1,4 @@
-%SCHEMATICS
+%SCHEMATICS Draws schematics of cell mechanics.
 %
 %   Schematics of PDE-based cell mechanics, draws an explanatory
 %   schematic picture.
@@ -20,6 +20,8 @@ if ~exist('mesh_type','var'), error('Must define mesh_type.'); end
 % assemble minus the Laplacian on this grid (ignoring BCs), the voxel
 % volume vector, and the sparse neighbor matrix
 [L,dM,N] = dt_operators(P,T);
+
+neigh = full(max(sum(N,2)));
 
 % population
 ii = find(sqrt(sum(P.^2)) <= 0.1);

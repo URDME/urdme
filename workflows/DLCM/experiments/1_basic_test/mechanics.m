@@ -1,4 +1,4 @@
-% Mechanics explanation.
+%MECHANICS DLCM migration-pressure mechanics explanation.
 %
 %   This script 'explains' the cell mechanics by creating a sample
 %   population of cells and then determining all movement rates and
@@ -150,8 +150,10 @@ for i = bdof_m'
     if Pr(bdof_m_(k_)) > Pr(j_)
       x = [x P(1,i)];
       y = [y P(2,i)];
-      u = [u (P(1,Adof(j_))-P(1,i))*Drate_(2*VU(Adof(j_))+1)*gradquotient*(Pr(bdof_m_(k_))-Pr(j_))];
-      v = [v (P(2,Adof(j_))-P(2,i))*Drate_(2*VU(Adof(j_))+1)*gradquotient*(Pr(bdof_m_(k_))-Pr(j_))];
+      u = [u (P(1,Adof(j_))-P(1,i))*Drate_(2*VU(Adof(j_))+1)...
+        *gradquotient*(Pr(bdof_m_(k_))-Pr(j_))];
+      v = [v (P(2,Adof(j_))-P(2,i))*Drate_(2*VU(Adof(j_))+1)...
+        *gradquotient*(Pr(bdof_m_(k_))-Pr(j_))];
     end
   end
 end
@@ -167,8 +169,10 @@ for i = sdof_m'
     if Pr(sdof_m_(k_)) > Pr(j_)
       x = [x P(1,i)];
       y = [y P(2,i)];
-      u = [u (P(1,Adof(j_))-P(1,i))*Drate_(2*VU(Adof(j_))+U(Adof(j_))+1)*gradquotient*(Pr(sdof_m_(k_))-Pr(j_))];
-      v = [v (P(2,Adof(j_))-P(2,i))*Drate_(2*VU(Adof(j_))+U(Adof(j_))+1)*gradquotient*(Pr(sdof_m_(k_))-Pr(j_))];
+      u = [u (P(1,Adof(j_))-P(1,i))*Drate_(2*VU(Adof(j_))+U(Adof(j_))+1)...
+        *gradquotient*(Pr(sdof_m_(k_))-Pr(j_))];
+      v = [v (P(2,Adof(j_))-P(2,i))*Drate_(2*VU(Adof(j_))+U(Adof(j_))+1)...
+        *gradquotient*(Pr(sdof_m_(k_))-Pr(j_))];
     end
   end
 end

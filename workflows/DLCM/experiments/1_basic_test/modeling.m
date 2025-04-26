@@ -1,7 +1,7 @@
-% Modeling explanation.
+%MODELING Modeling explanation.
 %
 %   This script draws an illustrative schematic picture explaining the
-%   numerical model.
+%   computational model.
 
 % E. Blom 2023-22-09 (minor revision)
 % S. Engblom 2017-12-26 (revision)
