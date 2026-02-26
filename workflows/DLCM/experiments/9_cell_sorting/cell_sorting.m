@@ -9,7 +9,7 @@ Nvoxels = 71;
 mesh_type = 2;  % hexagonal mesh
 % Simulate to Tend and save states at Tres intervals
 if ~exist('Tend', 'var')
-  Tend = 200000;
+  Tend = 200000/4200; % hours
 end
 Tres = 100;
 % surface tension coefficients
@@ -37,10 +37,11 @@ hmax)^2 & P(1,:).^2 + P(2,:).^2 <= 0.866^2);
 % P = dof2position map, T = time.
 Rates = @(U,Q,QI,P,t){Q(:,1)};
 
+Mscale = 4200;
 % Drate is a function that returns a 1-by-Ncapacity cell array that
 % specifies how migration rates are scaled. Uf is the cell number in the
 % voxel to move from, Ut in voxel to move to.
-Drate = @(Uf,Ut,Q,QI,P,t){1.*(Ut<=1)};
+Drate = @(Uf,Ut,Q,QI,P,t){Mscale.*(Ut<=1)};
 
 %% (3) Form population
 
@@ -57,9 +58,10 @@ ii1 = setdiff(ii1, ii3);
 ii2 = setdiff(ii2, ii3);
 ii = [ii1 ii2 ii3];                               % alive cells
 % U is Ntype-by-Ncells sparse vector, representing the cell population
-U(1,:) = fsparse(ii1(:),1,1,[Nvoxels^2 1]);
-U(2,:) = fsparse(ii2(:),1,1,[Nvoxels^2 1]);
-U(3,:) = fsparse(ii3(:),1,1,[Nvoxels^2 1]);
+U = zeros(ntypes, Nvoxels^2);
+U(1,ii1) = 1;
+U(2,ii2) = 1;
+U(3,ii3) = 1;
 
 %% (4) outer URDME struct
 nquants = 1; % number of field states pressure and nutrient
@@ -70,11 +72,11 @@ umod = pde2urdme(P,T,Dexpr);
 % Define all reaction events first, and after that quantities:
 warning('off', 'rparse:ghost_species')  % U1-3 necessary, but no reactions
 umod = rparse(umod, ...
-              {'Q1 > (U1 > 1) > Q1+Q1'}, ...
+              {'Q1 > (U1+U2+U3 > 1) > Q1+Q1'}, ...
               {'U1' 'U2' 'U3' 'Q1'}, ...
               {}, ...
               'cell_sorting_outer');
-umod.u0 = [full(U); zeros(1,Nvoxels^2)];
+umod.u0 = [U; zeros(1,Nvoxels^2)];
 umod.sd = ones(1,Nvoxels^2);
 umod.sd(extdof) = 0;                            % sd encodes boundary dofs
 umod.tspan = linspace(0,Tend,Tres);             % time steps

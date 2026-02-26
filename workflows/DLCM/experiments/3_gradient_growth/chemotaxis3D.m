@@ -9,7 +9,7 @@ rng(123) % for initial states of chemotactic sensitivity
 %% (1) geometry
 % Simulate to Tend and save states at Tres intervals
 if ~exist('Tend', 'var')
-  Tend = 100000;
+  Tend = 33; % hours
 end
 Tres = 100;
 ntypes = 1; % number of cell types: living cells
@@ -55,17 +55,19 @@ extdof = find(P(1,:).^2 + P(2,:).^2 + P(3,:).^2 > (1 - ...
 Rates = @(U,Q,QI,P,t){Q(:,1), ...   % pressure
     -Q(:,2)};                       % chemical signal
 
+Mscale = 3000;
 % i) Pressure migration scaling,
 % ii) Cells move up the chemical gradient by their innate sensitivity:
-Drate = @(Uf,Ut,Q,QI,P,t){1.*((Uf==1)+(Uf==2)).*(Ut<=1); ...  % i)
-                      QI(:,1,3).*((Uf==1)+(Uf==2)).*(Ut<=1)}; % ii)
+Drate = @(Uf,Ut,Q,QI,P,t){Mscale.*((Uf==1)+(Uf==2)).*(Ut<=1); ...  % i)
+                      Mscale*QI(:,1,3).*((Uf==1)+(Uf==2)).*(Ut<=1)}; % ii)
 
 %% (3) Form population
 
 % initial small population
 ii1 = find((P(1,:)).^2 + (P(2,:)).^2 + (P(3,:)).^2 <= 0.4^2); % alive cells
 % U is Ntype-by-Ncells sparse vector, representing the cell population
-U(1,:) = fsparse(ii1(:),1,1,[Nvoxels 1]);
+U = zeros(ntypes, Nvoxels);
+U(1,ii1) = 1;
 
 % Define internal states, here random chemotactic sensitivity values.
 % Celldata is a 2*ninternal-by-Ncells array with the initial internal states
@@ -94,7 +96,7 @@ umod = rparse(umod, ...
               {'U1' 'Q1' 'Q2'}, ...
               {}, ...
               'chemotaxis3D_outer');
-umod.u0 = [full(U); zeros(2,Nvoxels);];
+umod.u0 = [U; zeros(2,Nvoxels);];
 umod.sd = ones(1,Nvoxels);
 umod.sd(extdof) = 0;                            % sd encodes boundary dofs
 umod.tspan = linspace(0,Tend,Tres);             % time steps

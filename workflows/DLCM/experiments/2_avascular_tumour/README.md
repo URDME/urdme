@@ -17,7 +17,7 @@ visual/
 
 old_examples/ \
 
-Early tumor simulations of DLCM, including morphology analyses.  See
+Early tumor simulations of DLCM, including morphology analyses. See
 [README](old_examples/README.md).
 
 ### References:

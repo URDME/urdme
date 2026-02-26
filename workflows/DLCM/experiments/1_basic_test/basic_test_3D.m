@@ -22,7 +22,7 @@ sigma(2:ntypes+1,1) = [1e-5];         % 1 with void = 0
 sigma = sigma+sigma';
 
 % construct 3D sphere
-hmax = 0.08;
+hmax = 0.16;
 gm = fegeometry(multisphere(1));
 gm = generateMesh(gm, 'GeometricOrder', 'linear', Hmax=hmax);
 [P,E,T] = meshToPet(gm.Mesh);
@@ -64,8 +64,9 @@ Drate = @(Uf,Ut,Q,QI,P,t){1.*(Uf==1).*(Ut<=1)+1.*(Uf==2).*(Ut<2)};
 ii1 =  find(abs(P(1,:)) < 0.35 & abs(P(2,:)) <= 0.35 & abs(P(3,:)) <= 0.35);
 ii1_b =  find(sqrt((P(1,:)-0.4).^2 + (P(2,:)).^2 + (P(3,:)).^2) <= 0.3);
 % U is Ntype-by-Ncells sparse vector, representing the cell population
-U(1,:) = fsparse(ii1(:),1,1,[Nvoxels 1]); % singly occupied cube
-U(1,ii1_b) = 2;                           % doubly occupied sphere closeby
+U = zeros(ntypes, Nvoxels);
+U(1,ii1) = 1;         % singly occupied cube
+U(1,ii1_b) = 2;       % doubly occupied sphere closeby
 
 %% (4) "outer" URDME-struct
 nquants = 1; % number of field states pressure and nutrient
@@ -79,7 +80,7 @@ umod = rparse(umod, ...
               {'U1' 'Q1'}, ...
               {}, ...
               'basic_test_3D_outer');
-umod.u0 = [full(U); zeros(1,Nvoxels)];
+umod.u0 = [U; zeros(1,Nvoxels)];
 umod.sd = ones(1,Nvoxels);
 umod.sd(extdof) = 0;                            % sd encodes boundary dofs
 umod.tspan = linspace(0,Tend,Tres);             % time steps

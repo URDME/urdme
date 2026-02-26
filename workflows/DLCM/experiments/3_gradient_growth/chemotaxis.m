@@ -12,7 +12,7 @@
 %% (1) geometry
 % Simulate to Tend and save states at Tres intervals
 if ~exist('Tend', 'var')
-  Tend = 30000;
+  Tend = 0.3; % hours
 end
 Tres = 100;
 ntypes = 1;     % number of cell types: living cells
@@ -49,17 +49,19 @@ switch model_type
     Rates = @(U,Q,QI,P,t){Q(:,1), Q(:,2)};
 end
 
+Mscale = 104400;
 % cells move up the chemical gradient by some innate sensitivity QI(:,1,3),
 % here constant but is easily adjusted for more detail.
-Drate = @(Uf,Ut,Q,QI,P,t){(Uf==1).*(Ut==0)+(Uf==2).*(Ut<=1), ...
-                      QI(:,1,3).*((Uf==1)+(Uf==2)).*(Ut<=1)};
+Drate = @(Uf,Ut,Q,QI,P,t){Mscale*((Uf==1).*(Ut==0)+(Uf==2).*(Ut<=1)), ...
+                      Mscale*(QI(:,1,3).*((Uf==1)+(Uf==2)).*(Ut<=1))};
 
 %% (3) Form population
 
 % initial small population
 ii1 = find((P(1,:)).^2 + (P(2,:)).^2 <= 0.25^2); % alive cells
 % U is Ntype-by-Ncells sparse vector, representing the cell population
-U(1,:) = fsparse(ii1(:),1,1,[Nvoxels^2 1]);
+U = zeros(ntypes, Nvoxels^2);
+U(1,ii1) = 1;
 
 % Define internal states, here chemotactic sensitivity value = 1
 % celldata is an Ncells-by-Ncapacity-by-ninternal array with internal state
@@ -94,7 +96,7 @@ umod = rparse(umod, ...
               {'U1' 'Q1' 'Q2'}, ...
               {}, ...
               'chemotaxis_outer');
-umod.u0 = [full(U); zeros(2,Nvoxels^2);];
+umod.u0 = [U; zeros(2,Nvoxels^2);];
 umod.sd = ones(1,Nvoxels^2);
 umod.sd(extdof) = 0;                            % sd encodes boundary dofs
 umod.tspan = linspace(0,Tend,Tres);             % time steps

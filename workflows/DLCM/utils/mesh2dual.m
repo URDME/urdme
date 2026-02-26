@@ -28,6 +28,9 @@ function [V,R] = mesh2dual(P,E,T,type)
 %   very low quality can produce such elements; only boundary
 %   triangles are handled carefully.
 %
+%   Known issue: if the input mesh is not a Delaunay triangulation,
+%   the dual mesh returned may be corrupt.
+%
 %   For both types of dual meshes the ordering in the mesh is
 %   preserved in the sense that the midpoint of element i is P(:,i).
 %
@@ -84,7 +87,15 @@ if type == 2
   D = 2*(AB(1,:).*AC(2,:)-AB(2,:).*AC(1,:));
   U = [AC(2,:).*nB-AB(2,:).*nC; ...
        AB(1,:).*nC-AC(1,:).*nB];
+
   U = tprod(U,1./D,[1 2],[3 2]);
+  % $$$ equivalent result using matlab functions:
+  %U2 = zeros(size(U,1),size(D,1),size(U,2));
+  %for n = 1:size(U,2)
+  %  U2(:,:,n) = U(:,n)*(1./D(:,n)');
+  %end
+  %U = permute(U2,[1 3 2]);
+  
   Tmid = U+P(:,T(1,:));
   % formulas taken from
   % https://en.wikipedia.org/wiki/Circumscribed_circle#Cartesian_coordinates_2
@@ -101,7 +112,7 @@ if type == 2
   % determine the edges where the midpoints were outside (longest edges)
   edg = [2 1; 3 1; 2 3]'; % (ordering as d above was formed)
   long = sort(T(tsum(edg(:,id(3,iout)),(iout-1)*3,[1 2],[3 2])));
-
+  
   % intersect those edges with all boundary edges...
   [long,it,ie] = fsetop('intersect',long,sort(E(1:2,:)));
   iout = iout(it);
@@ -272,7 +283,12 @@ elem_siz = cellfun('size',ME,2);
 
 % unique vertices
 ME = cat(2,ME{:});
-[~,V_,R_] = fsetop('unique',fix(tprod(ME,1./TOL,1:2,1)));
+% previously a bug:
+% $$$ [~,V_,R_] = fsetop('unique',fix(tprod(ME,1./TOL,1:2,1)));
+invTOL10 = 10.^fix(-log10(TOL));
+MEtol = round(tprod(ME,invTOL10,1:2,1));
+MEtol(MEtol == 0) = 0; % (enforce -0.0 = 0.0)
+[~,V_,R_] = fsetop('unique',MEtol);
 V = ME(:,V_)';
 
 % follow the patch-function's "compact format"

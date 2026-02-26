@@ -15,7 +15,6 @@ visual/
   Fig. 3.2 in [1].
 * **contDNgrowth.mat** Continuous states data.
 * **discDNgrowth.mat** Discrete states data.
-* **cmap.mat** 'Paraview' colormap.
 
 ### References:
   [1] E. Blom, S. Engblom. "DLCM: a versatile multi-level solver for

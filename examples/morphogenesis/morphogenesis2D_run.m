@@ -6,6 +6,7 @@
 %     [1] Y. Saygun: "Computational Stochastic Morphogenesis", MSc
 %     thesis in Engineering Physics, Uppsala university (2015).
 
+% S. Engblom 2026-01-09 (Revision, update to pdeplot)
 % S. Engblom 2017-03-08
 
 %% (1) Schnakenberg
@@ -51,13 +52,23 @@ umod = urdme(umod,'seed',17,'report',0);
 umod = urdme2pde(umod);
 if ~exist('plotting_off','var') || ~plotting_off
   figure(3), clf,
-  pdesurf(umod.pde.P,umod.pde.T,umod.pde.U(1,:,end)');
+  pdeplot(P,E,T,XYdata=umod.pde.U(1,:,end)');
   title('Schnakenberg: Concentration U');
   view(0,90), axis tight, axis square, colormap('parula')
   figure(4), clf,
-  h = pdesurf(umod.pde.P,umod.pde.T,umod.pde.U(2,:,end)');
+  h = pdeplot(P,E,T,XYdata=umod.pde.U(2,:,end)');
   title('Schnakenberg: Concentration V');
   view(0,90), axis tight, axis square, colormap('parula')
+
+  % (previous version using PDESURF instead:)
+% $$$   figure(3), clf,
+% $$$   pdesurf(umod.pde.P,umod.pde.T,umod.pde.U(1,:,end)');
+% $$$   title('Schnakenberg: Concentration U');
+% $$$   view(0,90), axis tight, axis square, colormap('parula')
+% $$$   figure(4), clf,
+% $$$   h = pdesurf(umod.pde.P,umod.pde.T,umod.pde.U(2,:,end)');
+% $$$   title('Schnakenberg: Concentration V');
+% $$$   view(0,90), axis tight, axis square, colormap('parula')
 end
 
 %% (2) Brusselator
@@ -94,13 +105,23 @@ vmod = urdme(vmod,'seed',17,'report',0);
 vmod = urdme2pde(vmod);
 if ~exist('plotting_off','var') || ~plotting_off
   figure(5), clf,
-  pdesurf(vmod.pde.P,vmod.pde.T,vmod.pde.U(1,:,end)');
+  pdeplot(P,E,T,XYdata=vmod.pde.U(1,:,end)');
   title('Brusselator: Concentration U');
   view(0,90), axis tight, axis square, colormap('parula')
   figure(6), clf,
-  pdesurf(vmod.pde.P,vmod.pde.T,vmod.pde.U(2,:,end)');
+  pdeplot(P,E,T,XYdata=vmod.pde.U(2,:,end)');
   title('Brusselator: Concentration V');
   view(0,90), axis tight, axis square, colormap('parula')
+
+  % (previous version using PDESURF instead:)
+% $$$   figure(5), clf,
+% $$$   pdesurf(vmod.pde.P,vmod.pde.T,vmod.pde.U(1,:,end)');
+% $$$   title('Brusselator: Concentration U');
+% $$$   view(0,90), axis tight, axis square, colormap('parula')
+% $$$   figure(6), clf,
+% $$$   pdesurf(vmod.pde.P,vmod.pde.T,vmod.pde.U(2,:,end)');
+% $$$   title('Brusselator: Concentration V');
+% $$$   view(0,90), axis tight, axis square, colormap('parula')
 end
 
 return;

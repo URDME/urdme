@@ -14,15 +14,15 @@ E. Blom 2025-04-16
 * **basic_relaxation.gif** Mechanical relaxation test. Older version of
 this experiment was presented in [4].
 * **cell_sort1-3.gif** Figure 3.1 in [1].
+* **chemotaxis1--4.gif** Figure 3.4 in [1]. Older versions of
+the fourth experiment was presented in [4].
+* **chemotaxis3D.gif** Figure 3.5 in [1].
+* **chemotaxis3D_sensitivity.gif** Figure 3.5 in [1].
 * **delta_notch_continuous.gif** Figure 3.2 in [1]. Older version of
 this experiment was presented in [4].
 * **delta_notch_discrete.gif** Figure 3.2 in [1].
 * **tumor1-2.gif** Figure 3.3 in [1]. Older versions of
 these experiments were presented in [3,4].
-* **chemotaxis1--4.gif** Figure 3.4 in [1]. Older versions of
-the fourth experiment was presented in [4].
-* **chemotaxis3D.gif** Figure 3.5 in [1].
-* **chemotaxis3D_sensitivity.gif** Figure 3.5 in [1].
 
 NDR/ \
 Older experiments from [2]. Not simulated using the DLCM-solver directly.

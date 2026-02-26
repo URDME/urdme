@@ -87,8 +87,9 @@ function dlcm
 %     ii1 =  find(abs(P(1,:)) < 0.4 & abs(P(2,:)) <= 0.4);  % cell type 1
 %     ii2 = [];                                             % cell type 2
 %     % U is Ntype-by-Ncells sparse vector, representing the cell population
-%     U(1,:) = fsparse(ii1(:),1,2,[Nvoxels^2 1]); % doubly occupied, type 1
-%     U(2,:) = fsparse(ii2(:),1,1,[Nvoxels^2 1]); % initially none, type 2
+%     U = zeros(ntypes, Nvoxels^2);
+%     U(1,ii1) = 2; % doubly occupied, type 1
+%     U(2,ii2) = 1; % initially none, type 2
 %
 %     %% (4) "outer" URDME-struct
 %     % Defining reaction events and quantity models here
@@ -109,7 +110,7 @@ function dlcm
 %               {'U1' 'U2' 'Q1'}, ...
 %               {}, ...
 %               'test');
-%     umod.u0 = [full(U); zeros(1,Nvoxels^2)];
+%     umod.u0 = [U; zeros(1,Nvoxels^2)];
 %     umod.sd = ones(1,Nvoxels^2);
 %     umod.sd(extdof) = 0;                      % sd encodes boundary dofs
 %     umod.tspan = linspace(0,Tend,Tres);       % time steps

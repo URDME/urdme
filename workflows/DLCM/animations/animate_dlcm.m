@@ -50,15 +50,14 @@ for i = 1:numel(umod.tspan)
 end
 
 %% (5) plot cell trajectories
-Nstates = size(umod.U,1)/2;
 glix = umod.private.dlcm.glix;
 for t = 2:numel(umod.tspan)      % map indices to voxels versus time
-  for k = 2:max(glix(2,:,1))     % find all cells up to this index
+  for k = 2:max(glix(1,:,1))     % find all cells up to this index
     idx(t,k) = find(glix(1,:,t)==k | glix(2,:,t)==k); 
   end
 end
 figure(1), clf, hold on,
-K = min(max(glix(2,:,1)),30);
+K = min(max(glix(1,:,1)),30);
 for k = 2:K % plot a few of cell trajectories
 plot(P(1, idx(2:end,k)), P(2,idx(2:end,k)), 'Color', k/K*[1,1,1]);
 plot(P(1, idx(end,k)), P(2,idx(end,k)), '*', 'Color', k/K*[1,1,1]);

@@ -23,6 +23,10 @@ PDE Toolbox is used to assemble the Laplacian operator over a Delaunay
 triangulation required to solve for the micro-environment quantities.
 Note that the 3D models use fegeometry (R2023b) to construct the mesh.
 
+The DLCM framework has mild dependencies on the stenglib library,
+available at https://github.com/stefanengblom/stenglib.
+The following stenglib functions are required: tprod, tsum, fsetop, fsparse.
+
 ### Animations
 
 animations/ \
@@ -43,15 +47,13 @@ reproduce the figures from the experiments in [1]. See the associated
 
 utils/
 * **basic_mesh.m** Basic regular mesh (Cartesian/hexagonal).
-* **cmap_dlcm.mat** 'DLCM'-colormap: grey to bluish green to vermillion
-  (based on colors from graphics_color.m)
 * **dlcm2urdme.m** Organises solver object into umod.solverargs.
 * **dt_neighe** Neighbor edge matrix with weights.
 * **dt_operators.m** Operators over Delaunay triangulation.
 * **graphics_color.m** Color selection in plots.
 * **map.m** Mapping of indices.
-* **mesh_layers** Mesh boundary layers.
 * **mesh2dual.m** Dual mesh from primal mesh.
+* **mesh_layers** Mesh boundary layers.
 
 ### References:
   [1] E. Blom, S. Engblom. "DLCM: a versatile multi-level solver for

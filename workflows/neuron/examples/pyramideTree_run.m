@@ -46,8 +46,10 @@ bogus_Vm = zeros(length(Vm_nodes),1)-75;
 [umod_syn,~] = synaptic_solver([],t_setup,bogus_Vm,0);
 
 % ODE stepping
-dt = 0.05;
-t_vec = 0:dt:15;
+if ~exist('t_vec','var')
+  dt = 0.05;
+  t_vec = 0:dt:15;
+end
 V_out = zeros(numel(t_vec)-1,nVoxels);
 V_out(1,:) = umod_chnl.private.channels.Erest';
 Iin = zeros(numel(t_vec),nSyns);

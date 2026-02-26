@@ -62,6 +62,10 @@ if ~exist('save_data','var')
   save_data = false;
 end
 
+if ~exist('min_example','var')
+  min_example = 0;
+end
+
 par = hes1_params;
 alpha = [par.alphaD par.alphaN par.alphaM par.alphaP par.alphan];
 mu = [par.muD par.muN par.muM par.muP par.mun];
@@ -251,6 +255,11 @@ if save_data
        'svec','scrit','scrit2','x0','x1','x2','lam', ...
        'X0','X1','X2');
   disp('   ...saved.')
+end
+
+if min_example
+  % save X0, X1 and X2 for testing purposes
+  check_het = [X0; X1; X2];
 end
 
 %% (3) pedagogical figure illustrating the condition for existence

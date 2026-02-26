@@ -11,13 +11,13 @@ if ~isscalar(seed)
 end
 rng(seed);
 
-% load necessary parameters from ldata and gdata
-P = ldata(1:2,:);           % map: voxel to position
-nquants = gdata(1);         % number of micro-quantities
-ntypes = gdata(2);          % number of cell types
-
 opts = struct(solverargs{:});     % cell to struct
 gradquotient = opts.gradquotient; % voxel edge to neighbour distance ratio
+
+% load necessary parameters from ldata and gdata
+P = ldata(1:opts.dim,:);    % map: voxel to position (dimension dependent)
+nquants = gdata(end-1);     % number of micro-quantities
+ntypes = gdata(end);        % number of cell types
 
 % create function handles for evaluating reaction rates and Q rhs:s
 mexrhs = str2func([opts.mexname '_mexrhs']);
@@ -46,12 +46,18 @@ if ~isempty(opts.mumod)
   end
 end
 
+% move custom ldata to make room for internal states QI (see (1c) below)
+nldata =  size(ldata,1)-opts.dim; % exclude position map (x,y,(z))
+ldata(2*ninternal-2 + (1:nldata),:) = ldata(3:nldata+2,:);
+ldata(3:nldata+2,:) = 0;   % clear its previous position
+
 % load additional internal functions (empty ones are not used)
 maxdt_fun = opts.maxdt_fun; % function for SSA max. time-interval
 ldata_fun = opts.ldata_fun; % function for ldata in SSA solver
 
 %% (0b) Curvature & Surface tension
 % load elliptic projection operators, if possible
+sigma = zeros(ntypes+1,ntypes+1); % default; free movement between types
 if ~isempty(opts.curv)
   curv = struct(opts.curv{:});
   curvop_exists = true;
@@ -132,11 +138,17 @@ X = zeros(ninternal, Nvoxels*2);   % allocate for max nr of cells
 X(1:2, 1) = [0 0];                         % empty voxel 'data'
 X(1, IX(adof, 1)) = adof;                  % which voxel cell is in
 X(1, IX(sdof, 2)) = sdof;
+doubles = [];   % remember the indices of doubly occupied, pure voxels
 for n = 1:ntypes                           % assign cell types
   X(2, IX(u0(n,:)>0, 1)) = n; % singly occ.
   X(2, IX(u0(n,:)>1, 2)) = n; % double occ.
+  doubles = [doubles, find(u0(n,:)==2)];
 end
-
+mixed = setdiff(find(U==2),doubles); % weed out the mixed voxels
+[im, jm] = find(u0(1:ntypes,mixed));   % assign mixed types in voxel
+% assumes certain order of 'find', and places lowest type first:
+X(2, IX(mixed(jm(1:2:end)),1)) = im(1:2:end); % 1st cell in voxel
+X(2, IX(mixed(jm(2:2:end)),2)) = im(2:2:end); % 2nd cell
 % Load internal cell states into X for n = 3, ..., ninternal
 for n = 3:ninternal
   X(n, IX(:,1)) = mumod.u0(2*(n-2)-1, :);  % 1st cell
@@ -192,10 +204,7 @@ while tt < tspan(end)
   % cells next to it
   sdof_m = find(Ne*(U > 1) < neigh & U > 1);
 
-  % injection DOFs: the layer of voxels "just outside" adof, used for
-  % population BCs.
   idof = find(Ne*(U ~= 0) > 0 & U == 0);
-
   % "All DOFs" = adof + idof, like the "hull of adof"
   Adof = [adof; idof];
   % (after this adof is not used)
@@ -221,7 +230,18 @@ while tt < tspan(end)
   [type, tdof_] = find(X(2, IX(Adof,1)) == (1:ntypes)');
   curvature = zeros(numel(U), 1);
   if curvop_exists          % (else curvature evaluation is disabled)
-    for ti = 1:ntypes % Get curvatures separately for each cell type
+    % first, for each idof, draw one sample of its neghbouring types
+    % (later this type is prioritised for the curvature and BC to that idof)
+    idof_overlap = [];
+    [a, b] = find(Ne(Adof,idof));
+    nbtype = X(2, IX(Adof(a),1))';   % neighbouring types to each idof
+    for idx = 1:numel(idof)
+      c = nbtype(b==idx);     % find neighboring types to this idof(idx)
+      c = c(c~=0);            % ignore zeros
+      % choose smallest type value
+      idof_overlap(idx) = min(c); %randsample([c; c],1); % sample one type
+    end
+    for ti = ntypes:-1:1 %1:ntypes % Get curvatures separately for each cell type
       Utype = zeros(numel(U), 1);
       Utype(Adof(tdof_(type==ti))) = 1;
       % 1/3: Smooth cell population...
@@ -251,8 +271,9 @@ while tt < tspan(end)
         curvature(Adof(tdof_(type==ti)),1) =  ...
           curv1(Adof(tdof_(type==ti))) + curv2(Adof(tdof_(type==ti)));
       end
-      % ...and its idofs (prioritising larger type values at overlaps)
+      % ...and its idofs (choosing one neighbouring type for overlaps)
       [a, ~] = find(Ne(idof,Adof(tdof_(type==ti))));
+      a = a(idof_overlap(a)==ti); % find the idofs sampled to 'use' ti
       curvature(idof(a),1) = curv1(idof(a)) + curv2(idof(a));
     end
   end
@@ -269,9 +290,18 @@ while tt < tspan(end)
     ldata(l,:) = QI(:,1,l);               % 1nd cell
     ldata(l+ninternal-2,:) = QI(:,2,l);   % 2nd cell
   end
+  % if there is a table of times given, find the relevant place in
+  % (ldata_time,gdata_time)
+  ldata_time_tmp = ldata_time;
+  gdata_time_tmp = gdata_time;
+  if numel(data_time) > 1
+    [~,ix] = histc(tt,[data_time(:).' inf]);
+    ldata_time_tmp = ldata_time(:,:,ix);
+    gdata_time_tmp = gdata_time(:,ix);
+  end
   R = mexrhs(mexhash,tt,y,size(N,2), ...
            vol,ldata,gdata, ...
-           ldata_time,gdata_time,sd, ...
+           ldata_time_tmp,gdata_time_tmp,sd, ...
            [],[],[]);
   R = reshape(R,[],numel(vol)); % (Mreactions-by-Nvoxels)
 
@@ -311,16 +341,15 @@ while tt < tspan(end)
     tdofi_ = tdof_(type==ti);
     % find idofs to cell type ti...
     [in, ~] = find(Ne(idof, Adof(tdofi_)));
+    in = in(idof_overlap(in)==ti); % filter out idofs sampled to 'use' ti
     % ... and set BC there:
     source(idof_(in)) = sigma(ti+1,1)*curvature(idof(in));
-    % Note: smaller type value overrides on duplicate idofs!
   end
   end
   % *** DEBUG: use to plot dof connections
   %$$$ plot([P(1,tdof1(i1)); P(1,tdof2(j1))], [P(2,tdof1(i1)); ...
   %$$$ P(2,tdof2(j1))], 'ko-')
 
-  % Impose outer BC (against 'emptiness') on tumor boundary directly
   L = D(Adof,Adof);
   Lai = fsparse(idof_,idof_,1,size(L));
   L = L-Lai*L+Lai;
@@ -343,11 +372,11 @@ while tt < tspan(end)
   % rates defined by user input in Rates and stoichiometric  matrix N.
 
   % get reaction rates (again; necessary to ensure proper dependence on Q)
-  % (ldata not yet changed before last update)
+  % (ldata has not changed since last update)
   y(end-nquants+1:end,:) = Q';        % get current micro-quantities
   R = mexrhs(mexhash,tt,y,size(N,2), ...
            vol,ldata,gdata, ...
-           ldata_time,gdata_time,sd, ...
+           ldata_time_tmp,gdata_time_tmp,sd, ...
            [],[],[]);
   R = reshape(R,[],numel(vol)); % (Mreactions-by-Nvoxels)
 
@@ -357,19 +386,25 @@ while tt < tspan(end)
   % Cell movement from voxel with U=1
   % save iib, jjb_ to find which cell moves where in event execution
   [iib, jjb_] = find(Ne(bdof_m,Adof));  % neighbors
+
   % keep only movement between cells of same type or into void,
-  % homotypic voxels assumed
-  keep = find(X(2, IX(bdof_m(iib),1)) == X(2, IX(Adof(jjb_),1)) ...
-            | X(2, IX(Adof(jjb_),1)) == 0);
+  % Surface tension works the wrong direction otherwise!
+  [ii, jj] = find(~sigma(2:end, 2:end)); % keep connections with sigma = 0
+
+  keep = find(sum(X(2, IX(bdof_m(iib),1)) == ii & ...
+                  X(2, IX(Adof(jjb_),1)) == jj) ...
+                | X(2, IX(Adof(jjb_),1)) == 0);
   iib = reshape(iib(keep),[],1); jjb_ = reshape(jjb_(keep),[],1);
 
   % Cell movement from voxel with U=2
   % save iis, jjs_ to find which cell moves where in event execution
   [iis, jjs_] = find(Ne(sdof_m,Adof));  % neighbors
+
   % keep only movement between cells of same type or into void,
-  % homotypic voxels assumed
-  keep = find(X(2, IX(sdof_m(iis),1)) == X(2, IX(Adof(jjs_),1)) ...
-            | X(2, IX(Adof(jjs_),1)) == 0);
+  % Surface tension works the wrong direction otherwise!
+  keep = find(sum(X(2, IX(sdof_m(iis),1)) == ii ...
+                & X(2, IX(Adof(jjs_),1)) == jj) ...
+                | X(2, IX(Adof(jjs_),1)) == 0);
   iis = reshape(iis(keep),[],1); jjs_ = reshape(jjs_(keep),[],1);
 
   % Movement rates defined by the user input migration pressure
@@ -419,10 +454,11 @@ while tt < tspan(end)
   % Find micro-time step ddt, dynamic or as fixed user input
   if internal_rates_on
     mumod.sd = zeros(1,numel(U));
-    mumod.sd(U>0) = 1;                   % only allow reactions on sd == 1
+    % sd distinguishes cell occupation
+    mumod.sd(U>0) = 1;
     mumod.sd(U==2) = 2;
     % Get the complex signals as ldata (assumed constant during ddt)
-    ldata_f = ldata_fun(U,Q,QI,Ne);
+    ldata_f = ldata_fun(U,Q,QI,P,Ne);
     for l = 1:numel(ldata_f)
       mumod.ldata(l,:) = ldata_f{l};
     end
@@ -440,10 +476,10 @@ while tt < tspan(end)
     mumod.tspan = [0 ddt];            % SSA solver timespan
   end
 
+  % save current time to avoid possible round-off error later
+  tt_base = tt;
   % Update internal states (always runs at least once/dt to save states)
   for subt = 1:Nsteps
-
-    % record values as needed
     if tspan(i+1) <= tt+ddt
       iend = i+find(tspan(i+1:end) <= tt+ddt,1,'last');
       % save cell states
@@ -499,18 +535,17 @@ while tt < tspan(end)
       QI(:,2,3:ninternal) = [X(3:ninternal, IX(:, 2))'];
 
       % update internal ldata (the more involved user-defined signals)
-      ldata_f = ldata_fun(U,Q,QI,Ne);
+      ldata_f = ldata_fun(U,Q,QI,P,Ne);
       for l = 1:numel(ldata_f)
         mumod.ldata(l,:) = ldata_f{l};
       end
     end
 
-    tt = tt + ddt;
+    tt = tt_base + ddt*subt; % avoid incremental round-off error
   end
 
   % equilibrium reached at tt, no more events to execute
   if dt == inf
-    warning('equilibrium reached: dt = infinity')
     break;
   end
 
@@ -548,17 +583,25 @@ while tt < tspan(end)
     % find which cell type to switch to
     rates = R(1:end-nquants, ix);       % all reaction rates at ix
     event = find(cumsum(rates) > rand*sum(rates),1,'first');
-    to = find(Nr(:,event) > 0);         % remember, in case of switch event
+    to = find(Nr(:,event) > 0);         % type to switch to...(if switching)
+    from = find(Nr(:,event) < 0);       % ...and type to switch from
     event = sum(Nr(:,event));           % -1 :death; 0: switch; 1: birth
     if event == -1      % death event
       X(:, IX(ix, U(ix))) = 0;          % ...clean cell data
       IX(ix, U(ix)) = 1;                % ...deallocate indices
       U(ix) = U(ix) - 1;
     else                % phenotype switch
-      % change type of all cells in voxel (preserves homotypicity):
-      % and do even if it's a birth event to allow U1 --> U2+U2 events
-      % (standard birth events simply switches type to type it already has)
-      X(2, IX(ix, 1:U(ix))) = to;       % other data remain same
+      % -do even if it's a birth event to allow U1 --> U2+U2 events
+      % (standard birth events simply switches to the type it already has)
+      % find which cell in the voxel to be changed:
+      if ~isempty(from)
+        from = find(X(2, IX(ix, :))==from);
+        from = randsample(from,1);
+      else              % no switch (Here, Ncapacity is assumed to be 2)
+        from = 1; % => birth event, so do dummy change below for 1st cell
+      end
+      % now always does first cell for double occ. voxel with same type
+      X(2, IX(ix, from)) = to;         % other data remain same
     end
     if event == 1       % birth event (always preceded by switch event)
       % add cell
@@ -588,4 +631,4 @@ end
 U = Usave(1:ntypes,:,:);
 U(end+1:end+nquants, :,:) = Qsave;
 U(end+1:end+(ninternal-2)*2,:,:) = Usave(ntypes+1:ntypes+(ninternal-2)*2,:,:);
-U(end+1:end+2,:,:) = Usave(ntypes+1:ntypes+2,:,:) ;% saved in private.dlcm
+U(end+1:end+2,:,:) = Usave(nsavestates-1:nsavestates,:,:) ;% -> private.dlcm

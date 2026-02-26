@@ -15,7 +15,6 @@
 %   can degrade to stop occupying space at a rate mu_deg.
 %
 %   No oxygen consumption by dying cells.
-%   Surface tension on every contour that is 'large enough'
 %
 %   Permeability: Drate describes the scaling of the migration rate of
 %   tumor cells invading occupied or empty voxels.
@@ -72,7 +71,8 @@ Drate = @(Uf,Ut,Q,QI,P,t){1.*(Uf==1).*(Ut<=1)+...
 % initial small population
 ii1 = find((P(1,:)).^2 + (P(2,:)).^2 <= 0.05^2);   % alive cells
 % U is Ntype-by-Ncells sparse vector, representing the cell population
-U(2,:) = fsparse(ii1(:),1,1,[Nvoxels^2 1]); % no degrading cells initially
+U = zeros(ntypes,Nvoxels^2);
+U(2,ii1) = 1; % no degrading cells initially
 
 %% (4) "outer" URDME-struct
 % Living cells can become degrading cells that vanish over time, and living
@@ -102,7 +102,7 @@ umod = rparse(umod, ...
               'mu_prol' mu_prol, 'mu_die' mu_die, ...
               'kappa_prol', kappa_prol, 'kappa_die', kappa_die}, ...
               'avascular_tumor_outer');
-umod.u0 = [full(U); zeros(2,Nvoxels^2)];
+umod.u0 = [U; zeros(2,Nvoxels^2)];
 umod.sd = ones(1,Nvoxels^2);
 umod.sd(extdof) = 0;                              % sd encodes bndry dofs
 umod.tspan = linspace(0,Tend,Tres);               % simulation time steps

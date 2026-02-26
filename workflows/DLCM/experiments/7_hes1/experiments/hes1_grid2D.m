@@ -16,9 +16,15 @@ if ~exist('rand_seed', 'var')
 else
   rng(rand_seed) % echo it
 end
+if ~exist('min_example','var') || (min_example == 0)
+  % cells live in a square of Nvoxels-by-Nvoxels
+  Nvoxels = 20;
+else
+  % run minimal example for e.g. testing
+  Nvoxels = 2;
+  rand_seed = rng(1000);
+end
 
-% cells live in a square of Nvoxels-by-Nvoxels
-Nvoxels = 20;
 if mod(Nvoxels,2) == 1
   error("Nvoxels has to be an even number.")
 end
@@ -73,7 +79,7 @@ n_ = sol_(:,5:5:end).';
 [~,ijmp] = max(diff(Pincr)); % cut at largest jump
 idxlo = idx(1:ijmp); % index of low cells
 idxhi = idx(ijmp+1:end); % index of high cells
-idx_log = linspace(1,400,400);
+idx_log = linspace(1,Nvoxels^2,Nvoxels^2);
 idx_log(idxlo) = 0;
 idx_log(idxhi) = 1;
 
@@ -135,7 +141,7 @@ end
 % pspectrum(P_(idx == 1))
 % figure(2), clf,
 % pspectrum(P_(idx == 2));
-% 
+%
 % % postprocessing
 % figure(1), clf,
 % plot(tspan_,mean(n_));
@@ -154,46 +160,54 @@ meann = mean(n_);
 % maxima (between 2nd and 3rd maximum to avoid issues with first oscillation
 % being different due to initial condition)
 % should be between 120-180 as periods of oscillations for Hes1 protein
-[y1,t1] = findpeaks(meanP(1:end/2),tspan_(1:end/2));
-fprintf('Measured period: %2.1fh \n',(t1(3)-t1(2))/60);
+oscillations_meanP = meanP(1:161);
+y1 = oscillations_meanP(oscillations_meanP == inf | ...
+     oscillations_meanP([1 1:end-1]) < oscillations_meanP & ...
+     oscillations_meanP > oscillations_meanP([2:end end]));
+t1 = tspan_(oscillations_meanP == inf | ...
+          oscillations_meanP([1 1:end-1]) < oscillations_meanP & ...
+          oscillations_meanP > oscillations_meanP([2:end end]));
+if ~exist('min_example','var') || (min_example == 0)
+  fprintf('Measured period: %2.1fh \n',(t1(3)-t1(2))/60);
 
-figure(1),clf,
-% plot mean of all constituents up to time 1000 minutes (16.67 hrs)
-% plot(repmat(tspan_(24),2,1),[0 100],'Color',[0.8 0.8 0.8],'LineStyle','--',...
-%   'LineWidth',1.5,'HandleVisibility','off');
-% hold on
-% plot(repmat(tspan_(26),2,1),[0 100],'Color',[0.8 0.8 0.8],'LineStyle','--',...
-%   'LineWidth',1.5,'HandleVisibility','off');
-% hold on
-semilogy(tspan_,mean(D_),'Color',graphics_color('bluish green'),'Linewidth',...
-  2,'DisplayName','Dll1')
-hold on
-semilogy(tspan_,mean(N_),'Color',graphics_color('orange'),'Linewidth',...
-  2,'DisplayName','Notch')
-hold on
-semilogy(tspan_,meanM,'Color',graphics_color('reddish purple'),'Linewidth',...
-  2,'DisplayName','Hes1 mRNA')
-hold on
-semilogy(tspan_,meanP,'Color',graphics_color('sky blue'),'Linewidth',...
-  2,'DisplayName','Hes1 protein')
-hold on
-semilogy(tspan_,mean(n_),'Color',graphics_color('vermillion'),'Linewidth',...
-  2,'DisplayName','Ngn2')
-hold on
-plot(t1(2:3),repmat(y1(2),2,1),'b--.', 'LineWidth',2,'MarkerSize',10,...
-  'DisplayName','measured period');
-% hold on
-% plot(tspan_(24),meanM(24),'ro','MarkerSize',8,'Linewidth',1.5,...
-%   'HandleVisibility','off')
-% hold on
-% plot(tspan_(26),meanP(26),'ro','MarkerSize',8,'Linewidth',1.5,...
-%   'HandleVisibility','off')
-legend('Location','southeast')
-set(gca,'xtick',0:240:tspan_(end),'xticklabel',(0:240:tspan_(end))/60)
-% ylim([0 5])
-% xlim([0 2500])
-xlabel('time [hrs]')
-ylabel('Conc [$\mu M$]','Interpreter','latex')
+  figure(1),clf,
+  % plot mean of all constituents up to time 1000 minutes (16.67 hrs)
+  % plot(repmat(tspan_(24),2,1),[0 100],'Color',[0.8 0.8 0.8],'LineStyle','--',...
+  %   'LineWidth',1.5,'HandleVisibility','off');
+  % hold on
+  % plot(repmat(tspan_(26),2,1),[0 100],'Color',[0.8 0.8 0.8],'LineStyle','--',...
+  %   'LineWidth',1.5,'HandleVisibility','off');
+  % hold on
+  semilogy(tspan_,mean(D_),'Color',graphics_color('bluish green'),'Linewidth',...
+    2,'DisplayName','Dll1')
+  hold on
+  semilogy(tspan_,mean(N_),'Color',graphics_color('orange'),'Linewidth',...
+    2,'DisplayName','Notch')
+  hold on
+  semilogy(tspan_,meanM,'Color',graphics_color('reddish purple'),'Linewidth',...
+    2,'DisplayName','Hes1 mRNA')
+  hold on
+  semilogy(tspan_,meanP,'Color',graphics_color('sky blue'),'Linewidth',...
+    2,'DisplayName','Hes1 protein')
+  hold on
+  semilogy(tspan_,mean(n_),'Color',graphics_color('vermillion'),'Linewidth',...
+    2,'DisplayName','Ngn2')
+  hold on
+  plot(t1(2:3),repmat(y1(2),2,1),'b--.', 'LineWidth',2,'MarkerSize',10,...
+    'DisplayName','measured period');
+  % hold on
+  % plot(tspan_(24),meanM(24),'ro','MarkerSize',8,'Linewidth',1.5,...
+  %   'HandleVisibility','off')
+  % hold on
+  % plot(tspan_(26),meanP(26),'ro','MarkerSize',8,'Linewidth',1.5,...
+  %   'HandleVisibility','off')
+  legend('Location','southeast')
+  set(gca,'xtick',0:240:tspan_(end),'xticklabel',(0:240:tspan_(end))/60)
+  % ylim([0 5])
+  % xlim([0 2500])
+  xlabel('time [hrs]')
+  ylabel('Conc [$\mu M$]','Interpreter','latex')
+end
 
 return;
 
@@ -209,14 +223,14 @@ for i = 1:numel(tspan_)
   patch('Faces',R,'Vertices',V, ...
     'FaceColor',[0.9 0.9 0.9],'EdgeColor','none');
   hold on,
-%   patch('Faces',R(n_(:,i) <= division(2),:), ...
-%     'Vertices',V,'FaceColor',cmap(2,:));
-%   for j = 3:numel(division)-1
-%     patch('Faces',R((n_(:,i) > division(j-1) & n_(:,i) <= division(j)),:), ...
-%       'Vertices',V, 'FaceColor',cmap(j-1,:));
-%   end
-%   patch('Faces',R(n_(:,i) > division(numel(division)-1),:), ...
-%     'Vertices',V, 'FaceColor',cmap(numel(division)-1,:));
+  %   patch('Faces',R(n_(:,i) <= division(2),:), ...
+  %     'Vertices',V,'FaceColor',cmap(2,:));
+  %   for j = 3:numel(division)-1
+  %     patch('Faces',R((n_(:,i) > division(j-1) & n_(:,i) <= division(j)),:), ...
+  %       'Vertices',V, 'FaceColor',cmap(j-1,:));
+  %   end
+  %   patch('Faces',R(n_(:,i) > division(numel(division)-1),:), ...
+  %     'Vertices',V, 'FaceColor',cmap(numel(division)-1,:));
   patch('Faces',R(n_(:,i) <= division,:), ...
     'Vertices',V,'FaceColor',graphics_color('blue'));
   hold on

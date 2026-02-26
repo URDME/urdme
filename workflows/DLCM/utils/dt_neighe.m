@@ -1,4 +1,4 @@
-function [Ne,De] = dt_neighe(V,R)
+function [Ne,De] = dt_neighe(V,R,normalization)
 %DT_NEIGHE Neighbor edge matrix.
 %   Ne = DT_NEIGHE(V,R) returns a neighbor matrix the same sparsity
 %   pattern as the neighbor matrix N, see DT_OPERATORS. For a given
@@ -11,6 +11,10 @@ function [Ne,De] = dt_neighe(V,R)
 %   however, now all external boundaries are counted as if they were
 %   populated. See the text output in parenthesis in the examples
 %   below.
+%
+%   Ne = DT_NEIGHE(V,R,'abs') does not normalize by total edge
+%   length. Hence Ne(i,j) is the edge length shared between the
+%   patches i and j.
 %
 %   The inputs V and R are described in MESH2DUAL.
 %
@@ -71,6 +75,7 @@ function [Ne,De] = dt_neighe(V,R)
 %       axis([-1 1 -1 1]); axis equal
 %     end
 
+% S. Engblom 2026-01-18 ('abs' syntax)
 % S. Engblom 2023-11-13
 
 % periodically wrap with NaN's
@@ -101,7 +106,9 @@ Ne = sparse(E(3,ix),E(3,ia(ib(ix))),edg(ib(ix)),size(R,1),size(R,1));
 Ne = Ne+Ne';
 
 % output syntax
-if nargout < 2
+if nargin > 2 && strcmpi(normalization,'abs')
+  return;
+elseif nargout < 2
   % normalization excluding outer boundary edges:
   Ne = Ne./sum(Ne,2);
 else

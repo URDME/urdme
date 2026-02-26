@@ -36,8 +36,10 @@ bogus_Vm = zeros(length(input_nodes),1)-75;
 [umod_syn,~] = synaptic_solver([],t_setup,bogus_Vm,0); 
 
 % ODE stepping
-dt = 0.05;
-t_vec = 0:dt:25;
+if ~exist('t_vec','var')
+  dt = 0.05;
+  t_vec = 0:dt:25;
+end
 V_out = zeros(numel(t_vec)-1,nVoxels);
 V_out(1,:) = -75;
 Iin = zeros(numel(t_vec)-1,length(input_nodes));

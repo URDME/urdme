@@ -7,6 +7,10 @@
 % S. Engblom 2024-09-24 (new model & parametrization)
 % S. Engblom 2024-07-10
 
+if ~exist('min_example','var')
+  plotting_true = 0;
+end
+
 % cells live on a line of voxels
 Nvoxels = 30;
 
@@ -33,7 +37,9 @@ crit = @(s)l_criterion(alpha./[1 s 1 1 1],mu,H);
 opts = optimset('Display','off');
 [scrit,~,flag] = fzero(crit,500,opts);
 if flag ~= 1, warning('Convergence issues.'); end
-scrit
+if min_example == 0
+  scrit
+end
 
 % Hes1 model with a parameter scaling of alphaN by factor s
 [fun,funJ,funC] = hes1_buildODE;
@@ -74,7 +80,7 @@ Pstat_hom = Ystat_hom(4:ndof:end,:);
 Pstat_hom_ = Pstat_hom/Pmax;
 
 % bifurcation as a function of s
-if output.hilo
+if output.hilo && min_example == 0
   figure(1), clf,
   % find hi and lo from Pstat(:,1)
   [~,ix] = sort(Pstat(:,1));
@@ -106,7 +112,7 @@ if output.hilo
 end
 
 % a few stills
-if output.stills
+if output.stills  && min_example == 0
   figure(2), clf,
   subplot(4,1,1);
   bar(1:Nvoxels,Pstat_(:,1));
@@ -124,7 +130,7 @@ if output.stills
 end
 
 % animate
-if output.animate
+if output.animate && min_example == 0
   figure(3), clf,
   for i = 1:numel(s)
     bar(1:Nvoxels,Pstat_(:,i));

@@ -70,7 +70,8 @@ Drate = @(Uf,Ut,Q,QI,P,t){1.*(Uf==1).*(Ut==0)+1.*(Uf==2).*(Ut<2)};
 r0 = 0.2;
 ii1 =  find(abs(P(1,:)) < r0 & abs(P(2,:)) <= r0);   % alive cells
 % U is ntype-by-ncells sparse vector, representing the cell population
-U = fsparse(ii1(:),1,2,[Nvoxels^2 1]); % doubly occupied
+U = zeros(ntypes, Nvoxels^2);
+U(1,ii1) = 2; % doubly occupied
 
 %% (4) "outer" URDME-struct instead:
 nquants = 1; % number of field states pressure and nutrient
@@ -86,7 +87,7 @@ umod = rparse(umod, ...
               {'U1' 'Q1'}, ...
               {'mu_prol' mu_prol}, ...
               'delta_notch_outer');
-umod.u0 = [full(U)'; zeros(1,Nvoxels^2)];
+umod.u0 = [U; zeros(1,Nvoxels^2)];
 umod.sd = ones(1,Nvoxels^2);
 umod.sd(extdof) = 0;                            % sd encodes boundary dofs
 umod.tspan = linspace(0,Tend,Tres);             % time steps
@@ -115,7 +116,7 @@ No(ii2,2) = randi(Nmax,numel(ii2),1);
 % celldata is an Ntypes*2-by-Ncells array of cell state data -> mumod.u0.
 % Here containing Delta and Notch values for each cell
 celldata = zeros(nstates*2, Nvoxels^2);
-adof = find(sum(U,2)>0); sdof = find(sum(U,2)>1);
+adof = find(sum(U,1)>0); sdof = find(sum(U,1)>1);
 celldata(1, adof) = De(adof,1);   % first cell in voxel
 celldata(2, sdof) = De(sdof,2);   % second cell in voxel
 celldata(3, adof) = No(adof,1);
@@ -139,7 +140,7 @@ F = @(x)(x.^k./(a+x.^k));         % (simplifies expression below)
 % ldata_fun(...){l} containing ldata[l] for l = 1:nldata.
 % Here the function return the avg. neighboring Delta activity (ignoring
 % cells in same voxel; can be accounted for by altering r3)
-ldata_fun = @(U, Q, QI, Ne){F(sum(Ne*QI(:,:,3),2)/Nmax./max(Ne*U,1))};
+ldata_fun = @(U, Q, QI, P, Ne){F(sum(Ne*QI(:,:,3),2)/Nmax./max(Ne*U,1))};
 
 % Construct, parse, and compile ssa solver fully outside dlcm
 Dexpr = cell(2*nstates,1); Dexpr(1:2*nstates) = {1};
@@ -155,7 +156,7 @@ mumod.u0(1:Nspec,:) = celldata;         % internal states
 mumod.vol = ones(1, Nlive);
 mumod.sd = ones(1, Nlive);              % compile dummy
 mumod.tspan = [0 1];                    % compile dummy
-mumod = urdme(mumod, 'solve', 0);       % parse & compile
+mumod = urdme(mumod, 'solve', 0, 'solver', 'ssa');  % parse & compile
 
 % finally load essentials and mumod with internal specifics into umod
 umod = dlcm2urdme(umod, P, gradquotient, [],[],[], 'Rates', Rates, ...

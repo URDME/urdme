@@ -29,8 +29,10 @@ umod.private.model = model_builder(nVoxels);
 umod.private.I_inj = @(V,t,i)([0.1*(t >= 0); zeros(nVoxels-1,1)]);
 
 % solve
-dt = 0.05;
-t_vec = 0:dt:250;
+if ~exist('t_vec','var')
+  dt = 0.05;
+  t_vec = 0:dt:250;
+end
 [V_out,I_mem,umod] = neuron_solver(t_vec,umod,'channel/',report);
 
 % compute injected current

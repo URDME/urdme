@@ -1,53 +1,17 @@
-%BASIC_TEST Basic test of DLCM relaxation.
-%   Relaxation to equilibrium: here the cells start distributed within
-%   an internal square region filled with 2 cells (red) per voxel. The
-%   system then relaxes to equilibrium by, at any given point in time,
-%   assuming quasi steady-state and solving an equation for the 'cellular
-%   pressure'.
+%BASIC_TEST_CUSTOM_DATA Basic test of DLCM relaxation with custom data.
+%   Similar to basic_test, but tests custom ldata and gdata
+%   functionality using (dummy) internal states.
 
-%   Outline of method: at any given point in time we assume quasi
-%   steady-state and solve an equation for the 'cellular pressure' in
-%   the form of a Laplacian with source terms. Cells can move only
-%     -when they have empty voxels next to them (i.e. at boundary
-%     points), and here the gradient of the pressure in that direction
-%     is understood as a rate per unit of time to change position,
-%     -or in general, when a neighbor voxel is less populated than the
-%     current one, then the (positive) gradient of the pressure in
-%     that direction is again understood as a rate per unit of time to
-%     move.
-%
-%   This stochastic process is simulated in continuous time in the
-%   form of a Markov chain.
-%
-%   The algorithm thus consists of two steps:
-%     (1) assume quasi equlibrium (no cells make any large movements,
-%     only small movements about each center of mass) - solve the
-%     pressure equation with sources at each cell position where there
-%     are > 1 cells,
-%     (2) all rates determined in this way now imply a cell which can
-%     move - find out which ones moves first, and move it.
+% E. Blom 2026-01-07
 
-% E. Blom 2024-12-17 (major revision, using URDME's DLCM solver)
-% S. Engblom 2017-12-20 (revision, more cleanup)
-% S. Engblom 2017-08-29 (revision, cleanup)
-% S. Engblom 2016-12-28 (reuse of factorization)
-% S. Engblom 2016-12-25 (seriously finalized the physics)
-% S. Engblom 2016-12-20 (finalized the physics)
-% S. Engblom 2016-12-09 (hexagonal mesh)
-% S. Engblom 2016-12-08 (notes on thinning)
-% S. Engblom 2016-12-02 (revision)
-% S. Engblom 2016-11-09 (revision)
-% S. Engblom 2016-07-05 (minor revision)
-% S. Engblom 2016-05-01
+rng(123) % for birth rates in ldata
 
 %% (1) geometry
 Nvoxels = 41;
 mesh_type = 1;  % cartesian mesh
 
 % Simulate to Tend and save states at Tres intervals
-if ~exist('Tend', 'var')
-  Tend = 30000;
-end
+Tend = 100;
 Tres = 100;
 ntypes = 1; % number of cell types: living cells
 
@@ -92,18 +56,34 @@ umod = pde2urdme(P,T,Dexpr);                    % construct D matrix, etc.
 % 'UL' means cell of phenotype L.
 % Define all reaction events first, and after that quantities:
 umod = rparse(umod, { ...
-              ...%'U1 > 0.0001*(U1==1) > U1+U1', ...% <- adds proliferation
-              'Q1 > (U1>1) > Q1+Q1'}, ...
+              'U1 > mu_prol*(U1==1) > U1+U1', ...
+              'U1 > ldata[4]*(U1>0) > @', ... % access the data like this...
+              'Q1 > p_source*(U1>1) > Q1+Q1'}, ...
               {'U1' 'Q1'}, ...
-              {}, ...
+              {'mu_prol', 'gdata', 'p_source', 'gdata'}, ... % or like this
               'basic_test_outer');
-umod.u0 = [U; zeros(1,Nvoxels^2)];
+umod.u0 = [full(U); zeros(1,Nvoxels^2)];
 umod.sd = ones(1,Nvoxels^2);
 umod.sd(extdof) = 0;                            % sd encodes boundary dofs
+% custom ldata (2nd row is dummy):
+% Note that ldata [4] corresponds to first array below ([0] & [1] is the
+% cell's position map for x and y and [2] & [3] corresponds to the internal
+% state (one per possible cell in the voxel), which is set to zero below.
+umod.ldata = [1*0.001*rand(1,Nvoxels^2); exp(1)*ones(1,Nvoxels^2)];
+% custom gdata:
+umod.gdata = [0.0002 1];
 umod.tspan = linspace(0,Tend,Tres);             % time steps
+
+% add dummy internal states to check that solver handles them correctly
+% when also using custom ldata
+nstates = 1;
+% required to pass internal states through mumod:
+mumod.seed = 1;
+mumod.u0(1:2*nstates,:) = 0;         % mumod holds internal states
+
 % load essentials
 umod = dlcm2urdme(umod, P, gradquotient, [], [], [], 'Rates', Rates, ...
-  'Drate', Drate);
+  'Drate', Drate, 'mumod', mumod);
 
 %% (5) solve
 

@@ -6,10 +6,19 @@
 if ~exist('save_data','var')
   save_data = false;
 end
+if ~exist('min_example','var')
+  min_example = 0;
+end
 
 % scaling s of alphaN; use svec from stationary_3cell
 load ../data/stationary_3cell.mat
-s = [svec svec(end:-1:1)]; % "fwd-bwd"
+if min_example == 0
+  s = [svec svec(end:-1:1)]; % "fwd-bwd"
+else
+  % run minimal example with 9 scalings
+  svec = linspace(1,81,9);
+  s = [svec svec(end:-1:1)]; % "fwd-bwd"
+end
 
 % max #iterations and tolerance for stationary
 MAXITER = 50;
@@ -17,11 +26,15 @@ TOL = 0.01;
 
 % build the model using external script
 solve = 0;
-VOL = 20;
+if ~exist('VOL','var')
+  VOL = 20;
+end
 % 3-cell problem, small, or large case
 %Nvoxels = '3';
 %Nvoxels = 5;
-Nvoxels = 20;
+if ~exist('Nvoxels','var')
+  Nvoxels = 20;
+end
 hes1umod2D_run;
 
 % modify the struct a bit:
@@ -42,7 +55,9 @@ savePuds = zeros(size(umod.u0,2),numel(s));
 
 % solve model sequentially with scaling s
 for i = 1:numel(s)
-  disp(['Solving with scaling = ' num2str(s(i)) '... ']);
+  if ~exist('min_example','var') || (min_example == 0)
+    disp(['Solving with scaling = ' num2str(s(i)) '... ']);
+  end
 
   % inject new scaling
   umod.seed = umod.seed+1;
@@ -72,13 +87,15 @@ for i = 1:numel(s)
   % save P
   saveP(:,i) = umod.U(5:Mspecies:end,end);
   savePuds(:,i) = vmod.U(5:Mspecies:end,end);
-  
+
   % prepare for next round
-  umod.u0 = reshape(umod.U(:,end),size(umod.u0)); 
+  umod.u0 = reshape(umod.U(:,end),size(umod.u0));
   vmod.u0 = reshape(vmod.U(:,end),size(vmod.u0));
   umod.tspan = [0 4*60]; vmod.tspan = umod.tspan;
 
-  disp('   ...done.');
+  if ~exist('min_example','var') || (min_example == 0)
+    disp('   ...done.');
+  end
 end
 
 % postprocess
@@ -127,97 +144,101 @@ RngP(:,ix) = [min(P_(:,ix),[],1); max(P_(:,ix),[],1)];
 if save_data
   disp('Saving...')
   save("../data/hes1_bifurcation_Nvoxels_"+ ...
-       num2str(Nvoxels)+"_VOL_"+num2str(VOL)+".mat", ...
-       's','saveP','savePuds', ...
-       'meanP','diamP','rngP','meanPuds','diamPuds','rngPuds', ...
-       'MeanP','DiamP','RngP','MeanPuds','DiamPuds','RngPuds', ...
-       'ix','nix', ...
-       'scrit','VOL');
+    num2str(Nvoxels)+"_VOL_"+num2str(VOL)+".mat", ...
+    's','saveP','savePuds', ...
+    'meanP','diamP','rngP','meanPuds','diamPuds','rngPuds', ...
+    'MeanP','DiamP','RngP','MeanPuds','DiamPuds','RngPuds', ...
+    'ix','nix', ...
+    'scrit','VOL');
   disp('   ...saved.')
 end
 
 % visualization i = "fwd-bwd"
-for i = 1:2:3
-  figure(i), clf,
-  jx = nix;
-  kx = ix;
-  if i == 1
-    jx = jx(jx <= numel(s)/2);
-    kx = kx(kx <= numel(s)/2);
-  else
-    jx = jx(jx > numel(s)/2);    
-    kx = kx(kx > numel(s)/2);
+if min_example == 0
+  for i = 1:2:3
+    figure(i), clf,
+    jx = nix;
+    kx = ix;
+    if i == 1
+      jx = jx(jx <= numel(s)/2);
+      kx = kx(kx <= numel(s)/2);
+    else
+      jx = jx(jx > numel(s)/2);
+      kx = kx(kx > numel(s)/2);
+    end
+    % NSM
+    P0 = max(meanP(:));
+    h = plot(s(jx),meanP(1,jx)/P0,'r', ...
+      'LineWidth',2,'HandleVisibility','off');hold on,
+    if ~isempty(h)
+      col = get(h,'Color');
+      errorshade(s(jx),max(rngP(1,jx)/P0,1e-4),max(rngP(2,jx)/P0,1e-4),col);
+      errorshade(s(jx),max(rngP(3,jx)/P0,1e-4),max(rngP(4,jx)/P0,1e-4),col);
+    end
+    % plot again or else the pdf does not work (transparency):
+    plot(s(jx),meanP(1,jx)/P0,'r', ...
+      'LineWidth',2);
+    plot(s(jx),meanP(2,jx)/P0,'r','LineWidth',2,'HandleVisibility','off');
+    h = plot(s(kx),MeanP(kx)/P0,'r','LineWidth',2,'HandleVisibility','off');
+    hold on,
+    if ~isempty(h)
+      col = get(h,'Color');
+      errorshade(s(kx),RngP(1,kx)/P0,RngP(2,kx)/P0,col);
+    end
+    plot(s(kx),MeanP(kx)/P0,'r','LineWidth',2,'HandleVisibility','off');
+    set(gcf,'defaultTextInterpreter','latex');
+    xlabel('$s$');
+    ylabel('$P$');
+    xline(scrit,'k','HandleVisibility','off');
+    xline(scrit2,'k-.','HandleVisibility','off');
+    axis([min(s) max(s) 1e-3 1]);
+    set(gca,'defaultTextInterpreter','latex');
+    set(gca,'xtick',0:50:max(s),'ytick',0:1,'yticklabel',0:1,'fontsize',9);
+
+    % UDS
+    P0 = max(meanPuds(:));
+    figure(i+1), clf
+    h = plot(s(jx),meanPuds(1,jx)/P0,'b','LineWidth',2); hold on,
+    plot(s(jx),meanPuds(2,jx)/P0,'b','LineWidth',2,'HandleVisibility','off');
+    if ~isempty(h)
+      col = get(h,'Color');
+      errorshade(s(jx),max(rngPuds(1,jx)/P0,1e-4),max(rngPuds(2,jx)/P0,1e-4),col);
+      errorshade(s(jx),max(rngPuds(3,jx)/P0,1e-4),max(rngPuds(4,jx)/P0,1e-4),col);
+    end
+    h = plot(s(kx),MeanPuds(kx)/P0,'b','LineWidth',2,'HandleVisibility','off');
+    if ~isempty(h)
+      errorshade(s(kx),RngPuds(1,kx)/P0,RngPuds(2,kx)/P0,col);
+    end
+    set(gcf,'defaultTextInterpreter','latex');
+    xlabel('$s$');
+    ylabel('$P$');
+    xline(scrit,'k','HandleVisibility','off');
+    xline(scrit2,'k-.','HandleVisibility','off');
+    axis([min(s) max(s) 0 1]);
+    set(gca,'defaultTextInterpreter','latex');
+    set(gca,'xtick',0:50:max(s),'fontsize',9);
   end
-  % NSM
-  P0 = max(meanP(:));
-  h = plot(s(jx),meanP(1,jx)/P0,'r', ...
-           'LineWidth',2,'HandleVisibility','off');hold on,
-  if ~isempty(h)
-    col = get(h,'Color');
-    errorshade(s(jx),max(rngP(1,jx)/P0,1e-4),max(rngP(2,jx)/P0,1e-4),col);
-    errorshade(s(jx),max(rngP(3,jx)/P0,1e-4),max(rngP(4,jx)/P0,1e-4),col);
-  end
-  % plot again or else the pdf does not work (transparency):
-  plot(s(jx),meanP(1,jx)/P0,'r', ...
-           'LineWidth',2);
-  plot(s(jx),meanP(2,jx)/P0,'r','LineWidth',2,'HandleVisibility','off');
-  h = plot(s(kx),MeanP(kx)/P0,'r','LineWidth',2,'HandleVisibility','off');
-  hold on,
-  if ~isempty(h)
-    col = get(h,'Color');
-    errorshade(s(kx),RngP(1,kx)/P0,RngP(2,kx)/P0,col);
-  end
-  plot(s(kx),MeanP(kx)/P0,'r','LineWidth',2,'HandleVisibility','off');
-  set(gcf,'defaultTextInterpreter','latex');
-  xlabel('$s$');
-  ylabel('$P$');
-  xline(scrit,'k','HandleVisibility','off');
-  xline(scrit2,'k-.','HandleVisibility','off');
+
+  return;
+
+  % continue with Fig. 3 a bit:
+  figure(3),
+  set(gca,'YScale','log'); % for consistenty with other plots
   axis([min(s) max(s) 1e-3 1]);
-  set(gca,'defaultTextInterpreter','latex');
-  set(gca,'xtick',0:50:max(s),'ytick',0:1,'yticklabel',0:1,'fontsize',9);
+  set(gca,'TickLabelInterpreter','latex');
+  set(gca,'xtick',0:50:max(s), ...
+    'ytick',[1e-3 1e-2 1e-1 1], ...
+    'yticklabel',{'10^{-3}' '10^{-2}' '10^{-1}' '1'},'fontsize',9);
+  ix_ = find(lam(2,:) <= 0);
+  plot(svec(ix_),X1(1,ix_),'b','LineWidth',1);
+  plot(svec(ix_),X1(2,ix_),'b', ...
+    'LineWidth',1);
+  ix_ = find(lam(1,:) <= 0);
+  plot(svec(ix_),X0(ix_),'b','LineWidth',1,'HandleVisibility','off');
 
-  % UDS
-  P0 = max(meanPuds(:));
-  figure(i+1), clf
-  h = plot(s(jx),meanPuds(1,jx)/P0,'b','LineWidth',2); hold on,
-  plot(s(jx),meanPuds(2,jx)/P0,'b','LineWidth',2,'HandleVisibility','off');
-  if ~isempty(h)
-    col = get(h,'Color');
-    errorshade(s(jx),max(rngPuds(1,jx)/P0,1e-4),max(rngPuds(2,jx)/P0,1e-4),col);
-    errorshade(s(jx),max(rngPuds(3,jx)/P0,1e-4),max(rngPuds(4,jx)/P0,1e-4),col);
-  end
-  h = plot(s(kx),MeanPuds(kx)/P0,'b','LineWidth',2,'HandleVisibility','off');
-  if ~isempty(h)
-    errorshade(s(kx),RngPuds(1,kx)/P0,RngPuds(2,kx)/P0,col);
-  end
-  set(gcf,'defaultTextInterpreter','latex');
-  xlabel('$s$');
-  ylabel('$P$');
-  xline(scrit,'k','HandleVisibility','off');
-  xline(scrit2,'k-.','HandleVisibility','off');
-  axis([min(s) max(s) 0 1]);
-  set(gca,'defaultTextInterpreter','latex');
-  set(gca,'xtick',0:50:max(s),'fontsize',9);
+  % make plot publishable:
+  legend('RDME','ODE/$W_3$','location','SE','Interpreter','latex');
+  set(gcf,'PaperPositionMode','auto');
+  set(gcf,'Position',[200 200 260 160]);
+  %print -depsc ~/Desktop/rdme_bifurcation.eps
 end
-
-% continue with Fig. 3 a bit:
-figure(3),
-set(gca,'YScale','log'); % for consistenty with other plots
-axis([min(s) max(s) 1e-3 1]);
-set(gca,'TickLabelInterpreter','latex');
-set(gca,'xtick',0:50:max(s), ...
-        'ytick',[1e-3 1e-2 1e-1 1], ...
-        'yticklabel',{'10^{-3}' '10^{-2}' '10^{-1}' '1'},'fontsize',9);
-ix_ = find(lam(2,:) <= 0);
-plot(svec(ix_),X1(1,ix_),'b','LineWidth',1);
-plot(svec(ix_),X1(2,ix_),'b', ...
-     'LineWidth',1);
-ix_ = find(lam(1,:) <= 0);
-plot(svec(ix_),X0(ix_),'b','LineWidth',1,'HandleVisibility','off');
-
-% make plot publishable:
-legend('RDME','ODE/$W_3$','location','SE','Interpreter','latex');
-set(gcf,'PaperPositionMode','auto');
-set(gcf,'Position',[200 200 260 160]);
-%print -depsc ~/Desktop/rdme_bifurcation.eps

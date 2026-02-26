@@ -28,7 +28,9 @@ if ~exist('VOL','var')
   % cell volume of mouse embryonal stem cell ~50 um^3
   VOL = 50; % unit: um^3, so "50" is ~one cell 
 end
-VOL % echo it
+if ~exist('min_example','var') || (min_example == 0)
+  VOL % echo it
+end
 
 % build the geometry and model
 clear umod
@@ -50,7 +52,9 @@ else
   Nvoxels = 3; % note: you must intentionally set Nvoxels = '3'
   N_op = [0 1 1; 1 0 1; 1 1 0];
 end
-Nvoxels % echo it
+if ~exist('min_example','var') || (min_example == 0)
+  Nvoxels % echo it
+end
 
 % find layers in mesh (for visualization)
 layers = mesh_layers(N_op,floor(Nvoxels/2+1));
@@ -103,16 +107,27 @@ umod.D = kron(D.*(D < 0),diag(sparse(ixDin)))+ ...
          kron(D.*(D > 0),sparse(find(ixN),find(ixDin),1,Mspecies,Mspecies));
 
 % solve
-disp('Solving with NSM...');
-umod = urdme(umod,'solver','nsm','report',2);
-disp('   ...done.');
+if ~exist('min_example','var') || (min_example == 0)
+  disp('Solving with NSM...');
+  umod = urdme(umod,'solver','nsm','report',2);
+  disp('   ...done.');
 
-disp('Solving with UDS...');
-vmod = umod;
-vmod.solverargs = ['odesolv' {@ode15s} ...
-                   'odeopts' odeset('RelTol',1e-4,'AbsTol',1e-2)];
-vmod = urdme(vmod,'solver','uds');
-disp('   ...done.');
+  disp('Solving with UDS...');
+  vmod = umod;
+  vmod.solverargs = ['odesolv' {@ode15s} ...
+    'odeopts' odeset('RelTol',1e-4,'AbsTol',1e-2)];
+  vmod = urdme(vmod,'solver','uds');
+  disp('   ...done.');
+else
+  % no output when running minimal example (e.g. for testing)
+  umod = urdme(umod,'solver','nsm','report',0);
+
+  vmod = umod;
+  vmod.solverargs = ['odesolv' {@ode15s} ...
+    'odeopts' odeset('RelTol',1e-4,'AbsTol',1e-2)];
+  vmod = urdme(vmod,'solver','uds');
+end
+
 
 if save_data
   disp('Saving...')
@@ -143,9 +158,9 @@ for wmod = [umod vmod]
   figure(fig), clf,
   cmap = colormap(hsv(floor(Nvoxels/2+1)));
   for i = 1:size(layers,1)
-    plot(tspan/60,nanmean(Plo(layers{i,2},:)),'Color',cmap(i,:)), 
+    plot(tspan/60,mean(Plo(layers{i,2},:),"omitnan"),'Color',cmap(i,:)), 
     hold on,
-    plot(tspan/60,nanmean(Phi(layers{i,2},:)),'Color',cmap(i,:)), 
+    plot(tspan/60,mean(Phi(layers{i,2},:),"omitnan"),'Color',cmap(i,:)), 
   end
   xlabel('time [h]')
   ylabel('P in all cells [um]');

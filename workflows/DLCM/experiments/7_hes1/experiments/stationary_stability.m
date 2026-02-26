@@ -21,6 +21,10 @@
 % S. Engblom 2024-07-09 (Revision)
 % S. Engblom 2024-04-27
 
+if ~exist('min_example','var')
+  min_example = 0;
+end
+
 %% §1 the Jacobian for small perturbations from
 % homogeneous state, Hes1@2 (Proposition 3.2)
 syms N1 D1 N2 D2 f(x) g(x) df(x) dg(x) v lam
@@ -49,7 +53,11 @@ F = taylor(F,[dN dD],'order',2);
 dJ = jacobian(F(3:4,:),[dN dD]);
 dJ = subs(dJ,[D diff(f(N),N) diff(g(N),N)],[g(N) df(N) dg(N)]);
 
-lambda_Hes1_2 = eig(dJ)
+if min_example == 0
+  lambda_Hes1_2 = eig(dJ)
+else
+  lambda_Hes1_2 = eig(dJ);
+end
 
 % Hes1@1 - simplifies to scalar
 g1 = g(N2)*f(N1)-N1;
@@ -59,7 +67,11 @@ F = subs(T*[g1 g2].',[N1 N2].',T\[N dN].');
 F = taylor(F,dN,'order',2);
 dJ = jacobian(F(2,:),dN);
 dJ = subs(dJ,[D diff(f(N),N) diff(g(N),N)],[g(N) df(N) dg(N)]);
-lambda_Hes1_1 = eig(dJ)
+if min_example == 0
+  lambda_Hes1_1 = eig(dJ)
+else
+  lambda_Hes1_1 = eig(dJ);
+end
 
 %% §2 the Jacobian for small perturbations from
 % non-homogeneous state, Hes1@2 (Proposition 3.4)
@@ -78,11 +90,19 @@ dJ = lam*eye(4)-dJ;
 p = dJ(1,1)*dJ(2,2)*dJ(3,3)*dJ(4,4)-dJ(1,4)*dJ(2,1)*dJ(3,2)*dJ(4,3);
 
 % check that this = 0
-q-coeffs(collect(expand(p),lam),lam,'all')
+if min_example == 0
+  q-coeffs(collect(expand(p),lam),lam,'all')
+else
+  q-coeffs(collect(expand(p),lam),lam,'all');
+end
 
 % the 0th order coefficient is the discriminant:
 pvec = coeffs(collect(expand(p),lam),lam);
-p0 = collect(pvec(1),[v])
+if min_example == 0
+  p0 = collect(pvec(1),[v])
+else
+  p0 = collect(pvec(1),[v]);
+end
 % by Descartes' rule of sign there is an eigenvalue with positive real
 % part <==> p0 < 0
 
@@ -91,12 +111,24 @@ F = [g1 g2].';
 dJ = jacobian(F,[N1 N2]);
 dJ = subs(dJ,[diff(f(N1),N1) diff(g(N1),N1)],[df(N1) dg(N1)]);
 dJ = subs(dJ,[diff(f(N2),N2) diff(g(N2),N2)],[df(N2) dg(N2)]);
-p = (lam-dJ(1,1))*(lam-dJ(2,2))-dJ(1,2)*dJ(2,1)
+if min_example == 0
+  p = (lam-dJ(1,1))*(lam-dJ(2,2))-dJ(1,2)*dJ(2,1)
+else
+  p = (lam-dJ(1,1))*(lam-dJ(2,2))-dJ(1,2)*dJ(2,1);
+end
 q = coeffs(charpoly(dJ,lam),lam,'all');
-q-coeffs(collect(expand(p),lam),lam,'all')
+if min_example == 0
+  q-coeffs(collect(expand(p),lam),lam,'all')
+else
+  q-coeffs(collect(expand(p),lam),lam,'all');
+end
 % all coefficients are positive save for the 0th order coefficients
 pvec = coeffs(collect(expand(p),lam),lam);
-p0 = pvec(1)
+if min_example == 0
+  p0 = pvec(1)
+else
+  p0 = pvec(1);
+end
 
 %% §3 the Jacobian for small perturbations from
 % homogeneous state, Hes1@5
@@ -125,11 +157,15 @@ F = taylor(F,[dD dN dM dP dn],'order',2);
 
 % check that the variables decouple:
 dJ = jacobian(F,[D N M P n dD dN dM dP dn]);
-dJ(1:5,6:end) % = 0
+if min_example == 0
+  dJ(1:5,6:end) % = 0
+end
 
 % check that the reductions are definite:
-det(-dJ(6:8,6:8)) % > 0, Hes1@2 in variables (x,y) = (P,n)
-det(-dJ([6:8 10],[6:8 10])) % > 0, Hes1@1 in variable x = P
+if min_example == 0
+  det(-dJ(6:8,6:8)) % > 0, Hes1@2 in variables (x,y) = (P,n)
+  det(-dJ([6:8 10],[6:8 10])) % > 0, Hes1@1 in variable x = P
+end
 
 % quick way to get to the Jacobian in small variables only:
 dJ = jacobian(F(6:end,:),[dD dN dM dP dn]);
@@ -154,11 +190,17 @@ p = dJ(1,1)*dJ(2,2)*dJ(5,5)*(dJ(3,3)*dJ(4,4)-dJ(3,4)*dJ(4,3))+ ...
     dJ(2,1)*dJ(1,5)*dJ(3,2)*dJ(4,3)*dJ(5,4);
 
 % check that this = 0
-simplify(q-coeffs(collect(expand(p),lam),lam,'all'))
+if min_example == 0
+  simplify(q-coeffs(collect(expand(p),lam),lam,'all'))
+end
 
 % the 0th order coefficient is the discriminant:
 pvec = coeffs(collect(expand(p),lam),lam);
-p0 = collect(pvec(1),[df(P) N aM aP mN mn mM mP])
+if min_example == 0
+  p0 = collect(pvec(1),[df(P) N aM aP mN mn mM mP])
+else
+  p0 = collect(pvec(1),[df(P) N aM aP mN mn mM mP]);
+end
 % by Descartes' rule of sign there is an eigenvalue with positive real
 % part <==> p0 < 0
 
@@ -170,8 +212,10 @@ dJ = subs(dJ,[diff(f(P1/KM),P1) diff(g(P1/Kn),P1)],[df(P1/KM)/KM dg(P1/Kn)/Kn]);
 dJ = subs(dJ,[diff(f(P2/KM),P2) diff(g(P2/Kn),P2)],[df(P2/KM)/KM dg(P2/Kn)/Kn]);
 
 % check that the reductions are definite:
-det(-dJ([1:3 6:8],[1:3 6:8])) % > 0, Hes1@2 in variables (x,y) = (P,n)
-det(-dJ([1:3 5 6:8 10],[1:3 5 6:8 10])) % > 0, Hes1@1 in variable x = P
+if min_example == 0
+  det(-dJ([1:3 6:8],[1:3 6:8])) % > 0, Hes1@2 in variables (x,y) = (P,n)
+  det(-dJ([1:3 5 6:8 10],[1:3 5 6:8 10])) % > 0, Hes1@1 in variable x = P
+end
 
 % characteristic polynomial
 q = coeffs(charpoly(dJ,lam),lam,'all');
@@ -198,11 +242,17 @@ p = dJ(1,1)*dJ(2,2)*dJ(7,7)*dJ(6,6)*dJ(5,5)*dJ(10,10)* ...
     aD^2*aM^2*aN^2*aP^2*an^2*dg(P1/Kn)*dg(P2/Kn)*f(P1/KM)*f(P2/KM)/Kn^2;
 
 % check that this = 0
-simplify(q-coeffs(collect(expand(p),lam),lam,'all'))
+if min_example == 0
+  simplify(q-coeffs(collect(expand(p),lam),lam,'all'))
+end
 
 % the 0th order coefficient is the discriminant:
 pvec = coeffs(collect(expand(p),lam),lam);
-p0 = pvec(1)
+if min_example == 0
+  p0 = pvec(1)
+else
+  p0 = pvec(1);
+end
 % by Descartes' rule of sign there is an eigenvalue with positive real
 % part <==> p0 < 0
 

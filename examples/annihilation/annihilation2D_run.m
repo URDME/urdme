@@ -3,6 +3,7 @@
 %   when they meet. This example shows how one can set up a simple 2D
 %   simulation using the URDME interface to PDE Toolbox.
 
+% S. Engblom 2026-01-09 (Revision, update umod.sd management + pdeplot)
 % S. Engblom 2019-11-27 (Revision, model augmentation using rparse_inline)
 % S. Engblom 2017-05-09 (Revision, rparse_inline)
 % S. Engblom 2017-02-21
@@ -25,15 +26,19 @@ ns = char('C1','C2','C3')';
 G = decsg(gd,sf,ns);
 
 % create the mesh
-[P,E,T] = initmesh(G,'hmax',0.075);
+[P,E,T] = initmesh(G,'hmax',0.1);
 
 % assemble the diffusion part
 umod = pde2urdme(P,T,{D_const D_const});
 
-% this "rounding" will include only the nodes truly inside C2, C3:
-umod.sd(umod.sd < 1.5) = 1;
-umod.sd(umod.sd > 2.5) = 3;
-umod.sd = round(umod.sd);
+% manually handle the subdomain enumeration (ASSEMA seems to differ
+% between PDE Toolbox versions)
+umod.sd(:) = 2; % the "background" subdomain is 2 here
+umod.sd((P(1,:)+0.4).^2+P(2,:).^2 < 0.2^2) = 1; % sd = 1, left disc
+umod.sd((P(1,:)-0.4).^2+P(2,:).^2 < 0.2^2) = 3; % sd = 3, right disc
+
+% try to balance creation events exactly:
+FAC = sum(umod.vol(umod.sd == 3))/sum(umod.vol(umod.sd == 1));
 
 %% (2) reactions
 
@@ -41,16 +46,24 @@ umod.sd = round(umod.sd);
 k_creat = R_const*200.0;
 k_react = R_const*1.0;
 umod = rparse_inline(umod, ...
-    {'@ > k_creat > A', ...
-     '@ > k_creat > B', ...
+    {'@ > k_creatA > A', ...
+     '@ > k_creatB > B', ...
      'A+B > k_react > @'}, ...
-    {'A' 'B'},{'k_creat' k_creat 'k_react' k_react});
+    {'A' 'B'},{'k_creatA' k_creat 'k_creatB' k_creat/FAC 'k_react' k_react});
 
 % specify in what subdomains reactions are turned off
 S = [2 1 0; ...
      3 2 0];
 S = sparse(S);
 umod.inline_propensities.S = S;
+
+% (alternative using RPARSE)
+% $$$ umod = rparse(umod, ...
+% $$$     {'@ > k_creatA*vol*(sd == 1) > A', ...
+% $$$      '@ > k_creatB*vol*(sd == 3) > B', ...
+% $$$      'A+B > k_react*A*B/vol > @'}, ...
+% $$$               {'A' 'B'},{'k_creatA' k_creat 'k_creatB' k_creat/FAC ...
+% $$$                     'k_react' k_react},'annihilation2D');
 
 %% (3) run the model
 
@@ -76,10 +89,19 @@ if ~exist('plotting_off','var') || ~plotting_off
   pdemesh(P,E,T), axis equal
   
   figure(3), clf
-  pdesurf(umod.pde.P,umod.pde.T,mean_A');
+  pdeplot(P,E,T,XYdata=mean_A);
   title('Mean A');
-  
-  figure(4), clf
-  pdesurf(umod.pde.P,umod.pde.T,mean_B');
+
+  figure(4), clf,
+  pdeplot(P,E,T,XYdata=mean_B);
   title('Mean B')
+  
+  % (previous version using PDESURF instead:)
+% $$$   figure(3), clf,
+% $$$   pdesurf(umod.pde.P,umod.pde.T,mean_A');
+% $$$   title('Mean A')
+% $$$   
+% $$$   figure(4), clf,
+% $$$   pdesurf(umod.pde.P,umod.pde.T,mean_B');
+% $$$   title('Mean B')
 end

@@ -8,23 +8,29 @@
 if ~exist('save_data','var')
   save_data = false;
 end
+if ~exist('min_example','var') || (min_example == 0)
+  % critical parameter to sweep over: volume of one cell/voxel
+  % vol has unit um^3 (so vol = 50 is ~one mouse stem cell)
+  vol = [1:4 5:5:50];
+  NMC = 10; % #independent replicas
+  Nvoxels = 10;
+else
+  % run minimal example (e.g. for tests)
+  vol = [1,15];
+  NMC = 2;
+  Nvoxels = 4;
+end
 
-% critical parameter to sweep over: volume of one cell/voxel
-% vol has unit um^3 (so vol = 50 is ~one mouse stem cell)
-vol = [1:4 5:5:50];
-NMC = 10; % #independent replicas
 
 % build the model using external script
 solve = 0;
 VOL = 1; % use unit scaling for the volume here
-Nvoxels = 10;
 hes1umod2D_run;
 
 % modify the struct a bit:
 umod.solve = 1; vmod.solve = umod.solve;
 umod.parse = 1; vmod.parse = umod.parse;
 umod.compile = 0; vmod.compile = umod.compile;
-umod.report = 1; vmod.report = umod.report;
 umod.tspan = linspace(0,36*60,10); vmod.tspan = umod.tspan;
 rng(20240508);
 umod.seed = randi(intmax('uint32'),NMC,1);
@@ -34,15 +40,25 @@ save_P = zeros(Nvoxels^2,numel(vol),NMC);
 
 % (1) solve with deterministic interpretation first since it does not
 % depend on the volume
-disp('*** Pre-solving with UDS...');
-vmod.u0 = u0*vol(1)/VOL;
-vmod = urdme(vmod);
-save_P_uds = vmod.U(5:Mspecies:end,end,:);
-disp('   ...done.');
+if ~exist('min_example','var') || (min_example == 0)
+  disp('*** Pre-solving with UDS...');
+  umod.report = 1; vmod.report = umod.report;
+  vmod.u0 = u0*vol(1)/VOL;
+  vmod = urdme(vmod);
+  save_P_uds = vmod.U(5:Mspecies:end,end,:);
+  disp('   ...done.');
+else
+  umod.report = 0; vmod.report = umod.report;
+  vmod.u0 = u0*vol(1)/VOL;
+  vmod = urdme(vmod);
+  save_P_uds = vmod.U(5:Mspecies:end,end,:);
+end
 
 % (2) main solve: per volume and NMC i.i.d. replicas using NSM
 for i = 1:numel(vol)
-  disp(['*** Solving with volume = ' num2str(vol(i)) '...']);
+  if ~exist('min_example','var') || (min_example == 0)
+    disp(['*** Solving with volume = ' num2str(vol(i)) '...']);
+  end
 
   % scale the volume from previous round
   umod.vol = umod.vol*vol(i)/VOL;
@@ -58,7 +74,9 @@ for i = 1:numel(vol)
 
   % save end result
   save_P(:,i,:) = P;
-  disp('   ...done.');
+  if ~exist('min_example','var') || (min_example == 0)
+    disp('   ...done.');
+  end
 end
 
 % postprocess given save_P and save_P_uds
@@ -137,28 +155,30 @@ if save_data
        'save_P_uds','save_P');
 end
 
-% visualize
-figure(1), clf, hold on,
-% $$$ h = yline(w_num_uds,'b','LineWidth',2);
-% $$$ col = get(h,'Color');
-% $$$ errorshade([vol(1) vol(end)], ...
-% $$$     w_num_udsCI([1 1]),w_num_udsCI([2 2]),col);
-h = plot(vol,W_num','LineWidth',2,'Color','r');
-col = get(h,'Color');
-errorshade(vol,W_numCI(:,1)',W_numCI(:,2)',col);
-plot(vol,W_num','LineWidth',2,'Color','r');
-yline(0.5,'k--');
+if ~exist('min_example','var') || (min_example == 0)
+  % visualize
+  figure(1), clf, hold on,
+  % $$$ h = yline(w_num_uds,'b','LineWidth',2);
+  % $$$ col = get(h,'Color');
+  % $$$ errorshade([vol(1) vol(end)], ...
+  % $$$     w_num_udsCI([1 1]),w_num_udsCI([2 2]),col);
+  h = plot(vol,W_num','LineWidth',2,'Color','r');
+  col = get(h,'Color');
+  errorshade(vol,W_numCI(:,1)',W_numCI(:,2)',col);
+  plot(vol,W_num','LineWidth',2,'Color','r');
+  yline(0.5,'k--');
 
-set(gcf,'PaperPositionMode','auto');
-set(gcf,'Position',[100 100 280 180]);
-set(gca,'TickLabelInterpreter',...
-        'latex');
-xlabel('Cell Volume $\left[\mu m^3\right]$','Interpreter','latex');
-ylabel('patterning coefficient $p$','Interpreter','latex');
-ylim([0.3 0.7]);
-box on
+  set(gcf,'PaperPositionMode','auto');
+  set(gcf,'Position',[100 100 280 180]);
+  set(gca,'TickLabelInterpreter',...
+    'latex');
+  xlabel('Cell Volume $\left[\mu m^3\right]$','Interpreter','latex');
+  ylabel('patterning coefficient $p$','Interpreter','latex');
+  ylim([0.3 0.7]);
+  box on
 
-% make plot publishable:
-set(gcf,'PaperPositionMode','auto');
-set(gcf,'Position',[200 200 260 160]);
-%print -depsc ~/Desktop/rdme_patterning.eps
+  % make plot publishable:
+  set(gcf,'PaperPositionMode','auto');
+  set(gcf,'Position',[200 200 260 160]);
+  %print -depsc ~/Desktop/rdme_patterning.eps
+end

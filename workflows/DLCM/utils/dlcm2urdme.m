@@ -93,7 +93,7 @@ optsdef.D = -umod.D(1:ntypes+nquants:end, 1:ntypes+nquants:end)';
 optsdef.Ne = (optsdef.D-diag(diag(optsdef.D))~=0);
 optsdef.D = optsdef.D;
 optsdef.Rates = @(U,Q,QI,P,t){Q(:,1)};    % pressure-driven migration
-optsdef.Drate = @(Uf,Ut,Q,QI,P){1.*(Uf==1).*(Ut==0)+1.*(Uf==2).*(Ut<2)};
+optsdef.Drate = @(Uf,Ut,Q,QI,P,t){1.*(Uf==1).*(Ut==0)+1.*(Uf==2).*(Ut<2)};
 optsdef.curv = [];
 optsdef.mumod = [];
 optsdef.ldata_fun = [];
@@ -116,6 +116,9 @@ end
 opts = optsdef;
 opts.gradquotient = gradquotient; % finally add gradquotient (no default)
 
+% remember the number of spatial dimensions
+opts.dim = size(P,1);
+
 % check correctness of @-functions...
 ncells = 10;                              % ... using small dummy inputs
 nint = 2;
@@ -124,8 +127,9 @@ if ~isempty(opts.mumod)
 end
 U = zeros(ncells,1); Q = zeros(ncells,nquants); QI = zeros(ncells,2,nint);
 Ne = ones(ncells,ncells);                 % fake neighbouring matrix
-rates = opts.Rates(U,Q,QI,P,1);
-drate = opts.Drate(U,U,Q,QI,P);
+P_test = zeros(2,ncells);                 % fake position input
+rates = opts.Rates(U,Q,QI,P_test,1);
+drate = opts.Drate(U,U,Q,QI,P_test,1);
 nmig = numel(rates);       % nr of migration potentials
 if nmig ~= numel(drate)
   error('Sizes of cell arrays returned by Rates and Drates must be equal')
@@ -140,7 +144,7 @@ for n = 1:nmig
 end
 
 if ~isempty(opts.maxdt_fun)
-  ldata = opts.ldata_fun(U, Q, QI, Ne);
+  ldata = opts.ldata_fun(U, Q, QI, P_test, Ne);
   for l = 1:numel(ldata)
     if any(size(ldata{l}) ~= [ncells,1])
       error('ldata_fun-function returns wrong output size')
@@ -188,10 +192,22 @@ if nargin > 3 & ~isempty(varargin{1})
   opts.curv = {curv};
 end
 
-% pack essentials into umod
-umod.ldata(:,:) = P;              % needed for Drate and Rates!
-umod.gdata(1) = nquants;
-umod.gdata(2) = ntypes;
+% pack essentials into umod (append ldata & gdata)
+% These arrays contain both static and model dependent fields --
+% i.e., their structure is sentitive to change!
+if ~isfield(umod, 'ldata')
+  umod.ldata = [];
+end
+umod.ldata = [P; umod.ldata];        % custom ldata is forced to the end of
+% the ldata array later inside mexdlcm, such that the final ldata array is
+% on the form [P; QI; custom ldata] where QI are the internal states
+% (P is needed for Drate and Rates)
+if ~isfield(umod, 'gdata')
+  umod.gdata = [];
+end
+umod.gdata = [umod.gdata nquants ntypes]; % nquants and ntypes is intended
+% for internal representation inside mexdlcm; custom gdata is accessed
+% when defining the model outside mexdlcm
 
 % convert opts back to cell array and place in solverargs
 opts = [fieldnames(opts)'; struct2cell(opts)'];

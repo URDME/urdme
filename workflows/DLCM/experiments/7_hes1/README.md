@@ -10,6 +10,7 @@ G. Menz and S. Engblom 2024-11-14
   - used in the generation of Figure(s): 3.7
 * **hes1_grid2D.mat** - Result from running `hes1_grid2D.m` (full ODE model) on a 20x20 grid with random ics.
   - used in the generation of Figure(s): 2.2, 2.3
+* **hes1growth_... - Results from running `hes1_growth.m` (hes1 model coupled to population growth). For various levels of proliferation rates, both discrete and continuous internal states.
 * **hes1red_grid2D.mat** - Result from running `hes1red_grid2D.m` (reduced ODE model, alternative 1) on a 20x20 grid with random ics.
   - used in the generation of Figure(s): 2.3
 * **hes1umod_vol1_rand.mat** - Result from running `hes1umod2D_run.m` (RDME model) on a 20x20 grid using a cell volume of 1 micrometer^3 with random ics.
@@ -23,6 +24,7 @@ G. Menz and S. Engblom 2024-11-14
 
 ### Experiments
 * **hes1_grid2D.m** - Full ODE Model implemented on a 2D grid using DLCM.
+* **hes1_growth.m** - Hes1 model coupled to population growth. Handles both discrete and continuous internal states.
 * **hes1red_grid2D.m** - Reduced ODE model implemented on a 2D grid using DLCM.
 * **hes1umod2D_run.m** - Run RDME model in 2D using URDME solvers (both NSM and UDS).
 * **hes1umod_bifurcation.** - Generate bifurcation graph for RDME model.
@@ -38,18 +40,21 @@ G. Menz and S. Engblom 2024-11-14
 * **stationary_bounds.m** - Stationary analysis of Hes1 using the reduced ODE model.
   - Figure(s) produced: 3.1
 * **stationary_stability.m** - Spectral analysis using spectra for small perturbations from stationary states.
+* **visualise_hes1_growth.m** - Generate snapshots of the hes1-growth model.
+  - Figures(s) produced in [2]: 3.2 and 3.3
 
 ### Models
 * **final_parametrization** - Check parameterisations of perturbed results from `hes1_conc.m` and mus from `hes1_params.m` followed by parameterisation of alphas.
-* **hes1_Jacobian.m** - Jacobian for the full Hes1 ODE model.
-* **hes1_System.m** - RHS function for the Hes1 ODE system on a grid.
 * **hes1_buildODE.m** - Full Hes1 ODE model on a grid.
 * **hes1_conc.m** - Wanted concentrations for all constituents. Possibility to generate perturbed concentrations.
+* **hes1_Jacobian.m** - Jacobian for the full Hes1 ODE model.
 * **hes1_params.m** - Function which returns all Hes1 model parameters as a struct. Possibility to generate
+* **hes1_System.m** - RHS function for the Hes1 ODE system on a grid.
 perturbed parameters.
 * **hes1red_params.m** - Function returning scaled Hes1 model parameters as a struct. Possibility to generate
 perturbed parameters with same noise as used in `hes1_params.m`.
 * **hes1umod.m** - URDME model file for Hes1@5. Run by `hes1umod2D_run.m`
+* **hes1umod_dlcm.m** - URDME model file for Hes1@5 modified to DLCM. Used in `hes1_growth.m`
 * **parametrization.m** - Hes1 parametrization for given data.
 
 ### Utils
@@ -60,5 +65,7 @@ perturbed parameters with same noise as used in `hes1_params.m`.
 * **hes1unreduce.m** - Map to full Hes1-model from reduced case.
 
 References: \
-  [1] G. Menz and S. Engblom, Modelling Population-Level Hes1 Dynamics: Insights from a
-  Multi-Framework Approach, 2024. arXiv Preprint: *link to be added*
+  [1] Menz, G., Engblom, S. Modelling Population-Level Hes1 Dynamics:
+  Insights from a Multi-framework Approach. Bull Math Biol 87. (2025). \
+  [2] E. Blom, S. Engblom, DLCM: a versatile multi-level solver for
+  heterogeneous multicellular systems, 2025 arXiv Preprint.

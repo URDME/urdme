@@ -247,7 +247,7 @@ ylabel(['Conc ', '[$\mu M$]'],'Interpreter','latex','FontName',font,...
 %% Panel figure URDME
 
 % load or generate data for low volume
-if ~exist('../data/hes1umod_vol1.mat','file')
+if ~exist('../data/hes1umod_vol1_rand.mat','file')
   error('Run hes1umod2D_run.m with VOL = 1 and save the data.')
 else
   % with random initial conditions
@@ -281,7 +281,7 @@ idxlo_low = setdiff(idx_layer1,idxhi_low);
 idxhi_low = setdiff(idx_layer1,idxlo_low);
 
 % load data for high volume (cell size)
-if ~exist('../data/hes1umod_vol50.mat','file')
+if ~exist('../data/hes1umod_vol50_rand.mat','file')
   error('Run hes1umod2D_run.m with VOL = 50 and save the data.')
 else
   % with random initial conditions

@@ -34,16 +34,21 @@ if ~exist('par','var')
   par = hes1_params;
 end
 if ~exist('rand_seed', 'var')
-  rand_seed = rng(1000)
+  rand_seed = rng(1000);
 else
   rng(rand_seed) % echo it
+end
+if ~exist('min_example','var') || (min_example == 0)
+  % cells live in a square of Nvoxels-by-Nvoxels
+  Nvoxels = 20;
+else
+  Nvoxels = 2;
+  rand_seed = rng(1000);
 end
 
 % set random seed
 % rng(456)
 
-% cells live in a square of Nvoxels-by-Nvoxels
-Nvoxels = 20;
 if mod(Nvoxels,2) == 1
   error("Nvoxels has to be an even number.")
 end

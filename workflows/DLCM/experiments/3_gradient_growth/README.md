@@ -13,6 +13,7 @@ E. Blom 2025-04-17
 visual/
 * **visualise_chemotaxis3D.m** Visualising 3D experiments, Fig. 3.5 in [1].
 * **visualise_chemotaxis.m** Visualising 2D experiments, Fig. 3.4 in [1].
+* **chem1-4_mean.mat** Model 1-4 data; mean movement of population CoM.
 * **chemotaxis_3D.mat** Model 5 data; cells exert chemotactic signal.
 * **chemotaxis_cons.mat** Model 3 data; cells consume ambient.
   chemotactic signal

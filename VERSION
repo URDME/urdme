@@ -1,49 +1,34 @@
-URDME Version 1.4
+URDME Version 1.5
 =================
 
 Tested with
 -----------
 
-Matlab version 9.6.0.1072779 (R2019a)
-.mex-extension mexa64
-
-PDE Toolbox Version 3.2 (R2019a)
-
-Comsol 5.5
-
-Ubuntu 18.04.3 LTS
-
---
-
-Matlab Version: 9.8.0.1262005 (R2020a) Prerelease
-.mex-extension mexa64
-
-PDE Toolbox Version 3.4 (R2020a)
-
-Comsol 5.5
-
-Ubuntu 18.04.3 LTS
-
---
-
-Matlab version 9.6.0.1099231 (R2019a)
+Matlab version 9.11.0.1837725 (R2021b) Update 2
 .mex-extension mexmaci64
 
-PDE Toolbox Version 3.2 (R2019a)
-
-Comsol 5.2a
-
-Mac OS X 10.12.6
+PDE Toolbox Version 3.7 (R2021b) 14-May-2021
 
 --
 
-Matlab version 9.7.0.1216025 (R2019b) Update 1
-.mex-extension mexa64
+Matlab version 23.2.0.2459199 (R2023b) Update 5
 
-PDE Toolbox Version 3.3 (R2019b)
+.mex-extension mexmaca64
 
-Comsol 5.5
+PDE Toolbox Version 23.2 (R2023b) 01-Aug-2023
 
-Solus 4.0 Fortitude
+--
+
+Matlab version 23.2.0.2859533 (R2023b) Update 10
+.mex-extension mexmaca64
+
+PDE Toolbox Version Version 23.2 (R2023b) 01-Aug-2023
+
+--
+
+Matlab version 25.2.0.3055257 (R2025b) Update 2
+.mex-extension mexmaca64
+
+PDE Toolbox Version 25.2 (R2025b) 28-Jul-2025
 
 --

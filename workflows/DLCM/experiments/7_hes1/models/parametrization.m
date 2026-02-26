@@ -9,6 +9,9 @@ end
 if ~exist('save_data','var')
   save_data = false;
 end
+if ~exist('min_example','var')
+  min_example = false;
+end
 
 % input: data from perturbed or unperturbed concentrations
 if ~final
@@ -87,8 +90,13 @@ W = W./sum(W,2);
 % check spectral properties around X0 and X122
 J0 = hes1_Jacobian(repmat(X0,1,3),alpha,mu,H,funJ,funC,W);
 lam_ = eig(J0);
-tau1 = l_escape(lam_)/60 % time until fate decision [h]
-per1 = l_period(lam_)/60 % period [h]
+if min_example == false
+  tau1 = l_escape(lam_)/60 % time until fate decision [h]
+  per1 = l_period(lam_)/60 % period [h]
+else
+  tau1 = l_escape(lam_)/60; % time until fate decision [h]
+  per1 = l_period(lam_)/60; % period [h]
+end
 
 %% (2) evaluate response in (alpha,KM,Kn) to improve on spectral properties
 
@@ -202,6 +210,7 @@ Y0 = Y0+weight*norm(Y0)*(w1*v1+w2*v2); assert(all(Y0 > 0));
   odeset('AbsTol',1e-8,'RelTol',1e-10));
 Y = Y';
 
+if min_example == false
 figure(4), clf,
 semilogy(tspan/60,Y(1:5:end,:),'b','HandleVisibility','off'); hold on,
 semilogy(tspan/60,Y(2:5:end,:),'r','HandleVisibility','off');
@@ -222,13 +231,20 @@ plot([0 tau0],4*[y0 y0],'k-v');
 plot([tau0 tau0],[4*y0 1e-5],'k--','HandleVisibility','off');
 
 % period
-[y1,t1] = findpeaks(Y(4,1:end/2),tspan(1:end/2));
+oscillationsY = Y(4,1:end/2);
+y1 = oscillationsY(oscillationsY == inf | ...
+     oscillationsY([1 1:end-1]) < oscillationsY & ...
+     oscillationsY > oscillationsY([2:end end]));
+t1 = tspan(oscillationsY == inf | ...
+     oscillationsY([1 1:end-1]) < oscillationsY & ...
+     oscillationsY > oscillationsY([2:end end]));
 plot(t1(1)/60+[0 per1],2*[y1(1) y1(1)],'b-v'); % estimated as per1
-plot(t1(1:2)/60,1.5*y1(1:2),'b--.'); % detected via findpeaks
+plot(t1(1:2)/60,1.5*y1(1:2),'b--.'); % detected by finding peaks
 legend(sprintf('Est fate-decision: %2.1fh',tau0), ...
   sprintf('Est period: %2.1fh',per1), ...
   sprintf('Measured period: %2.1fh',(t1(2)-t1(1))/60), ...
   'location','SW');
+end
 
 % ----------------------------------------------------------------------
 function [per,ix] = l_period(lam)

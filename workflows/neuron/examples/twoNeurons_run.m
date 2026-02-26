@@ -12,7 +12,9 @@ if ~exist('report','var')
 end
 
 % (1) synaptic solver using as input a Rallpack 3 potential
-data = dlmread('examples/data/rallpack3_refsol2.txt');
+if ~exist('data','var')
+  data = dlmread('examples/data/rallpack3_refsol2.txt');
+end
 t_vec = data(:,1).*1000; % [ms]
 V_pre = data(:,2).*1000; % [mV]
 if report, disp('Synaptic solver...'); end
